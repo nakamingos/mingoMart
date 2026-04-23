@@ -1,0 +1,1281 @@
+#!/usr/bin/env ts-node
+
+/**
+ * Hybrid Backfill Collection Script
+ *
+ * This script onboards an already-inscribed collection without replaying every
+ * historical block:
+ * 1. Loads collection metadata JSON
+ * 2. Validates and normalizes data
+ * 3. Populates attributes tables
+ * 4. Creates/verifies the collection exists
+ * 5. Fetches creation + transfer history from the Ethscriptions API
+ * 6. Fetches collection-scoped marketplace and auction tx hashes from L1 logs
+ * 7. Replays the union of those tx hashes in block/tx order via the indexer
+ *
+ * This preserves ownership-sensitive ordering because replay still happens
+ * transaction-by-transaction through the existing indexer pipeline.
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import * as readline from 'readline';
+
+import * as dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
+import {
+  createPublicClient,
+  decodeEventLog,
+  hexToString,
+  http,
+  toHex,
+  type Abi,
+  type Address,
+} from 'viem';
+import { mainnet, sepolia } from 'viem/chains';
+
+import { marketL1 } from '../src/abi/market-L1.abi';
+import { auctionHouseL1 } from '../src/abi/auction-house-L1.abi';
+
+dotenv.config({ path: '.env.supabase' });
+
+const DEFAULT_LOG_CHUNK_SIZE = 20_000;
+const MIN_LOG_CHUNK_SIZE = 250;
+const API_BATCH_CONCURRENCY = 50;
+const API_MAX_RETRIES = 3;
+
+const SUPPORTED_MARKET_EVENTS = new Set([
+  'PhunkBought',
+  'PhunkNoLongerForSale',
+  'PhunkOffered',
+]);
+
+const SUPPORTED_ETHSCRIPTIONS_MARKET_EVENTS = new Set([
+  'EthscriptionPurchased',
+]);
+
+const ETHSCRIPTIONS_MARKET_ADDRESS_L1 = '0xd729a94d6366a4feac4a6869c8b3573cee4701a9' as const;
+
+const ethscriptionsMarketL1 = [
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'ethscriptionId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'listingId',
+        type: 'bytes32',
+      },
+    ],
+    name: 'EthscriptionPurchased',
+    type: 'event',
+  },
+] as const;
+
+const SUPPORTED_AUCTION_EVENTS = new Set([
+  'AuctionCreated',
+  'AuctionBid',
+  'AuctionSettled',
+]);
+
+interface Attribute {
+  trait_type: string;
+  value: string;
+}
+
+interface CollectionItem {
+  id: string;
+  index: number;
+  sha: string;
+  name: string;
+  description: string;
+  attributes: Attribute[];
+}
+
+interface CollectionMetadata {
+  name: string;
+  slug: string;
+  description: string;
+  total_supply: number;
+  logo_image?: string;
+  banner_image?: string;
+  website_url?: string;
+  twitter_url?: string;
+  discord_url?: string;
+  background_color?: string;
+  collection_items: CollectionItem[];
+}
+
+interface EthscriptionTransfer {
+  ethscription_transaction_hash: string;
+  transaction_hash: string;
+  block_number: number;
+  transaction_index: number;
+  event_log_index: number | null;
+  transfer_index: string;
+}
+
+interface TransactionToProcess {
+  hash: string;
+  block_number: number;
+  transaction_index: number;
+  sources: string[];
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  normalizedItems: CollectionItem[];
+  stats: {
+    totalItems: number;
+    normalizedShas: number;
+    duplicateIndexes: Map<number, string[]>;
+    duplicateShas: Map<string, number[]>;
+    missingNames: number;
+    missingEthscriptionNumbers: number;
+    indexGaps: number[];
+  };
+}
+
+interface HybridBackfillOptions {
+  metadata?: string;
+  indexerUrl: string;
+  apiKey?: string;
+  network: 'mainnet' | 'sepolia';
+  dryRun: boolean;
+  strict: boolean;
+  force: boolean;
+  fromBlock?: number;
+  toBlock?: number;
+  logChunkSize: number;
+  chainId: number;
+  tableSuffix: string;
+  apiBaseUrl: string;
+}
+
+interface RpcLog {
+  address: Address;
+  blockHash: `0x${string}` | null;
+  blockNumber: `0x${string}` | null;
+  data: `0x${string}`;
+  logIndex: `0x${string}` | null;
+  removed: boolean;
+  topics: `0x${string}`[];
+  transactionHash: `0x${string}` | null;
+  transactionIndex: `0x${string}` | null;
+}
+
+const HEX_64 = /^[0-9a-f]{64}$/i;
+const HEX_66 = /^0x[0-9a-f]{64}$/i;
+
+function promptForInput(question: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+function parseArgs(): HybridBackfillOptions {
+  const args = process.argv.slice(2);
+  const options: HybridBackfillOptions = {
+    indexerUrl: 'http://localhost:3069',
+    network: 'mainnet',
+    dryRun: false,
+    strict: true,
+    force: false,
+    logChunkSize: DEFAULT_LOG_CHUNK_SIZE,
+    chainId: 1,
+    tableSuffix: '',
+    apiBaseUrl: 'https://api.ethscriptions.com/v2',
+  };
+
+  args.forEach((arg, index) => {
+    if (arg.startsWith('--metadata=')) {
+      options.metadata = arg.split('=')[1];
+    } else if (arg === '--metadata' && args[index + 1]) {
+      options.metadata = args[index + 1];
+    } else if (arg.startsWith('--indexer-url=')) {
+      options.indexerUrl = arg.split('=')[1];
+    } else if (arg === '--indexer-url' && args[index + 1]) {
+      options.indexerUrl = args[index + 1];
+    } else if (arg.startsWith('--api-key=')) {
+      options.apiKey = arg.split('=')[1];
+    } else if (arg === '--api-key' && args[index + 1]) {
+      options.apiKey = args[index + 1];
+    } else if (arg.startsWith('--network=')) {
+      const network = arg.split('=')[1].toLowerCase();
+      if (network !== 'mainnet' && network !== 'sepolia') {
+        console.error('Error: --network must be either "mainnet" or "sepolia"');
+        process.exit(1);
+      }
+      options.network = network;
+    } else if (arg === '--network' && args[index + 1]) {
+      const network = args[index + 1].toLowerCase();
+      if (network !== 'mainnet' && network !== 'sepolia') {
+        console.error('Error: --network must be either "mainnet" or "sepolia"');
+        process.exit(1);
+      }
+      options.network = network as 'mainnet' | 'sepolia';
+    } else if (arg === '--dry-run') {
+      options.dryRun = true;
+    } else if (arg === '--no-strict') {
+      options.strict = false;
+    } else if (arg === '--force') {
+      options.force = true;
+    } else if (arg.startsWith('--from-block=')) {
+      options.fromBlock = Number(arg.split('=')[1]);
+    } else if (arg === '--from-block' && args[index + 1]) {
+      options.fromBlock = Number(args[index + 1]);
+    } else if (arg.startsWith('--to-block=')) {
+      options.toBlock = Number(arg.split('=')[1]);
+    } else if (arg === '--to-block' && args[index + 1]) {
+      options.toBlock = Number(args[index + 1]);
+    } else if (arg.startsWith('--log-chunk-size=')) {
+      options.logChunkSize = Number(arg.split('=')[1]);
+    } else if (arg === '--log-chunk-size' && args[index + 1]) {
+      options.logChunkSize = Number(args[index + 1]);
+    }
+  });
+
+  // Load network-specific environment first so it can override base defaults.
+  dotenv.config({ path: `.env.${options.network}` });
+  dotenv.config({ path: '.env' });
+
+  if (!options.apiKey) {
+    options.apiKey = process.env.API_PRIVATE_KEY;
+    if (!options.apiKey) {
+      console.error('Error: API key required. Provide via --api-key or set API_PRIVATE_KEY in .env');
+      process.exit(1);
+    }
+  }
+
+  if (options.fromBlock !== undefined && Number.isNaN(options.fromBlock)) {
+    console.error('Error: --from-block must be a number');
+    process.exit(1);
+  }
+
+  if (options.toBlock !== undefined && Number.isNaN(options.toBlock)) {
+    console.error('Error: --to-block must be a number');
+    process.exit(1);
+  }
+
+  if (!options.logChunkSize || Number.isNaN(options.logChunkSize) || options.logChunkSize < MIN_LOG_CHUNK_SIZE) {
+    console.error(`Error: --log-chunk-size must be a number >= ${MIN_LOG_CHUNK_SIZE}`);
+    process.exit(1);
+  }
+
+  options.chainId = options.network === 'mainnet' ? 1 : 11155111;
+  options.tableSuffix = options.network === 'sepolia' ? '_sepolia' : '';
+  options.apiBaseUrl = options.network === 'mainnet'
+    ? 'https://api.ethscriptions.com/v2'
+    : 'https://sepolia-api.ethscriptions.com/v2';
+
+  return options;
+}
+
+function initSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE must be set in .env.supabase');
+    process.exit(1);
+  }
+
+  return createClient(supabaseUrl, supabaseKey);
+}
+
+function initL1Client(network: 'mainnet' | 'sepolia') {
+  const rpcUrl = process.env.RPC_URL_L1;
+  if (!rpcUrl) {
+    console.error('Error: RPC_URL_L1 must be set in the network env file');
+    process.exit(1);
+  }
+
+  return createPublicClient({
+    chain: network === 'mainnet' ? mainnet : sepolia,
+    transport: http(rpcUrl),
+  });
+}
+
+function getRequiredAddress(name: string): Address {
+  const value = process.env[name];
+  if (!value) {
+    console.error(`Error: ${name} must be set in the network env file`);
+    process.exit(1);
+  }
+  return value.toLowerCase() as Address;
+}
+
+function getOptionalAddress(name: string): Address | null {
+  const value = process.env[name]?.trim();
+  if (!value) return null;
+  return value.toLowerCase() as Address;
+}
+
+async function findContractDeploymentBlock(
+  client: ReturnType<typeof initL1Client>,
+  address: Address,
+  latestBlock: number,
+): Promise<number> {
+  let low = 0;
+  let high = latestBlock;
+  let firstCodeBlock = latestBlock;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const code = await client.getCode({
+      address,
+      blockNumber: BigInt(mid),
+    });
+
+    if (code && code !== '0x') {
+      firstCodeBlock = mid;
+      high = mid - 1;
+    } else {
+      low = mid + 1;
+    }
+  }
+
+  return firstCodeBlock;
+}
+
+async function loadMetadata(metadataPath: string): Promise<CollectionMetadata> {
+  console.log(`\nLoading metadata from: ${metadataPath}`);
+
+  let metadata: CollectionMetadata;
+
+  if (metadataPath.startsWith('http://') || metadataPath.startsWith('https://')) {
+    const response = await fetch(metadataPath);
+    if (!response.ok) {
+      console.error(`Error: Failed to fetch metadata: ${response.status} ${response.statusText}`);
+      process.exit(1);
+    }
+    metadata = await response.json() as CollectionMetadata;
+  } else {
+    const resolvedPath = path.resolve(metadataPath);
+    if (!fs.existsSync(resolvedPath)) {
+      console.error(`Error: Metadata file not found at ${resolvedPath}`);
+      process.exit(1);
+    }
+
+    metadata = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
+  }
+
+  console.log(`Loaded metadata for "${metadata.name}" (${metadata.collection_items.length} items)`);
+  return metadata;
+}
+
+function validateAndNormalizeMetadata(metadata: CollectionMetadata): ValidationResult {
+  console.log('\nValidating metadata...');
+
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const normalizedItems: CollectionItem[] = [];
+
+  const stats = {
+    totalItems: metadata.collection_items.length,
+    normalizedShas: 0,
+    duplicateIndexes: new Map<number, string[]>(),
+    duplicateShas: new Map<string, number[]>(),
+    missingNames: 0,
+    missingEthscriptionNumbers: 0,
+    indexGaps: [] as number[],
+  };
+
+  const seenIndexes = new Map<number, string>();
+  const seenShas = new Map<string, number>();
+  const allIndexes: number[] = [];
+
+  for (let i = 0; i < metadata.collection_items.length; i++) {
+    const item = { ...metadata.collection_items[i] };
+
+    if (!item.id) {
+      errors.push(`Item ${i}: Missing required field 'id'`);
+      continue;
+    }
+    if (!item.sha) {
+      errors.push(`Item ${i}: Missing required field 'sha'`);
+      continue;
+    }
+    if (item.index === undefined || item.index === null) {
+      errors.push(`Item ${i}: Missing required field 'index'`);
+      continue;
+    }
+
+    const normalizedId = item.id.toLowerCase();
+    if (!HEX_66.test(normalizedId)) {
+      errors.push(`Item ${i} (index ${item.index}): Invalid ID format '${item.id}' - must be 0x + 64 hex chars`);
+      continue;
+    }
+    item.id = normalizedId;
+
+    let normalizedSha = item.sha.toLowerCase();
+    if (normalizedSha.startsWith('0x')) {
+      normalizedSha = normalizedSha.slice(2);
+      stats.normalizedShas++;
+    }
+
+    if (!HEX_64.test(normalizedSha)) {
+      errors.push(`Item ${i} (index ${item.index}): Invalid SHA format '${item.sha}' - must be 64 char hex`);
+      continue;
+    }
+    item.sha = normalizedSha;
+
+    const indexNum = Number(item.index);
+    if (Number.isNaN(indexNum) || !Number.isInteger(indexNum)) {
+      errors.push(`Item ${i}: Invalid index '${item.index}' - must be an integer`);
+      continue;
+    }
+    item.index = indexNum;
+    allIndexes.push(indexNum);
+
+    if (seenIndexes.has(indexNum)) {
+      if (!stats.duplicateIndexes.has(indexNum)) {
+        stats.duplicateIndexes.set(indexNum, [seenIndexes.get(indexNum)!]);
+      }
+      stats.duplicateIndexes.get(indexNum)!.push(item.id);
+      warnings.push(`Item ${i}: Duplicate index ${indexNum} (also used by ${seenIndexes.get(indexNum)})`);
+    } else {
+      seenIndexes.set(indexNum, item.id);
+    }
+
+    if (seenShas.has(normalizedSha)) {
+      if (!stats.duplicateShas.has(normalizedSha)) {
+        stats.duplicateShas.set(normalizedSha, [seenShas.get(normalizedSha)!]);
+      }
+      stats.duplicateShas.get(normalizedSha)!.push(indexNum);
+      warnings.push(`Item ${i}: Duplicate SHA ${normalizedSha.slice(0, 16)}... (also used by index ${seenShas.get(normalizedSha)})`);
+    } else {
+      seenShas.set(normalizedSha, indexNum);
+    }
+
+    if (!item.name || item.name.trim() === '') {
+      stats.missingNames++;
+      warnings.push(`Item ${i} (index ${indexNum}): Missing 'name' field`);
+    }
+
+    if (!(item as Record<string, unknown>).ethscription_number) {
+      stats.missingEthscriptionNumbers++;
+    }
+
+    normalizedItems.push(item);
+  }
+
+  if (allIndexes.length > 0) {
+    const sortedIndexes = [...allIndexes].sort((a, b) => a - b);
+    const minIndex = sortedIndexes[0];
+    const maxIndex = sortedIndexes[sortedIndexes.length - 1];
+    const indexSet = new Set(sortedIndexes);
+
+    for (let i = minIndex; i <= maxIndex; i++) {
+      if (!indexSet.has(i)) stats.indexGaps.push(i);
+    }
+
+    if (stats.indexGaps.length > 0) {
+      const gapPreview = stats.indexGaps.slice(0, 5).join(', ');
+      const moreCount = stats.indexGaps.length > 5 ? ` and ${stats.indexGaps.length - 5} more` : '';
+      warnings.push(`Index gaps detected: ${gapPreview}${moreCount} (total: ${stats.indexGaps.length} gaps in range ${minIndex}-${maxIndex})`);
+    }
+  }
+
+  console.log(`  Total items: ${stats.totalItems}`);
+  console.log(`  Valid items: ${normalizedItems.length}`);
+  console.log(`  Normalized SHAs: ${stats.normalizedShas}`);
+  if (errors.length) console.log(`  Errors: ${errors.length}`);
+  if (warnings.length) console.log(`  Warnings: ${warnings.length}`);
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+    normalizedItems,
+    stats,
+  };
+}
+
+async function checkCollectionExists(supabase: any, slug: string, tableSuffix: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from(`collections${tableSuffix}`)
+    .select('slug')
+    .eq('slug', slug)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+  return !!data;
+}
+
+async function checkDuplicateIdsInDatabase(
+  supabase: any,
+  items: CollectionItem[],
+  tableSuffix: string,
+): Promise<{ duplicates: Array<{ id: string; index: number; existingSlug: string }> }> {
+  const duplicates: Array<{ id: string; index: number; existingSlug: string }> = [];
+  const batchSize = 100;
+
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const ids = batch.map((item) => item.id);
+
+    const { data, error } = await supabase
+      .from(`ethscriptions${tableSuffix}`)
+      .select('hashId, slug')
+      .in('hashId', ids);
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      data.forEach((existing: any) => {
+        const item = batch.find((batchItem) => batchItem.id.toLowerCase() === existing.hashId?.toLowerCase());
+        if (item) {
+          duplicates.push({
+            id: existing.hashId,
+            index: item.index,
+            existingSlug: existing.slug,
+          });
+        }
+      });
+    }
+  }
+
+  return { duplicates };
+}
+
+const ATTRIBUTE_ORDER = [
+  'Type',
+  'Featured Artist',
+  '1 of 1',
+  'Origin',
+  'Vest/Armor',
+  'Tie',
+  'Smoke',
+  'Shirt/Jacket',
+  'Ninja Outfit',
+  'Mouth',
+  'Mask',
+  'Headphones',
+  'Headband',
+  'Hat/Helmet',
+  'Hair',
+  'Glasses',
+  'Facial',
+  'Chain',
+  'Cape',
+  'Balloon',
+  'Background',
+  'Power/Strength',
+  'Speed/Agility',
+  'Wisdom/Magic',
+];
+
+async function populateAttributes(supabase: any, slug: string, items: CollectionItem[]) {
+  console.log(`\nPopulating attributes for ${items.length} items...`);
+
+  const attributeRecords = items.map((item) => {
+    const unorderedValues = item.attributes?.reduce((acc: Record<string, string | string[]>, attr) => {
+      const { trait_type, value } = attr;
+      const existing = acc[trait_type];
+      if (existing !== undefined) {
+        acc[trait_type] = Array.isArray(existing) ? [...existing, value] : [existing, value];
+      } else {
+        acc[trait_type] = value;
+      }
+      return acc;
+    }, {});
+
+    const values: Record<string, string | string[]> = {};
+    ATTRIBUTE_ORDER.forEach((key) => {
+      if (unorderedValues && unorderedValues[key] !== undefined) values[key] = unorderedValues[key];
+    });
+
+    if (unorderedValues) {
+      Object.keys(unorderedValues).forEach((key) => {
+        if (!ATTRIBUTE_ORDER.includes(key)) values[key] = unorderedValues[key];
+      });
+    }
+
+    return {
+      slug,
+      sha: item.sha,
+      values,
+      tokenId: item.index,
+    };
+  });
+
+  const { error: errorNew } = await supabase
+    .from('attributes_new')
+    .upsert(attributeRecords, { onConflict: 'sha' });
+  if (errorNew) throw errorNew;
+
+  const { error: errorLegacy } = await supabase
+    .from('attributes')
+    .upsert(attributeRecords, { onConflict: 'sha' });
+  if (errorLegacy) throw errorLegacy;
+
+  console.log(`Populated ${attributeRecords.length} attribute records`);
+}
+
+function deriveSingleNameFromSlug(slug: string): string {
+  return slug.endsWith('s') ? slug.slice(0, -1) : slug;
+}
+
+async function resolveCollectionImage(
+  client: ReturnType<typeof initL1Client>,
+  logoImage?: string,
+): Promise<string | null> {
+  if (!logoImage) return null;
+
+  const match = logoImage.match(/^esc:\/\/ethscriptions\/(0x[0-9a-f]{64})\/data$/i);
+  if (!match) return logoImage;
+
+  try {
+    const tx = await client.getTransaction({ hash: match[1] as `0x${string}` });
+    return hexToString(tx.input);
+  } catch (error) {
+    console.warn(`Could not resolve logo_image ${logoImage}:`, error);
+    return logoImage;
+  }
+}
+
+async function ensureCollection(
+  supabase: any,
+  client: ReturnType<typeof initL1Client>,
+  metadata: CollectionMetadata,
+  tableSuffix: string,
+) {
+  const singleName = deriveSingleNameFromSlug(metadata.slug);
+  const image = await resolveCollectionImage(client, metadata.logo_image);
+  const { data: existing, error } = await supabase
+    .from(`collections${tableSuffix}`)
+    .select('*')
+    .eq('slug', metadata.slug)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+  if (existing) {
+    const updates: Record<string, string> = {};
+
+    if (existing.singleName !== singleName) {
+      updates.singleName = singleName;
+    }
+
+    if (image && existing.image !== image) {
+      updates.image = image;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const { error: updateError } = await supabase
+        .from(`collections${tableSuffix}`)
+        .update(updates)
+        .eq('slug', metadata.slug);
+
+      if (updateError) throw updateError;
+      console.log(`Updated collection "${metadata.slug}" fields: ${Object.keys(updates).join(', ')}`);
+    }
+
+    console.log(`Collection "${metadata.slug}" already exists`);
+    return;
+  }
+
+  const { error: createError } = await supabase
+    .from(`collections${tableSuffix}`)
+    .insert({
+      slug: metadata.slug,
+      name: metadata.name,
+      singleName,
+      image,
+      description: metadata.description,
+      supply: metadata.total_supply,
+      active: true,
+      website: metadata.website_url,
+      twitter: metadata.twitter_url?.replace('https://x.com/', ''),
+      discord: metadata.discord_url,
+      defaultBackground: metadata.background_color,
+    });
+
+  if (createError) throw createError;
+  console.log(`Created collection "${metadata.slug}"`);
+}
+
+async function fetchEthscriptionData(
+  items: CollectionItem[],
+  apiBaseUrl: string,
+): Promise<{ creations: TransactionToProcess[]; transfers: EthscriptionTransfer[] }> {
+  console.log(`\nFetching Ethscriptions API data for ${items.length} items...`);
+
+  const allCreations: TransactionToProcess[] = [];
+  const allTransfers: EthscriptionTransfer[] = [];
+
+  async function fetchItemData(
+    item: CollectionItem,
+    index: number,
+  ): Promise<{ creation: TransactionToProcess | null; transfers: EthscriptionTransfer[] }> {
+    const ethscriptionHash = item.id;
+    if (!ethscriptionHash) return { creation: null, transfers: [] };
+
+    if (index % 100 === 0) {
+      console.log(`  Ethscriptions API progress: ${index}/${items.length}`);
+    }
+
+    let retries = 0;
+    let success = false;
+    let creation: TransactionToProcess | null = null;
+    let transfers: EthscriptionTransfer[] = [];
+
+    while (retries < API_MAX_RETRIES && !success) {
+      try {
+        const response = await fetch(`${apiBaseUrl}/ethscriptions/${ethscriptionHash}`);
+        if (!response.ok) {
+          if (retries < API_MAX_RETRIES - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1000 * (retries + 1)));
+            retries++;
+            continue;
+          }
+          break;
+        }
+
+        const data = await response.json() as any;
+        const ethscription = data.result;
+
+        if (ethscription) {
+          creation = {
+            hash: ethscription.transaction_hash.toLowerCase(),
+            block_number: parseInt(ethscription.block_number, 10),
+            transaction_index: parseInt(ethscription.transaction_index, 10),
+            sources: ['ethscriptions-api:creation'],
+          };
+
+          if (Array.isArray(ethscription.ethscription_transfers)) {
+            transfers = ethscription.ethscription_transfers;
+          }
+        }
+
+        success = true;
+      } catch (_error) {
+        if (retries < API_MAX_RETRIES - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (retries + 1)));
+          retries++;
+        } else {
+          break;
+        }
+      }
+    }
+
+    return { creation, transfers };
+  }
+
+  for (let i = 0; i < items.length; i += API_BATCH_CONCURRENCY) {
+    const batch = items.slice(i, i + API_BATCH_CONCURRENCY);
+    const batchResults = await Promise.all(
+      batch.map((item, batchIndex) => fetchItemData(item, i + batchIndex)),
+    );
+
+    batchResults.forEach(({ creation, transfers }) => {
+      if (creation) allCreations.push(creation);
+      allTransfers.push(...transfers);
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+
+  console.log(`Fetched ${allCreations.length} creations and ${allTransfers.length} transfers from the Ethscriptions API`);
+  return { creations: allCreations, transfers: allTransfers };
+}
+
+function extractCollectionHashId(args: Record<string, unknown>): string | null {
+  const raw =
+    args.hashId ||
+    args.phunkId ||
+    args.potentialEthscriptionId ||
+    args.id ||
+    args.ethscriptionId;
+
+  if (!raw || typeof raw !== 'string') return null;
+  return raw.toLowerCase();
+}
+
+async function fetchCollectionScopedContractTransactions(params: {
+  label: string;
+  client: ReturnType<typeof initL1Client>;
+  address: Address;
+  abi: Abi;
+  fromBlock: number;
+  toBlock: number;
+  chunkSize: number;
+  supportedEvents: Set<string>;
+  collectionHashIds: Set<string>;
+}): Promise<TransactionToProcess[]> {
+  console.log(`\nFetching ${params.label} logs from block ${params.fromBlock} to ${params.toBlock}...`);
+
+  const txs = new Map<string, TransactionToProcess>();
+  let currentChunkSize = params.chunkSize;
+  let startBlock = params.fromBlock;
+  let matchedLogs = 0;
+
+  while (startBlock <= params.toBlock) {
+    const endBlock = Math.min(startBlock + currentChunkSize - 1, params.toBlock);
+
+    try {
+      const logs = await params.client.request({
+        method: 'eth_getLogs',
+        params: [{
+          address: params.address,
+          fromBlock: toHex(startBlock),
+          toBlock: toHex(endBlock),
+        }],
+      }) as RpcLog[];
+
+      for (const log of logs) {
+        let decoded: any;
+        try {
+          decoded = decodeEventLog({
+            abi: params.abi,
+            data: log.data,
+            topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
+          });
+        } catch (_error) {
+          continue;
+        }
+
+        if (!params.supportedEvents.has(decoded.eventName)) continue;
+
+        const hashId = extractCollectionHashId(decoded.args as Record<string, unknown>);
+        if (!hashId || !params.collectionHashIds.has(hashId)) continue;
+        if (!log.transactionHash || log.blockNumber === null || log.transactionIndex === null) continue;
+
+        matchedLogs++;
+
+        const txHash = log.transactionHash.toLowerCase();
+        const existing = txs.get(txHash);
+        if (existing) {
+          if (!existing.sources.includes(params.label)) existing.sources.push(params.label);
+          continue;
+        }
+
+        txs.set(txHash, {
+          hash: txHash,
+          block_number: Number(BigInt(log.blockNumber)),
+          transaction_index: Number(BigInt(log.transactionIndex)),
+          sources: [params.label],
+        });
+      }
+
+      console.log(`  ${params.label}: scanned blocks ${startBlock}-${endBlock}, matched logs so far ${matchedLogs}, unique txs ${txs.size}`);
+      startBlock = endBlock + 1;
+
+      if (currentChunkSize < params.chunkSize) {
+        currentChunkSize = Math.min(params.chunkSize, currentChunkSize * 2);
+      }
+    } catch (error) {
+      if (currentChunkSize <= MIN_LOG_CHUNK_SIZE) {
+        throw error;
+      }
+
+      currentChunkSize = Math.max(MIN_LOG_CHUNK_SIZE, Math.floor(currentChunkSize / 2));
+      console.warn(`  ${params.label}: log query failed for ${startBlock}-${endBlock}. Retrying with chunk size ${currentChunkSize}...`);
+    }
+  }
+
+  console.log(`Completed ${params.label} log scan: ${matchedLogs} matched logs, ${txs.size} unique txs`);
+  return Array.from(txs.values());
+}
+
+function combineAndSortTransactions(
+  txGroups: Array<{ name: string; transactions: TransactionToProcess[] }>,
+): TransactionToProcess[] {
+  const transactionMap = new Map<string, TransactionToProcess>();
+
+  txGroups.forEach(({ transactions }) => {
+    transactions.forEach((tx) => {
+      const hash = tx.hash.toLowerCase();
+      const existing = transactionMap.get(hash);
+      if (existing) {
+        tx.sources.forEach((source) => {
+          if (!existing.sources.includes(source)) existing.sources.push(source);
+        });
+        return;
+      }
+
+      transactionMap.set(hash, {
+        hash,
+        block_number: tx.block_number,
+        transaction_index: tx.transaction_index,
+        sources: [...tx.sources],
+      });
+    });
+  });
+
+  return Array.from(transactionMap.values()).sort((a, b) => {
+    if (a.block_number !== b.block_number) return a.block_number - b.block_number;
+    if (a.transaction_index !== b.transaction_index) return a.transaction_index - b.transaction_index;
+    return a.hash.localeCompare(b.hash);
+  });
+}
+
+async function processTransactions(
+  transactions: TransactionToProcess[],
+  indexerUrl: string,
+  apiKey: string,
+  dryRun: boolean,
+  supabase: ReturnType<typeof initSupabase>,
+  client: ReturnType<typeof initL1Client>,
+  tableSuffix: string,
+): Promise<{ processed: number; errors: number }> {
+  console.log(`\nProcessing ${transactions.length} transactions through the indexer...`);
+
+  if (dryRun) {
+    console.log('Dry run enabled. First 10 transactions:');
+    transactions.slice(0, 10).forEach((tx, idx) => {
+      console.log(`  ${idx + 1}. block ${tx.block_number}, tx ${tx.transaction_index}, ${tx.hash}, sources=${tx.sources.join(',')}`);
+    });
+    return { processed: 0, errors: 0 };
+  }
+
+  let processed = 0;
+  let errors = 0;
+
+  for (const tx of transactions) {
+    try {
+      const response = await fetch(`${indexerUrl}/admin/reindex-transaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
+        body: JSON.stringify({ hash: tx.hash }),
+      });
+
+      if (!response.ok) {
+        console.error(`Error processing ${tx.hash}: ${response.status}`);
+        errors++;
+      } else {
+        if (tx.sources.includes('ethscriptions-market-log')) {
+          await persistEthscriptionsMarketSales({
+            txHash: tx.hash,
+            client,
+            supabase,
+            tableSuffix,
+          });
+        }
+
+        processed++;
+        if (processed % 10 === 0) {
+          console.log(`  Progress: ${processed}/${transactions.length} (${errors} errors)`);
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    } catch (error) {
+      console.error(`Error processing ${tx.hash}:`, error);
+      errors++;
+    }
+  }
+
+  console.log(`Processed ${processed}/${transactions.length} transactions (${errors} errors)`);
+  return { processed, errors };
+}
+
+async function persistEthscriptionsMarketSales(params: {
+  txHash: string;
+  client: ReturnType<typeof initL1Client>;
+  supabase: ReturnType<typeof initSupabase>;
+  tableSuffix: string;
+}) {
+  const receipt = await params.client.getTransactionReceipt({
+    hash: params.txHash as `0x${string}`,
+  });
+
+  const block = await params.client.getBlock({
+    blockHash: receipt.blockHash,
+  });
+
+  const saleEvents = receipt.logs
+    .filter((log) => log.address.toLowerCase() === ETHSCRIPTIONS_MARKET_ADDRESS_L1)
+    .flatMap((log) => {
+      try {
+        const rawLog = log as typeof log & { topics: [`0x${string}`, ...`0x${string}`[]] };
+        const decoded: any = decodeEventLog({
+          abi: ethscriptionsMarketL1,
+          data: log.data,
+          topics: rawLog.topics,
+        });
+
+        if (decoded.eventName !== 'EthscriptionPurchased') return [];
+
+        const {
+          seller,
+          buyer,
+          ethscriptionId,
+          price,
+        } = decoded.args;
+
+        return [{
+          txId: `${params.txHash.toLowerCase()}-ethscriptions-market-${Number(log.logIndex)}`,
+          type: 'PhunkBought',
+          hashId: ethscriptionId.toLowerCase(),
+          from: seller.toLowerCase(),
+          to: buyer.toLowerCase(),
+          blockHash: receipt.blockHash.toLowerCase(),
+          txIndex: Number(receipt.transactionIndex),
+          txHash: params.txHash.toLowerCase(),
+          blockNumber: Number(receipt.blockNumber),
+          blockTimestamp: new Date(Number(block.timestamp) * 1000),
+          value: price.toString(),
+        }];
+      } catch (_error) {
+        return [];
+      }
+    });
+
+  if (!saleEvents.length) return;
+
+  const { error } = await params.supabase
+    .from(`events${params.tableSuffix}`)
+    .upsert(saleEvents, {
+      ignoreDuplicates: true,
+    });
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function updateBlockTracker(supabase: any, chainId: number, latestBlock: number) {
+  const { error } = await supabase
+    .from('blocks')
+    .upsert({
+      network: chainId,
+      blockNumber: latestBlock,
+      createdAt: new Date().toISOString(),
+    });
+
+  if (error) throw error;
+}
+
+async function main() {
+  const options = parseArgs();
+  const supabase = initSupabase();
+  const client = initL1Client(options.network);
+  const marketAddress = getRequiredAddress('MARKET_ADDRESS_L1');
+  const auctionHouseAddress = getOptionalAddress('AUCTION_HOUSE_ADDRESS_L1');
+  const ethscriptionsMarketAddress = ETHSCRIPTIONS_MARKET_ADDRESS_L1;
+
+  console.log('\nStarting hybrid collection backfill...');
+  console.log(`  Network: ${options.network}`);
+  console.log(`  Indexer URL: ${options.indexerUrl}`);
+  console.log(`  Dry Run: ${options.dryRun}`);
+  console.log(`  Strict Mode: ${options.strict}`);
+  console.log(`  Force: ${options.force}`);
+  console.log(`  Log Chunk Size: ${options.logChunkSize}`);
+
+  try {
+    if (!options.metadata) {
+      console.log('\nMetadata location can be a local path or URL.');
+      options.metadata = await promptForInput('Enter metadata location: ');
+      if (!options.metadata) {
+        console.error('Error: Metadata location is required');
+        process.exit(1);
+      }
+    }
+
+    const metadata = await loadMetadata(options.metadata);
+    if (!metadata.slug) {
+      console.error('Error: Metadata JSON must contain a "slug" field.');
+      process.exit(1);
+    }
+
+    const validation = validateAndNormalizeMetadata(metadata);
+    if (!validation.isValid) {
+      console.error(`Validation failed with ${validation.errors.length} error(s)`);
+      if (options.strict) process.exit(1);
+    }
+
+    if (options.strict && validation.warnings.length > 0) {
+      if (validation.stats.duplicateIndexes.size > 0 || validation.stats.duplicateShas.size > 0) {
+        console.error('Duplicate indexes or SHAs detected. Cannot proceed in strict mode.');
+        process.exit(1);
+      }
+
+      if (validation.stats.indexGaps.length > 0) {
+        console.error(`Index gaps detected (${validation.stats.indexGaps.length} gaps). Cannot proceed in strict mode.`);
+        process.exit(1);
+      }
+    }
+
+    const itemsToProcess = validation.normalizedItems;
+    if (!itemsToProcess.length) {
+      console.error('No valid items to process after validation');
+      process.exit(1);
+    }
+
+    const collectionExists = await checkCollectionExists(supabase, metadata.slug, options.tableSuffix);
+    if (collectionExists && !options.force) {
+      console.error(`Collection "${metadata.slug}" already exists in the database. Use --force to continue.`);
+      process.exit(1);
+    }
+
+    const dbCheck = await checkDuplicateIdsInDatabase(supabase, itemsToProcess, options.tableSuffix);
+    if (dbCheck.duplicates.length > 0 && !options.force) {
+      console.error(`Found ${dbCheck.duplicates.length} ethscription IDs already in the database. Use --force to continue.`);
+      process.exit(1);
+    }
+
+    await populateAttributes(supabase, metadata.slug, itemsToProcess);
+    await ensureCollection(supabase, client, metadata, options.tableSuffix);
+
+    const { creations, transfers } = await fetchEthscriptionData(itemsToProcess, options.apiBaseUrl);
+
+    const transferTransactions: TransactionToProcess[] = transfers.map((transfer) => ({
+      hash: transfer.transaction_hash.toLowerCase(),
+      block_number: transfer.block_number,
+      transaction_index: transfer.transaction_index,
+      sources: ['ethscriptions-api:transfer'],
+    }));
+
+    const blockNumbers = [
+      ...creations.map((tx) => tx.block_number),
+      ...transfers.map((tx) => tx.block_number),
+    ];
+
+    if (!blockNumbers.length) {
+      console.error('Could not determine a collection block range from the Ethscriptions API data');
+      process.exit(1);
+    }
+
+    const earliestCollectionBlock = Math.min(...blockNumbers);
+    const latestChainBlock = Number(await client.getBlockNumber());
+    const fromBlock = options.fromBlock ?? earliestCollectionBlock;
+    const toBlock = options.toBlock ?? latestChainBlock;
+
+    if (fromBlock > toBlock) {
+      console.error(`Error: fromBlock (${fromBlock}) cannot be greater than toBlock (${toBlock})`);
+      process.exit(1);
+    }
+
+    const collectionHashIds = new Set(itemsToProcess.map((item) => item.id.toLowerCase()));
+    const [marketDeploymentBlock, auctionDeploymentBlock, ethscriptionsMarketDeploymentBlock] = await Promise.all([
+      findContractDeploymentBlock(client, marketAddress, toBlock),
+      auctionHouseAddress
+        ? findContractDeploymentBlock(client, auctionHouseAddress, toBlock)
+        : Promise.resolve(toBlock),
+      options.network === 'mainnet'
+        ? findContractDeploymentBlock(client, ethscriptionsMarketAddress, toBlock)
+        : Promise.resolve(toBlock),
+    ]);
+
+    const marketTransactions = await fetchCollectionScopedContractTransactions({
+      label: 'marketplace-log',
+      client,
+      address: marketAddress,
+      abi: marketL1 as Abi,
+      fromBlock: Math.max(fromBlock, marketDeploymentBlock),
+      toBlock,
+      chunkSize: options.logChunkSize,
+      supportedEvents: SUPPORTED_MARKET_EVENTS,
+      collectionHashIds,
+    });
+
+    const auctionTransactions = auctionHouseAddress
+      ? await fetchCollectionScopedContractTransactions({
+        label: 'auction-log',
+        client,
+        address: auctionHouseAddress,
+        abi: auctionHouseL1 as Abi,
+        fromBlock: Math.max(fromBlock, auctionDeploymentBlock),
+        toBlock,
+        chunkSize: options.logChunkSize,
+        supportedEvents: SUPPORTED_AUCTION_EVENTS,
+        collectionHashIds,
+      })
+      : [];
+
+    const ethscriptionsMarketTransactions = options.network === 'mainnet'
+      ? await fetchCollectionScopedContractTransactions({
+        label: 'ethscriptions-market-log',
+        client,
+        address: ethscriptionsMarketAddress,
+        abi: ethscriptionsMarketL1 as Abi,
+        fromBlock: Math.max(fromBlock, ethscriptionsMarketDeploymentBlock),
+        toBlock,
+        chunkSize: options.logChunkSize,
+        supportedEvents: SUPPORTED_ETHSCRIPTIONS_MARKET_EVENTS,
+        collectionHashIds,
+      })
+      : [];
+
+    const transactions = combineAndSortTransactions([
+      { name: 'creations', transactions: creations },
+      { name: 'transfers', transactions: transferTransactions },
+      { name: 'market', transactions: marketTransactions },
+      { name: 'auction', transactions: auctionTransactions },
+      { name: 'ethscriptions-market', transactions: ethscriptionsMarketTransactions },
+    ]);
+
+    console.log('\nTransaction source summary:');
+    console.log(`  Ethscriptions creations: ${creations.length}`);
+    console.log(`  Ethscriptions transfers: ${transferTransactions.length}`);
+    console.log(`  Marketplace log txs: ${marketTransactions.length}`);
+    console.log(`  Auction log txs: ${auctionTransactions.length}`);
+    console.log(`  Ethscriptions market log txs: ${ethscriptionsMarketTransactions.length}`);
+    console.log(`  Total unique txs: ${transactions.length}`);
+    console.log(`  Replay block range: ${fromBlock}-${toBlock}`);
+
+    const result = await processTransactions(
+      transactions,
+      options.indexerUrl,
+      options.apiKey!,
+      options.dryRun,
+      supabase,
+      client,
+      options.tableSuffix,
+    );
+
+    if (!options.dryRun && result.errors > 0) {
+      throw new Error(`Replay failed for ${result.errors} transactions; block tracker was not advanced`);
+    }
+
+    if (!options.dryRun) {
+      await updateBlockTracker(supabase, options.chainId, toBlock);
+      console.log(`Updated block tracker to ${toBlock}`);
+    }
+
+    console.log('\nHybrid backfill complete.');
+  } catch (error) {
+    console.error('\nHybrid backfill failed:', error);
+    process.exit(1);
+  }
+}
+
+void main();

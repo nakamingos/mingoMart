@@ -18,5 +18,9 @@ seed.sql
 
 # dotenvx
 .env.keys
+
+# backups
+local_backup/
+backup_*.dump
 .env.local
 .env.*.local
