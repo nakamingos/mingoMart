@@ -12,8 +12,10 @@ type MetadataAttribute = {
 };
 
 type CollectionItem = {
+  id?: string;
   index: number;
   sha: string;
+  name?: string;
   attributes: MetadataAttribute[];
 };
 
@@ -149,9 +151,16 @@ async function verifyExistingShaCoverage(
   const missingShas = metadataShas.filter((sha) => !existingShas.has(sha));
 
   if (missingShas.length > 0) {
+    const missingItems = metadata.collection_items.filter((item) => missingShas.includes(item.sha)).slice(0, 10);
+    const details = missingItems.map((item) =>
+      `#${item.index}${item.name ? ` ${item.name}` : ''}${item.id ? ` (${item.id})` : ''} sha=${item.sha}`,
+    ).join('\n');
+
     throw new Error(
       `Found ${missingShas.length} metadata SHAs missing from ethscriptions for slug "${metadata.slug}". ` +
-      'This script only supports attribute refreshes for already-indexed items.',
+      'This script only supports attribute refreshes for already-indexed items. ' +
+      'This usually means a missing indexed item or a metadata SHA mismatch.\n' +
+      details,
     );
   }
 }

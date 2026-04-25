@@ -20,6 +20,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
+import { createHash } from 'crypto';
 
 import * as dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
@@ -137,6 +138,14 @@ interface EthscriptionTransfer {
   transaction_index: number;
   event_log_index: number | null;
   transfer_index: string;
+}
+
+interface ShaMismatch {
+  id: string;
+  index: number;
+  name: string;
+  metadataSha: string;
+  contentSha: string;
 }
 
 interface TransactionToProcess {
@@ -677,6 +686,18 @@ async function ensureCollection(
 ) {
   const singleName = deriveSingleNameFromSlug(metadata.slug);
   const image = await resolveCollectionImage(client, metadata.logo_image);
+  const desiredValues = {
+    name: metadata.name,
+    singleName,
+    image,
+    description: metadata.description,
+    supply: metadata.total_supply,
+    active: true,
+    website: metadata.website_url,
+    twitter: metadata.twitter_url?.replace('https://x.com/', ''),
+    discord: metadata.discord_url,
+    defaultBackground: metadata.background_color,
+  };
   const { data: existing, error } = await supabase
     .from(`collections${tableSuffix}`)
     .select('*')
@@ -685,15 +706,9 @@ async function ensureCollection(
 
   if (error && error.code !== 'PGRST116') throw error;
   if (existing) {
-    const updates: Record<string, string> = {};
-
-    if (existing.singleName !== singleName) {
-      updates.singleName = singleName;
-    }
-
-    if (image && existing.image !== image) {
-      updates.image = image;
-    }
+    const updates = Object.fromEntries(
+      Object.entries(desiredValues).filter(([key, value]) => existing[key] !== value),
+    );
 
     if (Object.keys(updates).length > 0) {
       const { error: updateError } = await supabase
@@ -713,16 +728,7 @@ async function ensureCollection(
     .from(`collections${tableSuffix}`)
     .insert({
       slug: metadata.slug,
-      name: metadata.name,
-      singleName,
-      image,
-      description: metadata.description,
-      supply: metadata.total_supply,
-      active: true,
-      website: metadata.website_url,
-      twitter: metadata.twitter_url?.replace('https://x.com/', ''),
-      discord: metadata.discord_url,
-      defaultBackground: metadata.background_color,
+      ...desiredValues,
     });
 
   if (createError) throw createError;
@@ -732,18 +738,29 @@ async function ensureCollection(
 async function fetchEthscriptionData(
   items: CollectionItem[],
   apiBaseUrl: string,
-): Promise<{ creations: TransactionToProcess[]; transfers: EthscriptionTransfer[] }> {
+): Promise<{
+  creations: TransactionToProcess[];
+  transfers: EthscriptionTransfer[];
+  shaMismatches: ShaMismatch[];
+  missingCreations: Array<Pick<CollectionItem, 'id' | 'index' | 'name' | 'sha'>>;
+}> {
   console.log(`\nFetching Ethscriptions API data for ${items.length} items...`);
 
   const allCreations: TransactionToProcess[] = [];
   const allTransfers: EthscriptionTransfer[] = [];
+  const shaMismatches: ShaMismatch[] = [];
+  const missingCreations: Array<Pick<CollectionItem, 'id' | 'index' | 'name' | 'sha'>> = [];
 
   async function fetchItemData(
     item: CollectionItem,
     index: number,
-  ): Promise<{ creation: TransactionToProcess | null; transfers: EthscriptionTransfer[] }> {
+  ): Promise<{
+    creation: TransactionToProcess | null;
+    transfers: EthscriptionTransfer[];
+    shaMismatch: ShaMismatch | null;
+  }> {
     const ethscriptionHash = item.id;
-    if (!ethscriptionHash) return { creation: null, transfers: [] };
+    if (!ethscriptionHash) return { creation: null, transfers: [], shaMismatch: null };
 
     if (index % 100 === 0) {
       console.log(`  Ethscriptions API progress: ${index}/${items.length}`);
@@ -753,6 +770,7 @@ async function fetchEthscriptionData(
     let success = false;
     let creation: TransactionToProcess | null = null;
     let transfers: EthscriptionTransfer[] = [];
+    let shaMismatch: ShaMismatch | null = null;
 
     while (retries < API_MAX_RETRIES && !success) {
       try {
@@ -767,7 +785,7 @@ async function fetchEthscriptionData(
         }
 
         const data = await response.json() as any;
-        const ethscription = data.result;
+        const ethscription = data.result ?? data;
 
         if (ethscription) {
           creation = {
@@ -779,6 +797,19 @@ async function fetchEthscriptionData(
 
           if (Array.isArray(ethscription.ethscription_transfers)) {
             transfers = ethscription.ethscription_transfers;
+          }
+
+          if (typeof ethscription.content_uri === 'string') {
+            const contentSha = createHash('sha256').update(ethscription.content_uri).digest('hex');
+            if (contentSha !== item.sha.toLowerCase()) {
+              shaMismatch = {
+                id: item.id.toLowerCase(),
+                index: item.index,
+                name: item.name,
+                metadataSha: item.sha.toLowerCase(),
+                contentSha,
+              };
+            }
           }
         }
 
@@ -793,7 +824,7 @@ async function fetchEthscriptionData(
       }
     }
 
-    return { creation, transfers };
+    return { creation, transfers, shaMismatch };
   }
 
   for (let i = 0; i < items.length; i += API_BATCH_CONCURRENCY) {
@@ -802,16 +833,26 @@ async function fetchEthscriptionData(
       batch.map((item, batchIndex) => fetchItemData(item, i + batchIndex)),
     );
 
-    batchResults.forEach(({ creation, transfers }) => {
+    batchResults.forEach(({ creation, transfers, shaMismatch }, batchIndex) => {
       if (creation) allCreations.push(creation);
+      else {
+        const item = batch[batchIndex];
+        missingCreations.push({
+          id: item.id.toLowerCase(),
+          index: item.index,
+          name: item.name,
+          sha: item.sha.toLowerCase(),
+        });
+      }
       allTransfers.push(...transfers);
+      if (shaMismatch) shaMismatches.push(shaMismatch);
     });
 
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
   console.log(`Fetched ${allCreations.length} creations and ${allTransfers.length} transfers from the Ethscriptions API`);
-  return { creations: allCreations, transfers: allTransfers };
+  return { creations: allCreations, transfers: allTransfers, shaMismatches, missingCreations };
 }
 
 function extractCollectionHashId(args: Record<string, unknown>): string | null {
@@ -942,6 +983,87 @@ function combineAndSortTransactions(
     if (a.transaction_index !== b.transaction_index) return a.transaction_index - b.transaction_index;
     return a.hash.localeCompare(b.hash);
   });
+}
+
+async function collectTransactionsForRange(params: {
+  client: ReturnType<typeof initL1Client>;
+  network: 'mainnet' | 'sepolia';
+  marketAddress: Address;
+  auctionHouseAddress?: Address;
+  ethscriptionsMarketAddress: Address;
+  fromBlock: number;
+  toBlock: number;
+  logChunkSize: number;
+  collectionHashIds: Set<string>;
+  creations: TransactionToProcess[];
+  transferTransactions: TransactionToProcess[];
+  marketDeploymentBlock: number;
+  auctionDeploymentBlock: number;
+  ethscriptionsMarketDeploymentBlock: number;
+}) {
+  const creationTransactions = params.creations.filter(
+    (tx) => tx.block_number >= params.fromBlock && tx.block_number <= params.toBlock,
+  );
+  const filteredTransferTransactions = params.transferTransactions.filter(
+    (tx) => tx.block_number >= params.fromBlock && tx.block_number <= params.toBlock,
+  );
+
+  const marketTransactions = await fetchCollectionScopedContractTransactions({
+    label: 'marketplace-log',
+    client: params.client,
+    address: params.marketAddress,
+    abi: marketL1 as Abi,
+    fromBlock: Math.max(params.fromBlock, params.marketDeploymentBlock),
+    toBlock: params.toBlock,
+    chunkSize: params.logChunkSize,
+    supportedEvents: SUPPORTED_MARKET_EVENTS,
+    collectionHashIds: params.collectionHashIds,
+  });
+
+  const auctionTransactions = params.auctionHouseAddress
+    ? await fetchCollectionScopedContractTransactions({
+      label: 'auction-log',
+      client: params.client,
+      address: params.auctionHouseAddress,
+      abi: auctionHouseL1 as Abi,
+      fromBlock: Math.max(params.fromBlock, params.auctionDeploymentBlock),
+      toBlock: params.toBlock,
+      chunkSize: params.logChunkSize,
+      supportedEvents: SUPPORTED_AUCTION_EVENTS,
+      collectionHashIds: params.collectionHashIds,
+    })
+    : [];
+
+  const ethscriptionsMarketTransactions = params.network === 'mainnet'
+    ? await fetchCollectionScopedContractTransactions({
+      label: 'ethscriptions-market-log',
+      client: params.client,
+      address: params.ethscriptionsMarketAddress,
+      abi: ethscriptionsMarketL1 as Abi,
+      fromBlock: Math.max(params.fromBlock, params.ethscriptionsMarketDeploymentBlock),
+      toBlock: params.toBlock,
+      chunkSize: params.logChunkSize,
+      supportedEvents: SUPPORTED_ETHSCRIPTIONS_MARKET_EVENTS,
+      collectionHashIds: params.collectionHashIds,
+    })
+    : [];
+
+  const transactions = combineAndSortTransactions([
+    { name: 'creations', transactions: creationTransactions },
+    { name: 'transfers', transactions: filteredTransferTransactions },
+    { name: 'market', transactions: marketTransactions },
+    { name: 'auction', transactions: auctionTransactions },
+    { name: 'ethscriptions-market', transactions: ethscriptionsMarketTransactions },
+  ]);
+
+  return {
+    transactions,
+    creationTransactions,
+    filteredTransferTransactions,
+    marketTransactions,
+    auctionTransactions,
+    ethscriptionsMarketTransactions,
+  };
 }
 
 async function processTransactions(
@@ -1152,10 +1274,45 @@ async function main() {
       process.exit(1);
     }
 
+    const {
+      creations,
+      transfers,
+      shaMismatches,
+      missingCreations,
+    } = await fetchEthscriptionData(itemsToProcess, options.apiBaseUrl);
+
+    if (shaMismatches.length > 0) {
+      console.error(`Detected ${shaMismatches.length} metadata SHA mismatch(es) against on-chain content.`);
+      shaMismatches.slice(0, 10).forEach((mismatch) => {
+        console.error(
+          `  #${mismatch.index} ${mismatch.name} (${mismatch.id}) metadata=${mismatch.metadataSha} onchain=${mismatch.contentSha}`,
+        );
+      });
+      if (shaMismatches.length > 10) {
+        console.error(`  ...and ${shaMismatches.length - 10} more`);
+      }
+      if (options.strict) {
+        console.error('Cannot proceed in strict mode with mismatched metadata SHAs.');
+        process.exit(1);
+      }
+    }
+
+    if (missingCreations.length > 0) {
+      console.error(`Failed to fetch creation data for ${missingCreations.length} item(s) from the Ethscriptions API.`);
+      missingCreations.slice(0, 10).forEach((item) => {
+        console.error(`  #${item.index} ${item.name} (${item.id}) sha=${item.sha}`);
+      });
+      if (missingCreations.length > 10) {
+        console.error(`  ...and ${missingCreations.length - 10} more`);
+      }
+      if (options.strict) {
+        console.error('Cannot proceed in strict mode with missing creation data.');
+        process.exit(1);
+      }
+    }
+
     await populateAttributes(supabase, metadata.slug, itemsToProcess);
     await ensureCollection(supabase, client, metadata, options.tableSuffix);
-
-    const { creations, transfers } = await fetchEthscriptionData(itemsToProcess, options.apiBaseUrl);
 
     const transferTransactions: TransactionToProcess[] = transfers.map((transfer) => ({
       hash: transfer.transaction_hash.toLowerCase(),
@@ -1195,57 +1352,33 @@ async function main() {
         : Promise.resolve(toBlock),
     ]);
 
-    const marketTransactions = await fetchCollectionScopedContractTransactions({
-      label: 'marketplace-log',
+    const {
+      transactions,
+      creationTransactions,
+      filteredTransferTransactions,
+      marketTransactions,
+      auctionTransactions,
+      ethscriptionsMarketTransactions,
+    } = await collectTransactionsForRange({
       client,
-      address: marketAddress,
-      abi: marketL1 as Abi,
-      fromBlock: Math.max(fromBlock, marketDeploymentBlock),
+      network: options.network,
+      marketAddress,
+      auctionHouseAddress,
+      ethscriptionsMarketAddress,
+      fromBlock,
       toBlock,
-      chunkSize: options.logChunkSize,
-      supportedEvents: SUPPORTED_MARKET_EVENTS,
+      logChunkSize: options.logChunkSize,
       collectionHashIds,
+      creations,
+      transferTransactions,
+      marketDeploymentBlock,
+      auctionDeploymentBlock,
+      ethscriptionsMarketDeploymentBlock,
     });
 
-    const auctionTransactions = auctionHouseAddress
-      ? await fetchCollectionScopedContractTransactions({
-        label: 'auction-log',
-        client,
-        address: auctionHouseAddress,
-        abi: auctionHouseL1 as Abi,
-        fromBlock: Math.max(fromBlock, auctionDeploymentBlock),
-        toBlock,
-        chunkSize: options.logChunkSize,
-        supportedEvents: SUPPORTED_AUCTION_EVENTS,
-        collectionHashIds,
-      })
-      : [];
-
-    const ethscriptionsMarketTransactions = options.network === 'mainnet'
-      ? await fetchCollectionScopedContractTransactions({
-        label: 'ethscriptions-market-log',
-        client,
-        address: ethscriptionsMarketAddress,
-        abi: ethscriptionsMarketL1 as Abi,
-        fromBlock: Math.max(fromBlock, ethscriptionsMarketDeploymentBlock),
-        toBlock,
-        chunkSize: options.logChunkSize,
-        supportedEvents: SUPPORTED_ETHSCRIPTIONS_MARKET_EVENTS,
-        collectionHashIds,
-      })
-      : [];
-
-    const transactions = combineAndSortTransactions([
-      { name: 'creations', transactions: creations },
-      { name: 'transfers', transactions: transferTransactions },
-      { name: 'market', transactions: marketTransactions },
-      { name: 'auction', transactions: auctionTransactions },
-      { name: 'ethscriptions-market', transactions: ethscriptionsMarketTransactions },
-    ]);
-
     console.log('\nTransaction source summary:');
-    console.log(`  Ethscriptions creations: ${creations.length}`);
-    console.log(`  Ethscriptions transfers: ${transferTransactions.length}`);
+    console.log(`  Ethscriptions creations: ${creationTransactions.length}`);
+    console.log(`  Ethscriptions transfers: ${filteredTransferTransactions.length}`);
     console.log(`  Marketplace log txs: ${marketTransactions.length}`);
     console.log(`  Auction log txs: ${auctionTransactions.length}`);
     console.log(`  Ethscriptions market log txs: ${ethscriptionsMarketTransactions.length}`);
@@ -1267,8 +1400,64 @@ async function main() {
     }
 
     if (!options.dryRun) {
-      await updateBlockTracker(supabase, options.chainId, toBlock);
-      console.log(`Updated block tracker to ${toBlock}`);
+      let finalBlock = toBlock;
+      const latestBlockNow = Number(await client.getBlockNumber());
+
+      if (latestBlockNow > toBlock) {
+        const catchUpFromBlock = toBlock + 1;
+        console.log(`\nRunning final catch-up pass for blocks ${catchUpFromBlock}-${latestBlockNow}...`);
+
+        const {
+          transactions: catchUpTransactions,
+          creationTransactions: catchUpCreations,
+          filteredTransferTransactions: catchUpTransfers,
+          marketTransactions: catchUpMarketTransactions,
+          auctionTransactions: catchUpAuctionTransactions,
+          ethscriptionsMarketTransactions: catchUpEthscriptionsMarketTransactions,
+        } = await collectTransactionsForRange({
+          client,
+          network: options.network,
+          marketAddress,
+          auctionHouseAddress,
+          ethscriptionsMarketAddress,
+          fromBlock: catchUpFromBlock,
+          toBlock: latestBlockNow,
+          logChunkSize: options.logChunkSize,
+          collectionHashIds,
+          creations,
+          transferTransactions,
+          marketDeploymentBlock,
+          auctionDeploymentBlock,
+          ethscriptionsMarketDeploymentBlock,
+        });
+
+        console.log('\nCatch-up source summary:');
+        console.log(`  Ethscriptions creations: ${catchUpCreations.length}`);
+        console.log(`  Ethscriptions transfers: ${catchUpTransfers.length}`);
+        console.log(`  Marketplace log txs: ${catchUpMarketTransactions.length}`);
+        console.log(`  Auction log txs: ${catchUpAuctionTransactions.length}`);
+        console.log(`  Ethscriptions market log txs: ${catchUpEthscriptionsMarketTransactions.length}`);
+        console.log(`  Total unique txs: ${catchUpTransactions.length}`);
+
+        const catchUpResult = await processTransactions(
+          catchUpTransactions,
+          options.indexerUrl,
+          options.apiKey!,
+          options.dryRun,
+          supabase,
+          client,
+          options.tableSuffix,
+        );
+
+        if (catchUpResult.errors > 0) {
+          throw new Error(`Final catch-up replay failed for ${catchUpResult.errors} transactions; block tracker was not advanced`);
+        }
+
+        finalBlock = latestBlockNow;
+      }
+
+      await updateBlockTracker(supabase, options.chainId, finalBlock);
+      console.log(`Updated block tracker to ${finalBlock}`);
     }
 
     console.log('\nHybrid backfill complete.');
