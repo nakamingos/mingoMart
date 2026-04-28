@@ -16,6 +16,7 @@ type CollectionItem = {
   index: number;
   sha: string;
   name?: string;
+  description?: string;
   attributes: MetadataAttribute[];
 };
 
@@ -75,6 +76,11 @@ function initSupabase() {
   });
 }
 
+function hasCustomName(item: CollectionItem): boolean {
+  if (!item.name) return false;
+  return !new RegExp(`\\s#?${item.index}$`).test(item.name.trim());
+}
+
 function buildAttributeRows(metadata: CollectionMetadata) {
   return metadata.collection_items.map((item) => {
     const values = item.attributes.reduce((acc, attribute) => {
@@ -89,6 +95,9 @@ function buildAttributeRows(metadata: CollectionMetadata) {
       return acc;
     }, {} as Record<string, AttributeValue | AttributeValue[]>);
 
+    if (hasCustomName(item)) values.Name = item.name;
+    if (item.description) values.Description = item.description;
+
     return {
       slug: metadata.slug,
       sha: item.sha,
@@ -100,10 +109,14 @@ function buildAttributeRows(metadata: CollectionMetadata) {
 
 function buildAttributesFile(metadata: CollectionMetadata) {
   const formattedAttributes = metadata.collection_items.reduce((acc, item) => {
-    acc[item.sha] = item.attributes.map((attribute) => ({
+    acc[item.sha] = [
+      ...(hasCustomName(item) ? [{ k: 'Name', v: item.name }] : []),
+      ...(item.description ? [{ k: 'Description', v: item.description }] : []),
+      ...item.attributes.map((attribute) => ({
       k: attribute.trait_type,
       v: attribute.value,
-    }));
+      })),
+    ];
     return acc;
   }, {} as Record<string, Array<{ k: string; v: AttributeValue }>>);
 
