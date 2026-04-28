@@ -1,6 +1,7 @@
 .vscode
 .cursor
 .github
+.codex
 playground
 website
 merkleGen
