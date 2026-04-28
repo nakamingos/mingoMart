@@ -191,7 +191,7 @@ export class MarketStateEffects {
     distinctUntilChanged((a, b) => a.marketSlug === b.marketSlug),
     // tap(({ marketSlug }) => console.log('fetchAll$', marketSlug)),
     switchMap(({ marketSlug }) => {
-      return this.dataSvc.fetchAllWithPagination(marketSlug, 0, 110, {}, defaultSort['all']).pipe(
+      return this.dataSvc.fetchAllWithPagination(marketSlug, 0, 110, {}).pipe(
         map((data: MarketState['activeMarketRouteData']) => data.data)
       );
     }),
