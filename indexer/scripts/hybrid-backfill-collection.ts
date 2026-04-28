@@ -56,6 +56,12 @@ const SUPPORTED_ETHSCRIPTIONS_MARKET_EVENTS = new Set([
 ]);
 
 const ETHSCRIPTIONS_MARKET_ADDRESS_L1 = '0xd729a94d6366a4feac4a6869c8b3573cee4701a9' as const;
+const ETCH_MARKET_ADDRESS_L1 = '0x57b8792c775d34aa96092400983c3e112fcbc296' as const;
+const ETCH_MARKET_ORDER_EXECUTED_TOPIC = '0x93a6900c7e12c8592eb245abc171ff4709f08fcba2e290729cd16cfe71380260' as const;
+const ETHSCRIPTIONS_TRANSFER_PROXY_ADDRESS_L1 = '0xc33f8610941be56fb0d84e25894c0d928cc97dde' as const;
+const ETHSCRIPTIONS_TRANSFER_PROXY_INTERNAL_TRANSFER_TOPIC = '0xefeb5fded3e317a54beb4e7acfa51f2f2c8545f4c53ab5c96f67d85799a4bb1a' as const;
+const RARIBLE_EXCHANGE_ADDRESS_L1 = '0xc89c2e6fe008592d6a787efd02db7fdb8ea64020' as const;
+const ETH_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 const ethscriptionsMarketL1 = [
   {
@@ -93,6 +99,140 @@ const ethscriptionsMarketL1 = [
       },
     ],
     name: 'EthscriptionPurchased',
+    type: 'event',
+  },
+] as const;
+
+const SUPPORTED_ETCH_MARKET_EVENTS = new Set([
+  'EthscriptionOrderExecuted',
+]);
+
+const SUPPORTED_ETHSCRIPTIONS_TRANSFER_PROXY_EVENTS = new Set([
+  'InternalItemTransfer',
+]);
+
+const etchMarketL1 = [
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'orderNonce',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'ethscriptionId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quantity',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'seller',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'currency',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint64',
+        name: 'endTime',
+        type: 'uint64',
+      },
+    ],
+    name: 'EthscriptionOrderExecuted',
+    type: 'event',
+  },
+] as const;
+
+const ethscriptionsTransferProxyL1 = [
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'from',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'to',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'uint256',
+        name: 'itemId',
+        type: 'uint256',
+      },
+    ],
+    name: 'InternalItemTransfer',
+    type: 'event',
+  },
+] as const;
+
+const raribleExchangeL1 = [
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'leftHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'rightHash',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'newLeftFill',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'newRightFill',
+        type: 'uint256',
+      },
+    ],
+    name: 'Match',
     type: 'event',
   },
 ] as const;
@@ -635,6 +775,9 @@ async function populateAttributes(supabase: any, slug: string, items: Collection
       });
     }
 
+    if (hasCustomName(item)) values.Name = item.name;
+    if (item.description) values.Description = item.description;
+
     return {
       slug,
       sha: item.sha,
@@ -660,6 +803,11 @@ function deriveSingleNameFromSlug(slug: string): string {
   return slug.endsWith('s') ? slug.slice(0, -1) : slug;
 }
 
+function hasCustomName(item: CollectionItem): boolean {
+  if (!item.name) return false;
+  return !new RegExp(`\\s#?${item.index}$`).test(item.name.trim());
+}
+
 async function resolveCollectionImage(
   client: ReturnType<typeof initL1Client>,
   logoImage?: string,
@@ -671,7 +819,7 @@ async function resolveCollectionImage(
 
   try {
     const tx = await client.getTransaction({ hash: match[1] as `0x${string}` });
-    return hexToString(tx.input);
+    return hexToString(tx.input).replace(/\x00/g, '');
   } catch (error) {
     console.warn(`Could not resolve logo_image ${logoImage}:`, error);
     return logoImage;
@@ -861,9 +1009,12 @@ function extractCollectionHashId(args: Record<string, unknown>): string | null {
     args.phunkId ||
     args.potentialEthscriptionId ||
     args.id ||
-    args.ethscriptionId;
+    args.ethscriptionId ||
+    args.itemId;
 
-  if (!raw || typeof raw !== 'string') return null;
+  if (!raw) return null;
+  if (typeof raw === 'bigint') return toHex(raw, { size: 32 }).toLowerCase();
+  if (typeof raw !== 'string') return null;
   return raw.toLowerCase();
 }
 
@@ -877,6 +1028,7 @@ async function fetchCollectionScopedContractTransactions(params: {
   chunkSize: number;
   supportedEvents: Set<string>;
   collectionHashIds: Set<string>;
+  topic0?: `0x${string}` | `0x${string}`[];
 }): Promise<TransactionToProcess[]> {
   console.log(`\nFetching ${params.label} logs from block ${params.fromBlock} to ${params.toBlock}...`);
 
@@ -895,6 +1047,7 @@ async function fetchCollectionScopedContractTransactions(params: {
           address: params.address,
           fromBlock: toHex(startBlock),
           toBlock: toHex(endBlock),
+          ...(params.topic0 ? { topics: [params.topic0] } : {}),
         }],
       }) as RpcLog[];
 
@@ -991,6 +1144,8 @@ async function collectTransactionsForRange(params: {
   marketAddress: Address;
   auctionHouseAddress?: Address;
   ethscriptionsMarketAddress: Address;
+  etchMarketAddress: Address;
+  ethscriptionsTransferProxyAddress: Address;
   fromBlock: number;
   toBlock: number;
   logChunkSize: number;
@@ -1000,6 +1155,8 @@ async function collectTransactionsForRange(params: {
   marketDeploymentBlock: number;
   auctionDeploymentBlock: number;
   ethscriptionsMarketDeploymentBlock: number;
+  etchMarketDeploymentBlock: number;
+  ethscriptionsTransferProxyDeploymentBlock: number;
 }) {
   const creationTransactions = params.creations.filter(
     (tx) => tx.block_number >= params.fromBlock && tx.block_number <= params.toBlock,
@@ -1048,12 +1205,44 @@ async function collectTransactionsForRange(params: {
     })
     : [];
 
+  const etchMarketTransactions = params.network === 'mainnet'
+    ? await fetchCollectionScopedContractTransactions({
+      label: 'etch-market-log',
+      client: params.client,
+      address: params.etchMarketAddress,
+      abi: etchMarketL1 as Abi,
+      fromBlock: Math.max(params.fromBlock, params.etchMarketDeploymentBlock),
+      toBlock: params.toBlock,
+      chunkSize: params.logChunkSize,
+      supportedEvents: SUPPORTED_ETCH_MARKET_EVENTS,
+      collectionHashIds: params.collectionHashIds,
+      topic0: ETCH_MARKET_ORDER_EXECUTED_TOPIC,
+    })
+    : [];
+
+  const ethscriptionsTransferProxyTransactions = params.network === 'mainnet'
+    ? await fetchCollectionScopedContractTransactions({
+      label: 'ethscriptions-transfer-proxy-log',
+      client: params.client,
+      address: params.ethscriptionsTransferProxyAddress,
+      abi: ethscriptionsTransferProxyL1 as Abi,
+      fromBlock: Math.max(params.fromBlock, params.ethscriptionsTransferProxyDeploymentBlock),
+      toBlock: params.toBlock,
+      chunkSize: params.logChunkSize,
+      supportedEvents: SUPPORTED_ETHSCRIPTIONS_TRANSFER_PROXY_EVENTS,
+      collectionHashIds: params.collectionHashIds,
+      topic0: ETHSCRIPTIONS_TRANSFER_PROXY_INTERNAL_TRANSFER_TOPIC,
+    })
+    : [];
+
   const transactions = combineAndSortTransactions([
     { name: 'creations', transactions: creationTransactions },
     { name: 'transfers', transactions: filteredTransferTransactions },
     { name: 'market', transactions: marketTransactions },
     { name: 'auction', transactions: auctionTransactions },
     { name: 'ethscriptions-market', transactions: ethscriptionsMarketTransactions },
+    { name: 'etch-market', transactions: etchMarketTransactions },
+    { name: 'ethscriptions-transfer-proxy', transactions: ethscriptionsTransferProxyTransactions },
   ]);
 
   return {
@@ -1063,6 +1252,8 @@ async function collectTransactionsForRange(params: {
     marketTransactions,
     auctionTransactions,
     ethscriptionsMarketTransactions,
+    etchMarketTransactions,
+    ethscriptionsTransferProxyTransactions,
   };
 }
 
@@ -1074,6 +1265,7 @@ async function processTransactions(
   supabase: ReturnType<typeof initSupabase>,
   client: ReturnType<typeof initL1Client>,
   tableSuffix: string,
+  collectionHashIds: Set<string>,
 ): Promise<{ processed: number; errors: number }> {
   console.log(`\nProcessing ${transactions.length} transactions through the indexer...`);
 
@@ -1109,6 +1301,27 @@ async function processTransactions(
             client,
             supabase,
             tableSuffix,
+            collectionHashIds,
+          });
+        }
+
+        if (tx.sources.includes('etch-market-log')) {
+          await persistEtchMarketSales({
+            txHash: tx.hash,
+            client,
+            supabase,
+            tableSuffix,
+            collectionHashIds,
+          });
+        }
+
+        if (tx.sources.includes('ethscriptions-transfer-proxy-log')) {
+          await persistRaribleExchangeSales({
+            txHash: tx.hash,
+            client,
+            supabase,
+            tableSuffix,
+            collectionHashIds,
           });
         }
 
@@ -1134,6 +1347,7 @@ async function persistEthscriptionsMarketSales(params: {
   client: ReturnType<typeof initL1Client>;
   supabase: ReturnType<typeof initSupabase>;
   tableSuffix: string;
+  collectionHashIds: Set<string>;
 }) {
   const receipt = await params.client.getTransactionReceipt({
     hash: params.txHash as `0x${string}`,
@@ -1163,10 +1377,13 @@ async function persistEthscriptionsMarketSales(params: {
           price,
         } = decoded.args;
 
+        const hashId = ethscriptionId.toLowerCase();
+        if (!params.collectionHashIds.has(hashId)) return [];
+
         return [{
           txId: `${params.txHash.toLowerCase()}-ethscriptions-market-${Number(log.logIndex)}`,
           type: 'PhunkBought',
-          hashId: ethscriptionId.toLowerCase(),
+          hashId,
           from: seller.toLowerCase(),
           to: buyer.toLowerCase(),
           blockHash: receipt.blockHash.toLowerCase(),
@@ -1175,6 +1392,174 @@ async function persistEthscriptionsMarketSales(params: {
           blockNumber: Number(receipt.blockNumber),
           blockTimestamp: new Date(Number(block.timestamp) * 1000),
           value: price.toString(),
+        }];
+      } catch (_error) {
+        return [];
+      }
+    });
+
+  if (!saleEvents.length) return;
+
+  const { error } = await params.supabase
+    .from(`events${params.tableSuffix}`)
+    .upsert(saleEvents, {
+      ignoreDuplicates: true,
+    });
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function persistEtchMarketSales(params: {
+  txHash: string;
+  client: ReturnType<typeof initL1Client>;
+  supabase: ReturnType<typeof initSupabase>;
+  tableSuffix: string;
+  collectionHashIds: Set<string>;
+}) {
+  const receipt = await params.client.getTransactionReceipt({
+    hash: params.txHash as `0x${string}`,
+  });
+
+  const block = await params.client.getBlock({
+    blockHash: receipt.blockHash,
+  });
+
+  const saleEvents = receipt.logs
+    .filter((log) => log.address.toLowerCase() === ETCH_MARKET_ADDRESS_L1)
+    .flatMap((log) => {
+      try {
+        const rawLog = log as typeof log & { topics: [`0x${string}`, ...`0x${string}`[]] };
+        const decoded: any = decodeEventLog({
+          abi: etchMarketL1,
+          data: log.data,
+          topics: rawLog.topics,
+        });
+
+        if (decoded.eventName !== 'EthscriptionOrderExecuted') return [];
+
+        const {
+          seller,
+          buyer,
+          ethscriptionId,
+          currency,
+          price,
+        } = decoded.args;
+
+        const hashId = ethscriptionId.toLowerCase();
+        if (!params.collectionHashIds.has(hashId)) return [];
+
+        // The events table has no currency column, so only ETH sales can be
+        // represented safely as marketplace activity values.
+        if (currency.toLowerCase() !== ETH_ADDRESS) return [];
+
+        return [{
+          txId: `${params.txHash.toLowerCase()}-etch-market-${Number(log.logIndex)}`,
+          type: 'PhunkBought',
+          hashId,
+          from: seller.toLowerCase(),
+          to: buyer.toLowerCase(),
+          blockHash: receipt.blockHash.toLowerCase(),
+          txIndex: Number(receipt.transactionIndex),
+          txHash: params.txHash.toLowerCase(),
+          blockNumber: Number(receipt.blockNumber),
+          blockTimestamp: new Date(Number(block.timestamp) * 1000),
+          value: price.toString(),
+        }];
+      } catch (_error) {
+        return [];
+      }
+    });
+
+  if (!saleEvents.length) return;
+
+  const { error } = await params.supabase
+    .from(`events${params.tableSuffix}`)
+    .upsert(saleEvents, {
+      ignoreDuplicates: true,
+    });
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function persistRaribleExchangeSales(params: {
+  txHash: string;
+  client: ReturnType<typeof initL1Client>;
+  supabase: ReturnType<typeof initSupabase>;
+  tableSuffix: string;
+  collectionHashIds: Set<string>;
+}) {
+  const receipt = await params.client.getTransactionReceipt({
+    hash: params.txHash as `0x${string}`,
+  });
+
+  const block = await params.client.getBlock({
+    blockHash: receipt.blockHash,
+  });
+
+  const matchLogs = receipt.logs.flatMap((log) => {
+    if (log.address.toLowerCase() !== RARIBLE_EXCHANGE_ADDRESS_L1) return [];
+
+    try {
+      const rawLog = log as typeof log & { topics: [`0x${string}`, ...`0x${string}`[]] };
+      const decoded: any = decodeEventLog({
+        abi: raribleExchangeL1,
+        data: log.data,
+        topics: rawLog.topics,
+      });
+
+      if (decoded.eventName !== 'Match') return [];
+
+      const { newLeftFill, newRightFill } = decoded.args;
+      if (newRightFill <= BigInt(0)) return [];
+
+      return [{
+        pricePerItem: newLeftFill / newRightFill,
+      }];
+    } catch (_error) {
+      return [];
+    }
+  });
+
+  if (matchLogs.length !== 1) return;
+
+  const saleEvents = receipt.logs
+    .filter((log) => log.address.toLowerCase() === ETHSCRIPTIONS_TRANSFER_PROXY_ADDRESS_L1)
+    .flatMap((log) => {
+      try {
+        const rawLog = log as typeof log & { topics: [`0x${string}`, ...`0x${string}`[]] };
+        const decoded: any = decodeEventLog({
+          abi: ethscriptionsTransferProxyL1,
+          data: log.data,
+          topics: rawLog.topics,
+        });
+
+        if (decoded.eventName !== 'InternalItemTransfer') return [];
+
+        const {
+          from,
+          to,
+          itemId,
+        } = decoded.args;
+
+        const hashId = toHex(itemId, { size: 32 }).toLowerCase();
+        if (!params.collectionHashIds.has(hashId)) return [];
+
+        return [{
+          txId: `${params.txHash.toLowerCase()}-rarible-exchange-${Number(log.logIndex)}`,
+          type: 'PhunkBought',
+          hashId,
+          from: from.toLowerCase(),
+          to: to.toLowerCase(),
+          blockHash: receipt.blockHash.toLowerCase(),
+          txIndex: Number(receipt.transactionIndex),
+          txHash: params.txHash.toLowerCase(),
+          blockNumber: Number(receipt.blockNumber),
+          blockTimestamp: new Date(Number(block.timestamp) * 1000),
+          value: matchLogs[0].pricePerItem.toString(),
         }];
       } catch (_error) {
         return [];
@@ -1213,6 +1598,8 @@ async function main() {
   const marketAddress = getRequiredAddress('MARKET_ADDRESS_L1');
   const auctionHouseAddress = getOptionalAddress('AUCTION_HOUSE_ADDRESS_L1');
   const ethscriptionsMarketAddress = ETHSCRIPTIONS_MARKET_ADDRESS_L1;
+  const etchMarketAddress = ETCH_MARKET_ADDRESS_L1;
+  const ethscriptionsTransferProxyAddress = ETHSCRIPTIONS_TRANSFER_PROXY_ADDRESS_L1;
 
   console.log('\nStarting hybrid collection backfill...');
   console.log(`  Network: ${options.network}`);
@@ -1342,13 +1729,25 @@ async function main() {
     }
 
     const collectionHashIds = new Set(itemsToProcess.map((item) => item.id.toLowerCase()));
-    const [marketDeploymentBlock, auctionDeploymentBlock, ethscriptionsMarketDeploymentBlock] = await Promise.all([
+    const [
+      marketDeploymentBlock,
+      auctionDeploymentBlock,
+      ethscriptionsMarketDeploymentBlock,
+      etchMarketDeploymentBlock,
+      ethscriptionsTransferProxyDeploymentBlock,
+    ] = await Promise.all([
       findContractDeploymentBlock(client, marketAddress, toBlock),
       auctionHouseAddress
         ? findContractDeploymentBlock(client, auctionHouseAddress, toBlock)
         : Promise.resolve(toBlock),
       options.network === 'mainnet'
         ? findContractDeploymentBlock(client, ethscriptionsMarketAddress, toBlock)
+        : Promise.resolve(toBlock),
+      options.network === 'mainnet'
+        ? findContractDeploymentBlock(client, etchMarketAddress, toBlock)
+        : Promise.resolve(toBlock),
+      options.network === 'mainnet'
+        ? findContractDeploymentBlock(client, ethscriptionsTransferProxyAddress, toBlock)
         : Promise.resolve(toBlock),
     ]);
 
@@ -1359,12 +1758,16 @@ async function main() {
       marketTransactions,
       auctionTransactions,
       ethscriptionsMarketTransactions,
+      etchMarketTransactions,
+      ethscriptionsTransferProxyTransactions,
     } = await collectTransactionsForRange({
       client,
       network: options.network,
       marketAddress,
       auctionHouseAddress,
       ethscriptionsMarketAddress,
+      etchMarketAddress,
+      ethscriptionsTransferProxyAddress,
       fromBlock,
       toBlock,
       logChunkSize: options.logChunkSize,
@@ -1374,6 +1777,8 @@ async function main() {
       marketDeploymentBlock,
       auctionDeploymentBlock,
       ethscriptionsMarketDeploymentBlock,
+      etchMarketDeploymentBlock,
+      ethscriptionsTransferProxyDeploymentBlock,
     });
 
     console.log('\nTransaction source summary:');
@@ -1382,6 +1787,8 @@ async function main() {
     console.log(`  Marketplace log txs: ${marketTransactions.length}`);
     console.log(`  Auction log txs: ${auctionTransactions.length}`);
     console.log(`  Ethscriptions market log txs: ${ethscriptionsMarketTransactions.length}`);
+    console.log(`  EtchMarket sale log txs: ${etchMarketTransactions.length}`);
+    console.log(`  Ethscriptions transfer proxy log txs: ${ethscriptionsTransferProxyTransactions.length}`);
     console.log(`  Total unique txs: ${transactions.length}`);
     console.log(`  Replay block range: ${fromBlock}-${toBlock}`);
 
@@ -1393,6 +1800,7 @@ async function main() {
       supabase,
       client,
       options.tableSuffix,
+      collectionHashIds,
     );
 
     if (!options.dryRun && result.errors > 0) {
@@ -1414,12 +1822,16 @@ async function main() {
           marketTransactions: catchUpMarketTransactions,
           auctionTransactions: catchUpAuctionTransactions,
           ethscriptionsMarketTransactions: catchUpEthscriptionsMarketTransactions,
+          etchMarketTransactions: catchUpEtchMarketTransactions,
+          ethscriptionsTransferProxyTransactions: catchUpEthscriptionsTransferProxyTransactions,
         } = await collectTransactionsForRange({
           client,
           network: options.network,
           marketAddress,
           auctionHouseAddress,
           ethscriptionsMarketAddress,
+          etchMarketAddress,
+          ethscriptionsTransferProxyAddress,
           fromBlock: catchUpFromBlock,
           toBlock: latestBlockNow,
           logChunkSize: options.logChunkSize,
@@ -1429,6 +1841,8 @@ async function main() {
           marketDeploymentBlock,
           auctionDeploymentBlock,
           ethscriptionsMarketDeploymentBlock,
+          etchMarketDeploymentBlock,
+          ethscriptionsTransferProxyDeploymentBlock,
         });
 
         console.log('\nCatch-up source summary:');
@@ -1437,6 +1851,8 @@ async function main() {
         console.log(`  Marketplace log txs: ${catchUpMarketTransactions.length}`);
         console.log(`  Auction log txs: ${catchUpAuctionTransactions.length}`);
         console.log(`  Ethscriptions market log txs: ${catchUpEthscriptionsMarketTransactions.length}`);
+        console.log(`  EtchMarket sale log txs: ${catchUpEtchMarketTransactions.length}`);
+        console.log(`  Ethscriptions transfer proxy log txs: ${catchUpEthscriptionsTransferProxyTransactions.length}`);
         console.log(`  Total unique txs: ${catchUpTransactions.length}`);
 
         const catchUpResult = await processTransactions(
@@ -1447,6 +1863,7 @@ async function main() {
           supabase,
           client,
           options.tableSuffix,
+          collectionHashIds,
         );
 
         if (catchUpResult.errors > 0) {
