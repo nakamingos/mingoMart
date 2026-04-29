@@ -1,6 +1,6 @@
 import { Attribute } from './attributes';
 import { Collection } from './data.state';
-import { EventType } from './global-state';
+import { EventType, EventVenue } from './global-state';
 
 export interface Account {
   id: string;
@@ -64,6 +64,7 @@ export interface Event {
   txIndex: string | null
   value: string | null
   type: EventType | null
+  venue?: EventVenue | null
 
   slug?: string
   tokenId?: number | null

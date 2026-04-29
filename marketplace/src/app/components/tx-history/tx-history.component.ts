@@ -16,6 +16,7 @@ import { WeiToEthPipe } from '@/pipes/wei-to-eth.pipe';
 import { DataService } from '@/services/data.service';
 
 import { EventType, GlobalState } from '@/models/global-state';
+import { getEventVenueLabel } from '@/constants/event-venues';
 import { Phunk } from '@/models/db';
 
 import { environment } from '@environments/environment';
@@ -75,7 +76,11 @@ export class TxHistoryComponent implements OnChanges {
     AuctionBid: 'Auction Bid',
     AuctionExtended: 'Auction Extended',
     AuctionSettled: 'Auction Settled',
+    wrapped: 'Wrapped',
+    unwrapped: 'Unwrapped',
   };
+
+  getVenueLabel = getEventVenueLabel;
 
   constructor(
     private store: Store<GlobalState>,

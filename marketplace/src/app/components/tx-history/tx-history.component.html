@@ -23,6 +23,9 @@
                   @if (event.type) {
                     {{ eventLabels[event.type] }}
                   }
+                  @if (getVenueLabel(event.venue); as venueLabel) {
+                    <span class="venue-label">{{ venueLabel }}</span>
+                  }
                 </div>
               </td>
 

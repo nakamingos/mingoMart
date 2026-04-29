@@ -15,6 +15,7 @@ import { DataService } from '@/services/data.service';
 import { WeiToEthPipe } from '@/pipes/wei-to-eth.pipe';
 
 import { EventType, GlobalState, TxFilterItem } from '@/models/global-state';
+import { getEventVenueLabel } from '@/constants/event-venues';
 
 import * as dataStateSelectors from '@/state/data/data-state.selectors';
 import * as appStateActions from '@/state/app/app-state.actions';
@@ -77,9 +78,13 @@ export class RecentActivityComponent {
     AuctionCreated: 'Auction Created by',
     AuctionBid: 'Auction Bid',
     AuctionSettled: 'Auction Settled',
+    wrapped: 'Wrapped by',
+    unwrapped: 'Unwrapped by',
     // escrow: 'Escrowed by',
     // PhunkNoLongerForSale: 'Offer withdrawn',
   };
+
+  getVenueLabel = getEventVenueLabel;
 
   usd$ = this.store.select(dataStateSelectors.selectUsd);
   events$ = this.store.select(dataStateSelectors.selectEvents);

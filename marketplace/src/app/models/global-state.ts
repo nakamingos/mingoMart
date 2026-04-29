@@ -187,6 +187,8 @@ export type EventType =
   | 'created'
   | 'transfer'
   | 'escrow'
+  | 'wrapped'
+  | 'unwrapped'
   | 'PhunkOffered'
   | 'PhunkBidEntered'
   | 'PhunkBidWithdrawn'
@@ -198,3 +200,14 @@ export type EventType =
   | 'AuctionBid'
   | 'AuctionExtended'
   | 'AuctionSettled';
+
+export type EventVenue =
+  | 'native-ethscriptions'
+  | 'etherphunks-market'
+  | 'etherphunks-auction'
+  | 'ethscriptions-market'
+  | 'etch-market'
+  | 'ordex-market'
+  | 'emblem-vault'
+  | 'opensea'
+  | 'blur';

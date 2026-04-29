@@ -150,6 +150,7 @@ export class EthscriptionsService {
     return {
       txId: txn.hash.toLowerCase() + txn.transactionIndex,
       type: 'created',
+      venue: 'native-ethscriptions',
       hashId: hashId.toLowerCase(),
       from: from.toLowerCase(),
       to: (to || zeroAddress).toLowerCase(),
@@ -204,6 +205,7 @@ export class EthscriptionsService {
     return {
       txId: txn.hash + (index || txn.transactionIndex),
       type: 'transfer',
+      venue: 'native-ethscriptions',
       hashId: ethscript.hashId.toLowerCase(),
       from: from.toLowerCase(),
       to: (to || zeroAddress).toLowerCase(),
@@ -261,6 +263,7 @@ export class EthscriptionsService {
     return {
       txId: txn.hash + (log?.logIndex || txn.transactionIndex || new Date().getTime()),
       type: 'transfer',
+      venue: 'native-ethscriptions',
       hashId: ethscript.hashId.toLowerCase(),
       from: from.toLowerCase(),
       to: (to || zeroAddress).toLowerCase(),

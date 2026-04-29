@@ -418,6 +418,7 @@ export class DataService {
             txId: tx.transaction_hash + '-' + tx.overall_order_number + '-' + tx.transaction_index,
             txIndex: tx.transaction_index,
             type: i === valid_transfers.length - 1 ? 'created' : 'transfer',
+            venue: 'native-ethscriptions',
             value: tx.sale_price,
           };
           return { ...e, ...tx } as (Event & { [key: string]: string });

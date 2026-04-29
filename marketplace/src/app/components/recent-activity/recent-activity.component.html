@@ -60,7 +60,12 @@
               )
             ) {
               <app-address [address]="event.to" />
-            } @else if (event.type === 'bridgeOut' || event.type === 'AuctionCreated') {
+            } @else if (
+              event.type === 'bridgeOut' ||
+              event.type === 'AuctionCreated' ||
+              event.type === 'wrapped' ||
+              event.type === 'unwrapped'
+            ) {
               <app-address [address]="event.from" />
             }
 
@@ -77,6 +82,9 @@
             }
 
             <div class="date">
+              @if (getVenueLabel(event.venue); as venueLabel) {
+                {{ venueLabel }} ·
+              }
               {{ event.blockTimestamp | timeago : true }}
             </div>
           </div>

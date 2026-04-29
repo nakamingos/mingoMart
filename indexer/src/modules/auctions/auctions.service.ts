@@ -111,6 +111,7 @@ export class AuctionsService {
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
+        venue: 'etherphunks-auction',
         hashId: hashId.toLowerCase(),
         from: owner.toLowerCase(),
         to: this.configSvc.contracts.auctionHouse.l1.toLowerCase(),
@@ -136,6 +137,7 @@ export class AuctionsService {
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
+        venue: 'etherphunks-auction',
         hashId: hashId.toLowerCase(),
         from: txn.from?.toLowerCase(),
         to: winner.toLowerCase(),
@@ -163,6 +165,7 @@ export class AuctionsService {
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
+        venue: 'etherphunks-auction',
         hashId: hashId.toLowerCase(),
         from: txn.from?.toLowerCase(),
         to: auction.prevOwner.toLowerCase(),

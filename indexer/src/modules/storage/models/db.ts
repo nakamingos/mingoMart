@@ -128,6 +128,7 @@ export interface Collection {
 export interface Event {
   txId: string;
   type: EventType;
+  venue?: EventVenue | null;
   hashId: string | null;
   from: string | null;
   to: string | null;
@@ -171,4 +172,6 @@ export interface EthscriptionWithCollectionAndAttributes {
   attributes: AttributeItem;
 }
 
-export type EventType = 'transfer' | 'sale' | 'created' | 'burned' | 'PhunkOffered' | 'PhunkBidEntered' | 'PhunkBought' | 'PhunkBidWithdrawn' | 'PhunkDeposited' | 'PhunkWithdrawn' | 'PhunkNoLongerForSale' | 'AuctionCreated' | 'AuctionBid' | 'AuctionExtended' | 'AuctionSettled';
+export type EventVenue = 'native-ethscriptions' | 'etherphunks-market' | 'etherphunks-auction' | 'ethscriptions-market' | 'etch-market' | 'ordex-market' | 'emblem-vault' | 'opensea' | 'blur';
+
+export type EventType = 'transfer' | 'sale' | 'created' | 'burned' | 'wrapped' | 'unwrapped' | 'PhunkOffered' | 'PhunkBidEntered' | 'PhunkBought' | 'PhunkBidWithdrawn' | 'PhunkDeposited' | 'PhunkWithdrawn' | 'PhunkNoLongerForSale' | 'AuctionCreated' | 'AuctionBid' | 'AuctionExtended' | 'AuctionSettled';

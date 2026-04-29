@@ -15,6 +15,7 @@ import { DataService } from '@/services/data.service';
 import { WeiToEthPipe } from '@/pipes/wei-to-eth.pipe';
 
 import { GlobalState } from '@/models/global-state';
+import { getEventVenueLabel } from '@/constants/event-venues';
 
 import * as dataStateSelectors from '@/state/data/data-state.selectors';
 
@@ -50,9 +51,13 @@ export class UserActivityComponent {
     created: 'Created by',
     bridgeOut: 'Bridged by',
     bridgeIn: 'Bridged (Unlocked) by',
+    wrapped: 'Wrapped by',
+    unwrapped: 'Unwrapped by',
     // escrow: 'Escrowed by',
     // PhunkNoLongerForSale: 'Offer withdrawn',
   };
+
+  getVenueLabel = getEventVenueLabel;
 
   usd$ = this.store.select(dataStateSelectors.selectUsd);
 

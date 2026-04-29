@@ -21,6 +21,9 @@
           <td>
             <div class="cell-inner">
               {{ labels[event.type] }}
+              @if (getVenueLabel(event.venue); as venueLabel) {
+                <span>({{ venueLabel }})</span>
+              }
             </div>
           </td>
           <td>

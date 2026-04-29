@@ -115,6 +115,7 @@ export class MarketplaceService {
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
+        venue: 'etherphunks-market',
         hashId: hashId.toLowerCase(),
         from: fromAddress.toLowerCase(),
         to: toAddress.toLowerCase(),
@@ -137,6 +138,7 @@ export class MarketplaceService {
         return {
           txId: txn.hash + log.logIndex,
           type: eventName,
+          venue: 'etherphunks-market',
           hashId: hashId.toLowerCase(),
           from: txn.from?.toLowerCase(),
           to: zeroAddress,
@@ -183,6 +185,7 @@ export class MarketplaceService {
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
+        venue: 'etherphunks-market',
         hashId: hashId.toLowerCase(),
         from: txn.from?.toLowerCase(),
         to: toAddress?.toLowerCase(),

@@ -60,7 +60,7 @@ const ETCH_MARKET_ADDRESS_L1 = '0x57b8792c775d34aa96092400983c3e112fcbc296' as c
 const ETCH_MARKET_ORDER_EXECUTED_TOPIC = '0x93a6900c7e12c8592eb245abc171ff4709f08fcba2e290729cd16cfe71380260' as const;
 const ETHSCRIPTIONS_TRANSFER_PROXY_ADDRESS_L1 = '0xc33f8610941be56fb0d84e25894c0d928cc97dde' as const;
 const ETHSCRIPTIONS_TRANSFER_PROXY_INTERNAL_TRANSFER_TOPIC = '0xefeb5fded3e317a54beb4e7acfa51f2f2c8545f4c53ab5c96f67d85799a4bb1a' as const;
-const RARIBLE_EXCHANGE_ADDRESS_L1 = '0xc89c2e6fe008592d6a787efd02db7fdb8ea64020' as const;
+const ORDEX_MARKET_ADDRESS_L1 = '0xc89c2e6fe008592d6a787efd02db7fdb8ea64020' as const;
 const ETH_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 const ethscriptionsMarketL1 = [
@@ -203,7 +203,7 @@ const ethscriptionsTransferProxyL1 = [
   },
 ] as const;
 
-const raribleExchangeL1 = [
+const ordexMarketL1 = [
   {
     anonymous: false,
     inputs: [
@@ -1316,7 +1316,7 @@ async function processTransactions(
         }
 
         if (tx.sources.includes('ethscriptions-transfer-proxy-log')) {
-          await persistRaribleExchangeSales({
+          await persistOrdexMarketSales({
             txHash: tx.hash,
             client,
             supabase,
@@ -1381,8 +1381,9 @@ async function persistEthscriptionsMarketSales(params: {
         if (!params.collectionHashIds.has(hashId)) return [];
 
         return [{
-          txId: `${params.txHash.toLowerCase()}-ethscriptions-market-${Number(log.logIndex)}`,
+          txId: `${params.txHash.toLowerCase()}-${Number(log.logIndex)}`,
           type: 'PhunkBought',
+          venue: 'ethscriptions-market',
           hashId,
           from: seller.toLowerCase(),
           to: buyer.toLowerCase(),
@@ -1455,8 +1456,9 @@ async function persistEtchMarketSales(params: {
         if (currency.toLowerCase() !== ETH_ADDRESS) return [];
 
         return [{
-          txId: `${params.txHash.toLowerCase()}-etch-market-${Number(log.logIndex)}`,
+          txId: `${params.txHash.toLowerCase()}-${Number(log.logIndex)}`,
           type: 'PhunkBought',
+          venue: 'etch-market',
           hashId,
           from: seller.toLowerCase(),
           to: buyer.toLowerCase(),
@@ -1485,7 +1487,7 @@ async function persistEtchMarketSales(params: {
   }
 }
 
-async function persistRaribleExchangeSales(params: {
+async function persistOrdexMarketSales(params: {
   txHash: string;
   client: ReturnType<typeof initL1Client>;
   supabase: ReturnType<typeof initSupabase>;
@@ -1501,12 +1503,12 @@ async function persistRaribleExchangeSales(params: {
   });
 
   const matchLogs = receipt.logs.flatMap((log) => {
-    if (log.address.toLowerCase() !== RARIBLE_EXCHANGE_ADDRESS_L1) return [];
+    if (log.address.toLowerCase() !== ORDEX_MARKET_ADDRESS_L1) return [];
 
     try {
       const rawLog = log as typeof log & { topics: [`0x${string}`, ...`0x${string}`[]] };
       const decoded: any = decodeEventLog({
-        abi: raribleExchangeL1,
+        abi: ordexMarketL1,
         data: log.data,
         topics: rawLog.topics,
       });
@@ -1549,8 +1551,9 @@ async function persistRaribleExchangeSales(params: {
         if (!params.collectionHashIds.has(hashId)) return [];
 
         return [{
-          txId: `${params.txHash.toLowerCase()}-rarible-exchange-${Number(log.logIndex)}`,
+          txId: `${params.txHash.toLowerCase()}-${Number(log.logIndex)}`,
           type: 'PhunkBought',
+          venue: 'ordex-market',
           hashId,
           from: from.toLowerCase(),
           to: to.toLowerCase(),
