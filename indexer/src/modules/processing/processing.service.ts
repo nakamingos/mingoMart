@@ -10,6 +10,7 @@ import { CommentsService } from '@/modules/comments/comments.service';
 import { MarketplaceService } from '@/modules/marketplace/marketplace.service';
 import { PointsService } from '@/modules/points/points.service';
 import { AuctionsService } from '@/modules/auctions/auctions.service';
+import { ExternalVenuesService } from '@/modules/external-venues/external-venues.service';
 
 import { Event } from '@/modules/storage/models/db';
 
@@ -39,6 +40,7 @@ export class ProcessingService {
     private readonly commentsSvc: CommentsService,
     private readonly marketplaceSvc: MarketplaceService,
     private readonly auctionsSvc: AuctionsService,
+    private readonly externalVenuesSvc: ExternalVenuesService,
     private readonly pointsSvc: PointsService
   ) {}
 
@@ -190,6 +192,14 @@ export class ProcessingService {
       createdAt
     );
     if (auctionEvents?.length) events.push(...auctionEvents);
+
+    // Process direct external ethscription venue events
+    const externalVenueEvents = await this.externalVenuesSvc.processExternalVenueEvents(
+      transaction,
+      receipt,
+      createdAt
+    );
+    if (externalVenueEvents?.length) events.push(...externalVenueEvents);
 
     // Process points events
     await this.pointsSvc.processPointsEvents(receipt);

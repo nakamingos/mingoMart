@@ -8,6 +8,7 @@ import { NotifsModule } from '@/modules/notifs/notifs.module';
 import { MarketplaceModule } from '@/modules/marketplace/marketplace.module';
 import { PointsModule } from '@/modules/points/points.module';
 import { AuctionsModule } from '@/modules/auctions/auctions.module';
+import { ExternalVenuesModule } from '@/modules/external-venues/external-venues.module';
 
 import { ProcessingService } from './processing.service';
 
@@ -21,6 +22,7 @@ import { ProcessingService } from './processing.service';
     MarketplaceModule,
     PointsModule,
     AuctionsModule,
+    ExternalVenuesModule,
   ],
   providers: [
     ProcessingService,
