@@ -11,10 +11,10 @@
  * 4. Creates/verifies the collection exists
  * 5. Fetches creation + transfer history from the Ethscriptions API
  * 6. Fetches collection-scoped marketplace and auction tx hashes from L1 logs
- * 7. Replays the union of those tx hashes in block/tx order via the indexer
+ * 7. Replays the union of those tx blocks through the indexer block path
  *
  * This preserves ownership-sensitive ordering because replay still happens
- * transaction-by-transaction through the existing indexer pipeline.
+ * in block order through the existing indexer pipeline.
  */
 
 import * as fs from 'fs';
@@ -37,6 +37,19 @@ import { mainnet, sepolia } from 'viem/chains';
 
 import { marketL1 } from '../src/abi/market-L1.abi';
 import { auctionHouseL1 } from '../src/abi/auction-house-L1.abi';
+import {
+  ETCH_MARKET_ADDRESS_L1,
+  ETCH_MARKET_ORDER_EXECUTED_TOPIC,
+  ETHSCRIPTIONS_MARKET_ADDRESS_L1,
+  ETHSCRIPTIONS_TRANSFER_PROXY_ADDRESS_L1,
+  ETHSCRIPTIONS_TRANSFER_PROXY_INTERNAL_TRANSFER_TOPIC,
+  SUPPORTED_ETCH_MARKET_EVENTS,
+  SUPPORTED_ETHSCRIPTIONS_MARKET_EVENTS,
+  SUPPORTED_ETHSCRIPTIONS_TRANSFER_PROXY_EVENTS,
+  etchMarketL1,
+  ethscriptionsMarketL1,
+  ethscriptionsTransferProxyL1,
+} from '../src/modules/external-venues/external-venues.constants';
 
 dotenv.config({ path: '.env.supabase' });
 
@@ -50,192 +63,6 @@ const SUPPORTED_MARKET_EVENTS = new Set([
   'PhunkNoLongerForSale',
   'PhunkOffered',
 ]);
-
-const SUPPORTED_ETHSCRIPTIONS_MARKET_EVENTS = new Set([
-  'EthscriptionPurchased',
-]);
-
-const ETHSCRIPTIONS_MARKET_ADDRESS_L1 = '0xd729a94d6366a4feac4a6869c8b3573cee4701a9' as const;
-const ETCH_MARKET_ADDRESS_L1 = '0x57b8792c775d34aa96092400983c3e112fcbc296' as const;
-const ETCH_MARKET_ORDER_EXECUTED_TOPIC = '0x93a6900c7e12c8592eb245abc171ff4709f08fcba2e290729cd16cfe71380260' as const;
-const ETHSCRIPTIONS_TRANSFER_PROXY_ADDRESS_L1 = '0xc33f8610941be56fb0d84e25894c0d928cc97dde' as const;
-const ETHSCRIPTIONS_TRANSFER_PROXY_INTERNAL_TRANSFER_TOPIC = '0xefeb5fded3e317a54beb4e7acfa51f2f2c8545f4c53ab5c96f67d85799a4bb1a' as const;
-const ORDEX_MARKET_ADDRESS_L1 = '0xc89c2e6fe008592d6a787efd02db7fdb8ea64020' as const;
-const ETH_ADDRESS = '0x0000000000000000000000000000000000000000';
-
-const ethscriptionsMarketL1 = [
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'seller',
-        type: 'address',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'buyer',
-        type: 'address',
-      },
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'ethscriptionId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'price',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'bytes32',
-        name: 'listingId',
-        type: 'bytes32',
-      },
-    ],
-    name: 'EthscriptionPurchased',
-    type: 'event',
-  },
-] as const;
-
-const SUPPORTED_ETCH_MARKET_EVENTS = new Set([
-  'EthscriptionOrderExecuted',
-]);
-
-const SUPPORTED_ETHSCRIPTIONS_TRANSFER_PROXY_EVENTS = new Set([
-  'InternalItemTransfer',
-]);
-
-const etchMarketL1 = [
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'orderHash',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'orderNonce',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'bytes32',
-        name: 'ethscriptionId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'quantity',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: 'seller',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: 'buyer',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: 'currency',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'price',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint64',
-        name: 'endTime',
-        type: 'uint64',
-      },
-    ],
-    name: 'EthscriptionOrderExecuted',
-    type: 'event',
-  },
-] as const;
-
-const ethscriptionsTransferProxyL1 = [
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'from',
-        type: 'address',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'to',
-        type: 'address',
-      },
-      {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'itemId',
-        type: 'uint256',
-      },
-    ],
-    name: 'InternalItemTransfer',
-    type: 'event',
-  },
-] as const;
-
-const ordexMarketL1 = [
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: 'bytes32',
-        name: 'leftHash',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'bytes32',
-        name: 'rightHash',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'newLeftFill',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'newRightFill',
-        type: 'uint256',
-      },
-    ],
-    name: 'Match',
-    type: 'event',
-  },
-] as const;
 
 const SUPPORTED_AUCTION_EVENTS = new Set([
   'AuctionCreated',
@@ -1257,22 +1084,27 @@ async function collectTransactionsForRange(params: {
   };
 }
 
-async function processTransactions(
+function getUniqueSortedBlockNumbers(transactions: TransactionToProcess[]): number[] {
+  return Array.from(new Set(transactions.map((tx) => tx.block_number))).sort((a, b) => a - b);
+}
+
+async function processBlocks(
+  blockNumbers: number[],
   transactions: TransactionToProcess[],
   indexerUrl: string,
   apiKey: string,
   dryRun: boolean,
-  supabase: ReturnType<typeof initSupabase>,
-  client: ReturnType<typeof initL1Client>,
-  tableSuffix: string,
-  collectionHashIds: Set<string>,
 ): Promise<{ processed: number; errors: number }> {
-  console.log(`\nProcessing ${transactions.length} transactions through the indexer...`);
+  console.log(`\nProcessing ${blockNumbers.length} blocks (${transactions.length} discovered transactions) through the indexer...`);
 
   if (dryRun) {
-    console.log('Dry run enabled. First 10 transactions:');
-    transactions.slice(0, 10).forEach((tx, idx) => {
-      console.log(`  ${idx + 1}. block ${tx.block_number}, tx ${tx.transaction_index}, ${tx.hash}, sources=${tx.sources.join(',')}`);
+    const txCountByBlock = new Map<number, number>();
+    transactions.forEach((tx) => {
+      txCountByBlock.set(tx.block_number, (txCountByBlock.get(tx.block_number) || 0) + 1);
+    });
+    console.log('Dry run enabled. First 10 blocks:');
+    blockNumbers.slice(0, 10).forEach((blockNumber, idx) => {
+      console.log(`  ${idx + 1}. block ${blockNumber}, discovered txs=${txCountByBlock.get(blockNumber) || 0}`);
     });
     return { processed: 0, errors: 0 };
   }
@@ -1280,306 +1112,36 @@ async function processTransactions(
   let processed = 0;
   let errors = 0;
 
-  for (const tx of transactions) {
+  for (const blockNumber of blockNumbers) {
     try {
-      const response = await fetch(`${indexerUrl}/admin/reindex-transaction`, {
+      const response = await fetch(`${indexerUrl}/admin/reindex-block`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
         },
-        body: JSON.stringify({ hash: tx.hash }),
+        body: JSON.stringify({ blockNumber }),
       });
 
       if (!response.ok) {
-        console.error(`Error processing ${tx.hash}: ${response.status}`);
+        console.error(`Error processing block ${blockNumber}: ${response.status}`);
         errors++;
       } else {
-        if (tx.sources.includes('ethscriptions-market-log')) {
-          await persistEthscriptionsMarketSales({
-            txHash: tx.hash,
-            client,
-            supabase,
-            tableSuffix,
-            collectionHashIds,
-          });
-        }
-
-        if (tx.sources.includes('etch-market-log')) {
-          await persistEtchMarketSales({
-            txHash: tx.hash,
-            client,
-            supabase,
-            tableSuffix,
-            collectionHashIds,
-          });
-        }
-
-        if (tx.sources.includes('ethscriptions-transfer-proxy-log')) {
-          await persistOrdexMarketSales({
-            txHash: tx.hash,
-            client,
-            supabase,
-            tableSuffix,
-            collectionHashIds,
-          });
-        }
-
         processed++;
         if (processed % 10 === 0) {
-          console.log(`  Progress: ${processed}/${transactions.length} (${errors} errors)`);
+          console.log(`  Progress: ${processed}/${blockNumbers.length} blocks (${errors} errors)`);
         }
       }
 
       await new Promise((resolve) => setTimeout(resolve, 200));
     } catch (error) {
-      console.error(`Error processing ${tx.hash}:`, error);
+      console.error(`Error processing block ${blockNumber}:`, error);
       errors++;
     }
   }
 
-  console.log(`Processed ${processed}/${transactions.length} transactions (${errors} errors)`);
+  console.log(`Processed ${processed}/${blockNumbers.length} blocks (${errors} errors)`);
   return { processed, errors };
-}
-
-async function persistEthscriptionsMarketSales(params: {
-  txHash: string;
-  client: ReturnType<typeof initL1Client>;
-  supabase: ReturnType<typeof initSupabase>;
-  tableSuffix: string;
-  collectionHashIds: Set<string>;
-}) {
-  const receipt = await params.client.getTransactionReceipt({
-    hash: params.txHash as `0x${string}`,
-  });
-
-  const block = await params.client.getBlock({
-    blockHash: receipt.blockHash,
-  });
-
-  const saleEvents = receipt.logs
-    .filter((log) => log.address.toLowerCase() === ETHSCRIPTIONS_MARKET_ADDRESS_L1)
-    .flatMap((log) => {
-      try {
-        const rawLog = log as typeof log & { topics: [`0x${string}`, ...`0x${string}`[]] };
-        const decoded: any = decodeEventLog({
-          abi: ethscriptionsMarketL1,
-          data: log.data,
-          topics: rawLog.topics,
-        });
-
-        if (decoded.eventName !== 'EthscriptionPurchased') return [];
-
-        const {
-          seller,
-          buyer,
-          ethscriptionId,
-          price,
-        } = decoded.args;
-
-        const hashId = ethscriptionId.toLowerCase();
-        if (!params.collectionHashIds.has(hashId)) return [];
-
-        return [{
-          txId: `${params.txHash.toLowerCase()}-${Number(log.logIndex)}`,
-          type: 'PhunkBought',
-          venue: 'ethscriptions-market',
-          hashId,
-          from: seller.toLowerCase(),
-          to: buyer.toLowerCase(),
-          blockHash: receipt.blockHash.toLowerCase(),
-          txIndex: Number(receipt.transactionIndex),
-          txHash: params.txHash.toLowerCase(),
-          blockNumber: Number(receipt.blockNumber),
-          blockTimestamp: new Date(Number(block.timestamp) * 1000),
-          value: price.toString(),
-        }];
-      } catch (_error) {
-        return [];
-      }
-    });
-
-  if (!saleEvents.length) return;
-
-  const { error } = await params.supabase
-    .from(`events${params.tableSuffix}`)
-    .upsert(saleEvents, {
-      ignoreDuplicates: true,
-    });
-
-  if (error) {
-    throw error;
-  }
-}
-
-async function persistEtchMarketSales(params: {
-  txHash: string;
-  client: ReturnType<typeof initL1Client>;
-  supabase: ReturnType<typeof initSupabase>;
-  tableSuffix: string;
-  collectionHashIds: Set<string>;
-}) {
-  const receipt = await params.client.getTransactionReceipt({
-    hash: params.txHash as `0x${string}`,
-  });
-
-  const block = await params.client.getBlock({
-    blockHash: receipt.blockHash,
-  });
-
-  const saleEvents = receipt.logs
-    .filter((log) => log.address.toLowerCase() === ETCH_MARKET_ADDRESS_L1)
-    .flatMap((log) => {
-      try {
-        const rawLog = log as typeof log & { topics: [`0x${string}`, ...`0x${string}`[]] };
-        const decoded: any = decodeEventLog({
-          abi: etchMarketL1,
-          data: log.data,
-          topics: rawLog.topics,
-        });
-
-        if (decoded.eventName !== 'EthscriptionOrderExecuted') return [];
-
-        const {
-          seller,
-          buyer,
-          ethscriptionId,
-          currency,
-          price,
-        } = decoded.args;
-
-        const hashId = ethscriptionId.toLowerCase();
-        if (!params.collectionHashIds.has(hashId)) return [];
-
-        // The events table has no currency column, so only ETH sales can be
-        // represented safely as marketplace activity values.
-        if (currency.toLowerCase() !== ETH_ADDRESS) return [];
-
-        return [{
-          txId: `${params.txHash.toLowerCase()}-${Number(log.logIndex)}`,
-          type: 'PhunkBought',
-          venue: 'etch-market',
-          hashId,
-          from: seller.toLowerCase(),
-          to: buyer.toLowerCase(),
-          blockHash: receipt.blockHash.toLowerCase(),
-          txIndex: Number(receipt.transactionIndex),
-          txHash: params.txHash.toLowerCase(),
-          blockNumber: Number(receipt.blockNumber),
-          blockTimestamp: new Date(Number(block.timestamp) * 1000),
-          value: price.toString(),
-        }];
-      } catch (_error) {
-        return [];
-      }
-    });
-
-  if (!saleEvents.length) return;
-
-  const { error } = await params.supabase
-    .from(`events${params.tableSuffix}`)
-    .upsert(saleEvents, {
-      ignoreDuplicates: true,
-    });
-
-  if (error) {
-    throw error;
-  }
-}
-
-async function persistOrdexMarketSales(params: {
-  txHash: string;
-  client: ReturnType<typeof initL1Client>;
-  supabase: ReturnType<typeof initSupabase>;
-  tableSuffix: string;
-  collectionHashIds: Set<string>;
-}) {
-  const receipt = await params.client.getTransactionReceipt({
-    hash: params.txHash as `0x${string}`,
-  });
-
-  const block = await params.client.getBlock({
-    blockHash: receipt.blockHash,
-  });
-
-  const matchLogs = receipt.logs.flatMap((log) => {
-    if (log.address.toLowerCase() !== ORDEX_MARKET_ADDRESS_L1) return [];
-
-    try {
-      const rawLog = log as typeof log & { topics: [`0x${string}`, ...`0x${string}`[]] };
-      const decoded: any = decodeEventLog({
-        abi: ordexMarketL1,
-        data: log.data,
-        topics: rawLog.topics,
-      });
-
-      if (decoded.eventName !== 'Match') return [];
-
-      const { newLeftFill, newRightFill } = decoded.args;
-      if (newRightFill <= BigInt(0)) return [];
-
-      return [{
-        pricePerItem: newLeftFill / newRightFill,
-      }];
-    } catch (_error) {
-      return [];
-    }
-  });
-
-  if (matchLogs.length !== 1) return;
-
-  const saleEvents = receipt.logs
-    .filter((log) => log.address.toLowerCase() === ETHSCRIPTIONS_TRANSFER_PROXY_ADDRESS_L1)
-    .flatMap((log) => {
-      try {
-        const rawLog = log as typeof log & { topics: [`0x${string}`, ...`0x${string}`[]] };
-        const decoded: any = decodeEventLog({
-          abi: ethscriptionsTransferProxyL1,
-          data: log.data,
-          topics: rawLog.topics,
-        });
-
-        if (decoded.eventName !== 'InternalItemTransfer') return [];
-
-        const {
-          from,
-          to,
-          itemId,
-        } = decoded.args;
-
-        const hashId = toHex(itemId, { size: 32 }).toLowerCase();
-        if (!params.collectionHashIds.has(hashId)) return [];
-
-        return [{
-          txId: `${params.txHash.toLowerCase()}-${Number(log.logIndex)}`,
-          type: 'PhunkBought',
-          venue: 'ordex-market',
-          hashId,
-          from: from.toLowerCase(),
-          to: to.toLowerCase(),
-          blockHash: receipt.blockHash.toLowerCase(),
-          txIndex: Number(receipt.transactionIndex),
-          txHash: params.txHash.toLowerCase(),
-          blockNumber: Number(receipt.blockNumber),
-          blockTimestamp: new Date(Number(block.timestamp) * 1000),
-          value: matchLogs[0].pricePerItem.toString(),
-        }];
-      } catch (_error) {
-        return [];
-      }
-    });
-
-  if (!saleEvents.length) return;
-
-  const { error } = await params.supabase
-    .from(`events${params.tableSuffix}`)
-    .upsert(saleEvents, {
-      ignoreDuplicates: true,
-    });
-
-  if (error) {
-    throw error;
-  }
 }
 
 async function updateBlockTracker(supabase: any, chainId: number, latestBlock: number) {
@@ -1711,17 +1273,17 @@ async function main() {
       sources: ['ethscriptions-api:transfer'],
     }));
 
-    const blockNumbers = [
+    const apiBlockNumbers = [
       ...creations.map((tx) => tx.block_number),
       ...transfers.map((tx) => tx.block_number),
     ];
 
-    if (!blockNumbers.length) {
+    if (!apiBlockNumbers.length) {
       console.error('Could not determine a collection block range from the Ethscriptions API data');
       process.exit(1);
     }
 
-    const earliestCollectionBlock = Math.min(...blockNumbers);
+    const earliestCollectionBlock = Math.min(...apiBlockNumbers);
     const latestChainBlock = Number(await client.getBlockNumber());
     const fromBlock = options.fromBlock ?? earliestCollectionBlock;
     const toBlock = options.toBlock ?? latestChainBlock;
@@ -1795,19 +1357,19 @@ async function main() {
     console.log(`  Total unique txs: ${transactions.length}`);
     console.log(`  Replay block range: ${fromBlock}-${toBlock}`);
 
-    const result = await processTransactions(
+    const blockNumbers = getUniqueSortedBlockNumbers(transactions);
+    console.log(`  Total unique blocks to replay: ${blockNumbers.length}`);
+
+    const result = await processBlocks(
+      blockNumbers,
       transactions,
       options.indexerUrl,
       options.apiKey!,
       options.dryRun,
-      supabase,
-      client,
-      options.tableSuffix,
-      collectionHashIds,
     );
 
     if (!options.dryRun && result.errors > 0) {
-      throw new Error(`Replay failed for ${result.errors} transactions; block tracker was not advanced`);
+      throw new Error(`Replay failed for ${result.errors} blocks; block tracker was not advanced`);
     }
 
     if (!options.dryRun) {
@@ -1858,19 +1420,19 @@ async function main() {
         console.log(`  Ethscriptions transfer proxy log txs: ${catchUpEthscriptionsTransferProxyTransactions.length}`);
         console.log(`  Total unique txs: ${catchUpTransactions.length}`);
 
-        const catchUpResult = await processTransactions(
+        const catchUpBlockNumbers = getUniqueSortedBlockNumbers(catchUpTransactions);
+        console.log(`  Total unique blocks to replay: ${catchUpBlockNumbers.length}`);
+
+        const catchUpResult = await processBlocks(
+          catchUpBlockNumbers,
           catchUpTransactions,
           options.indexerUrl,
           options.apiKey!,
           options.dryRun,
-          supabase,
-          client,
-          options.tableSuffix,
-          collectionHashIds,
         );
 
         if (catchUpResult.errors > 0) {
-          throw new Error(`Final catch-up replay failed for ${catchUpResult.errors} transactions; block tracker was not advanced`);
+          throw new Error(`Final catch-up replay failed for ${catchUpResult.errors} blocks; block tracker was not advanced`);
         }
 
         finalBlock = latestBlockNow;

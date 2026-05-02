@@ -17,6 +17,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
 import { ProcessingModule } from '@/modules/processing/processing.module';
 import { EvmModule } from '@/modules/evm/evm.module';
 import { CollectionAdminModule } from '@/modules/collection-admin/collection-admin.module';
+import { ExternalVenuesModule } from '@/modules/external-venues/external-venues.module';
 
 import { AuctionsModule } from '@/modules/auctions/auctions.module';
 import { MarketplaceModule } from '@/modules/marketplace/marketplace.module';
@@ -51,6 +52,7 @@ import { CardsModule } from './modules/cards/cards.module';
     CollectionAdminModule,
     AuthModule,
     ProcessingModule,
+    ExternalVenuesModule,
 
     MarketplaceModule,
     PointsModule,
