@@ -10,7 +10,7 @@
  * 3. Populates attributes tables
  * 4. Creates/verifies the collection exists
  * 5. Fetches creation + transfer history from the Ethscriptions API
- * 6. Fetches collection-scoped marketplace and auction tx hashes from L1 logs
+ * 6. Fetches collection-scoped marketplace, auction, and external wrapper tx hashes from L1 logs
  * 7. Replays the union of those tx blocks through the indexer block path
  *
  * This preserves ownership-sensitive ordering because replay still happens
@@ -38,6 +38,8 @@ import { mainnet, sepolia } from 'viem/chains';
 import { marketL1 } from '../src/abi/market-L1.abi';
 import { auctionHouseL1 } from '../src/abi/auction-house-L1.abi';
 import {
+  EMBLEM_VAULT_METADATA_BASE_URL,
+  EMBLEM_VAULT_WRAPPER_ADDRESS_L1,
   ETCH_MARKET_ADDRESS_L1,
   ETCH_MARKET_ORDER_EXECUTED_TOPIC,
   ETHSCRIPTIONS_MARKET_ADDRESS_L1,
@@ -57,6 +59,17 @@ const DEFAULT_LOG_CHUNK_SIZE = 20_000;
 const MIN_LOG_CHUNK_SIZE = 250;
 const API_BATCH_CONCURRENCY = 50;
 const API_MAX_RETRIES = 3;
+const EMBLEM_METADATA_BATCH_CONCURRENCY = 25;
+const MAX_ERROR_RESPONSE_LENGTH = 500;
+const MAX_FAILED_BLOCKS_IN_SUMMARY = 50;
+const REINDEX_BLOCK_MAX_ATTEMPTS = 5;
+const REINDEX_BLOCK_BASE_DELAY_MS = 10_000;
+const DEFAULT_REINDEX_DELAY_MS = 1_000;
+const DEFAULT_ETHSCRIPTIONS_API_BASE_URLS = {
+  mainnet: 'https://ethscriptions-api.flooredape.io',
+  sepolia: 'https://ethscriptions-api-sepolia.flooredape.io',
+} as const;
+const ERC721_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' as const;
 
 const SUPPORTED_MARKET_EVENTS = new Set([
   'PhunkBought',
@@ -115,6 +128,19 @@ interface ShaMismatch {
   contentSha: string;
 }
 
+interface EmblemVaultMetadata {
+  values?: Array<{
+    coin?: string;
+    id?: string;
+  }>;
+  ownershipInfo?: {
+    balances?: Array<{
+      coin?: string;
+      id?: string;
+    }>;
+  };
+}
+
 interface TransactionToProcess {
   hash: string;
   block_number: number;
@@ -149,6 +175,7 @@ interface HybridBackfillOptions {
   fromBlock?: number;
   toBlock?: number;
   logChunkSize: number;
+  reindexDelayMs: number;
   chainId: number;
   tableSuffix: string;
   apiBaseUrl: string;
@@ -185,6 +212,7 @@ function promptForInput(question: string): Promise<string> {
 
 function parseArgs(): HybridBackfillOptions {
   const args = process.argv.slice(2);
+  let apiBaseUrlOverride: string | undefined;
   const options: HybridBackfillOptions = {
     indexerUrl: 'http://localhost:3069',
     network: 'mainnet',
@@ -192,9 +220,10 @@ function parseArgs(): HybridBackfillOptions {
     strict: true,
     force: false,
     logChunkSize: DEFAULT_LOG_CHUNK_SIZE,
+    reindexDelayMs: DEFAULT_REINDEX_DELAY_MS,
     chainId: 1,
     tableSuffix: '',
-    apiBaseUrl: 'https://api.ethscriptions.com/v2',
+    apiBaseUrl: DEFAULT_ETHSCRIPTIONS_API_BASE_URLS.mainnet,
   };
 
   args.forEach((arg, index) => {
@@ -210,6 +239,14 @@ function parseArgs(): HybridBackfillOptions {
       options.apiKey = arg.split('=')[1];
     } else if (arg === '--api-key' && args[index + 1]) {
       options.apiKey = args[index + 1];
+    } else if (arg.startsWith('--api-base-url=')) {
+      apiBaseUrlOverride = arg.split('=')[1];
+    } else if (arg === '--api-base-url' && args[index + 1]) {
+      apiBaseUrlOverride = args[index + 1];
+    } else if (arg.startsWith('--ethscriptions-api-base-url=')) {
+      apiBaseUrlOverride = arg.split('=')[1];
+    } else if (arg === '--ethscriptions-api-base-url' && args[index + 1]) {
+      apiBaseUrlOverride = args[index + 1];
     } else if (arg.startsWith('--network=')) {
       const network = arg.split('=')[1].toLowerCase();
       if (network !== 'mainnet' && network !== 'sepolia') {
@@ -242,6 +279,10 @@ function parseArgs(): HybridBackfillOptions {
       options.logChunkSize = Number(arg.split('=')[1]);
     } else if (arg === '--log-chunk-size' && args[index + 1]) {
       options.logChunkSize = Number(args[index + 1]);
+    } else if (arg.startsWith('--reindex-delay-ms=')) {
+      options.reindexDelayMs = Number(arg.split('=')[1]);
+    } else if (arg === '--reindex-delay-ms' && args[index + 1]) {
+      options.reindexDelayMs = Number(args[index + 1]);
     }
   });
 
@@ -272,11 +313,18 @@ function parseArgs(): HybridBackfillOptions {
     process.exit(1);
   }
 
+  if (Number.isNaN(options.reindexDelayMs) || options.reindexDelayMs < 0) {
+    console.error('Error: --reindex-delay-ms must be a number >= 0');
+    process.exit(1);
+  }
+
   options.chainId = options.network === 'mainnet' ? 1 : 11155111;
   options.tableSuffix = options.network === 'sepolia' ? '_sepolia' : '';
-  options.apiBaseUrl = options.network === 'mainnet'
-    ? 'https://api.ethscriptions.com/v2'
-    : 'https://sepolia-api.ethscriptions.com/v2';
+  options.apiBaseUrl = (
+    apiBaseUrlOverride ||
+    process.env.ETHSCRIPTIONS_API_BASE_URL ||
+    DEFAULT_ETHSCRIPTIONS_API_BASE_URLS[options.network]
+  ).replace(/\/$/, '');
 
   return options;
 }
@@ -845,6 +893,178 @@ function extractCollectionHashId(args: Record<string, unknown>): string | null {
   return raw.toLowerCase();
 }
 
+function extractEmblemVaultHashId(metadata: EmblemVaultMetadata): string | null {
+  const balances = [
+    ...(metadata.values || []),
+    ...(metadata.ownershipInfo?.balances || []),
+  ];
+
+  const ethscription = balances.find((balance) => (
+    balance.coin === 'ethscription' &&
+    typeof balance.id === 'string' &&
+    HEX_66.test(balance.id)
+  ));
+
+  return ethscription?.id?.toLowerCase() || null;
+}
+
+async function fetchEmblemVaultHashIdForToken(
+  tokenId: string,
+  cache: Map<string, string | null>,
+): Promise<string | null> {
+  if (cache.has(tokenId)) return cache.get(tokenId)!;
+
+  let retries = 0;
+  while (retries < API_MAX_RETRIES) {
+    try {
+      const response = await fetch(`${EMBLEM_VAULT_METADATA_BASE_URL}/${tokenId}`);
+      if (!response.ok) {
+        if (retries < API_MAX_RETRIES - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (retries + 1)));
+          retries++;
+          continue;
+        }
+
+        cache.set(tokenId, null);
+        return null;
+      }
+
+      const metadata = await response.json() as EmblemVaultMetadata;
+      const hashId = extractEmblemVaultHashId(metadata);
+      cache.set(tokenId, hashId);
+      return hashId;
+    } catch (_error) {
+      if (retries < API_MAX_RETRIES - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (retries + 1)));
+        retries++;
+        continue;
+      }
+
+      cache.set(tokenId, null);
+      return null;
+    }
+  }
+
+  cache.set(tokenId, null);
+  return null;
+}
+
+async function fetchEmblemVaultWrapperTransactions(params: {
+  client: ReturnType<typeof initL1Client>;
+  address: Address;
+  fromBlock: number;
+  toBlock: number;
+  chunkSize: number;
+  collectionHashIds: Set<string>;
+  metadataCache: Map<string, string | null>;
+}): Promise<TransactionToProcess[]> {
+  console.log(`\nFetching emblem-vault-wrapper-log logs from block ${params.fromBlock} to ${params.toBlock}...`);
+
+  const transactionsByTokenId = new Map<string, TransactionToProcess[]>();
+  let currentChunkSize = params.chunkSize;
+  let startBlock = params.fromBlock;
+  let scannedLogs = 0;
+
+  while (startBlock <= params.toBlock) {
+    const endBlock = Math.min(startBlock + currentChunkSize - 1, params.toBlock);
+
+    try {
+      const logs = await params.client.request({
+        method: 'eth_getLogs',
+        params: [{
+          address: params.address,
+          fromBlock: toHex(startBlock),
+          toBlock: toHex(endBlock),
+          topics: [ERC721_TRANSFER_TOPIC],
+        }],
+      }) as RpcLog[];
+
+      for (const log of logs) {
+        if (!log.transactionHash || log.blockNumber === null || log.transactionIndex === null) continue;
+        const tokenTopic = log.topics[3];
+        if (!tokenTopic) continue;
+
+        scannedLogs++;
+
+        const tokenId = BigInt(tokenTopic).toString();
+        const txHash = log.transactionHash.toLowerCase();
+        const transactions = transactionsByTokenId.get(tokenId) || [];
+        transactions.push({
+          hash: txHash,
+          block_number: Number(BigInt(log.blockNumber)),
+          transaction_index: Number(BigInt(log.transactionIndex)),
+          sources: ['emblem-vault-wrapper-log'],
+        });
+        transactionsByTokenId.set(tokenId, transactions);
+      }
+
+      console.log(
+        `  emblem-vault-wrapper-log: scanned blocks ${startBlock}-${endBlock}, ` +
+        `wrapper logs ${scannedLogs}, unique wrapper tokens ${transactionsByTokenId.size}`,
+      );
+      startBlock = endBlock + 1;
+
+      if (currentChunkSize < params.chunkSize) {
+        currentChunkSize = Math.min(params.chunkSize, currentChunkSize * 2);
+      }
+    } catch (error) {
+      if (currentChunkSize <= MIN_LOG_CHUNK_SIZE) {
+        throw error;
+      }
+
+      currentChunkSize = Math.max(MIN_LOG_CHUNK_SIZE, Math.floor(currentChunkSize / 2));
+      console.warn(`  emblem-vault-wrapper-log: log query failed for ${startBlock}-${endBlock}. Retrying with chunk size ${currentChunkSize}...`);
+    }
+  }
+
+  const tokenIds = Array.from(transactionsByTokenId.keys());
+  const matchingTokenIds: string[] = [];
+
+  console.log(`Resolving ${tokenIds.length} Emblem wrapper token metadata records...`);
+  for (let i = 0; i < tokenIds.length; i += EMBLEM_METADATA_BATCH_CONCURRENCY) {
+    const batch = tokenIds.slice(i, i + EMBLEM_METADATA_BATCH_CONCURRENCY);
+    const batchResults = await Promise.all(
+      batch.map(async (tokenId) => ({
+        tokenId,
+        hashId: await fetchEmblemVaultHashIdForToken(tokenId, params.metadataCache),
+      })),
+    );
+
+    batchResults.forEach(({ tokenId, hashId }) => {
+      if (hashId && params.collectionHashIds.has(hashId)) {
+        matchingTokenIds.push(tokenId);
+      }
+    });
+
+    if (i % (EMBLEM_METADATA_BATCH_CONCURRENCY * 10) === 0) {
+      console.log(`  Emblem metadata progress: ${Math.min(i + batch.length, tokenIds.length)}/${tokenIds.length}, matched tokens ${matchingTokenIds.length}`);
+    }
+  }
+
+  const txs = new Map<string, TransactionToProcess>();
+  matchingTokenIds.forEach((tokenId) => {
+    const tokenTransactions = transactionsByTokenId.get(tokenId) || [];
+    tokenTransactions.forEach((tx) => {
+      const existing = txs.get(tx.hash);
+      if (existing) {
+        tx.sources.forEach((source) => {
+          if (!existing.sources.includes(source)) existing.sources.push(source);
+        });
+        return;
+      }
+
+      txs.set(tx.hash, { ...tx, sources: [...tx.sources] });
+    });
+  });
+
+  console.log(
+    `Completed emblem-vault-wrapper-log scan: ${matchingTokenIds.length} matching wrapper tokens, ` +
+    `${txs.size} unique txs`,
+  );
+
+  return Array.from(txs.values());
+}
+
 async function fetchCollectionScopedContractTransactions(params: {
   label: string;
   client: ReturnType<typeof initL1Client>;
@@ -973,10 +1193,12 @@ async function collectTransactionsForRange(params: {
   ethscriptionsMarketAddress: Address;
   etchMarketAddress: Address;
   ethscriptionsTransferProxyAddress: Address;
+  emblemVaultWrapperAddress: Address;
   fromBlock: number;
   toBlock: number;
   logChunkSize: number;
   collectionHashIds: Set<string>;
+  emblemMetadataCache: Map<string, string | null>;
   creations: TransactionToProcess[];
   transferTransactions: TransactionToProcess[];
   marketDeploymentBlock: number;
@@ -984,6 +1206,7 @@ async function collectTransactionsForRange(params: {
   ethscriptionsMarketDeploymentBlock: number;
   etchMarketDeploymentBlock: number;
   ethscriptionsTransferProxyDeploymentBlock: number;
+  emblemVaultWrapperDeploymentBlock: number;
 }) {
   const creationTransactions = params.creations.filter(
     (tx) => tx.block_number >= params.fromBlock && tx.block_number <= params.toBlock,
@@ -1062,6 +1285,18 @@ async function collectTransactionsForRange(params: {
     })
     : [];
 
+  const emblemVaultWrapperTransactions = params.network === 'mainnet'
+    ? await fetchEmblemVaultWrapperTransactions({
+      client: params.client,
+      address: params.emblemVaultWrapperAddress,
+      fromBlock: Math.max(params.fromBlock, params.emblemVaultWrapperDeploymentBlock),
+      toBlock: params.toBlock,
+      chunkSize: params.logChunkSize,
+      collectionHashIds: params.collectionHashIds,
+      metadataCache: params.emblemMetadataCache,
+    })
+    : [];
+
   const transactions = combineAndSortTransactions([
     { name: 'creations', transactions: creationTransactions },
     { name: 'transfers', transactions: filteredTransferTransactions },
@@ -1070,6 +1305,7 @@ async function collectTransactionsForRange(params: {
     { name: 'ethscriptions-market', transactions: ethscriptionsMarketTransactions },
     { name: 'etch-market', transactions: etchMarketTransactions },
     { name: 'ethscriptions-transfer-proxy', transactions: ethscriptionsTransferProxyTransactions },
+    { name: 'emblem-vault-wrapper', transactions: emblemVaultWrapperTransactions },
   ]);
 
   return {
@@ -1081,11 +1317,47 @@ async function collectTransactionsForRange(params: {
     ethscriptionsMarketTransactions,
     etchMarketTransactions,
     ethscriptionsTransferProxyTransactions,
+    emblemVaultWrapperTransactions,
   };
 }
 
 function getUniqueSortedBlockNumbers(transactions: TransactionToProcess[]): number[] {
   return Array.from(new Set(transactions.map((tx) => tx.block_number))).sort((a, b) => a - b);
+}
+
+function summarizeResponseBody(body: string): string {
+  const normalized = body.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+
+  if (normalized.length <= MAX_ERROR_RESPONSE_LENGTH) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, MAX_ERROR_RESPONSE_LENGTH)}...`;
+}
+
+function summarizeFailedBlocks(failedBlocks: number[]): string {
+  if (!failedBlocks.length) return 'none';
+
+  const preview = failedBlocks.slice(0, MAX_FAILED_BLOCKS_IN_SUMMARY);
+  if (preview.length === failedBlocks.length) {
+    return preview.join(', ');
+  }
+
+  return `${preview.join(', ')} ... (+${failedBlocks.length - preview.length} more)`;
+}
+
+function isRetryableReindexStatus(status: number): boolean {
+  return status === 408 || status === 425 || status === 429 || (status >= 500 && status <= 504);
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function processBlocks(
@@ -1094,7 +1366,8 @@ async function processBlocks(
   indexerUrl: string,
   apiKey: string,
   dryRun: boolean,
-): Promise<{ processed: number; errors: number }> {
+  reindexDelayMs: number,
+): Promise<{ processed: number; errors: number; failedBlocks: number[] }> {
   console.log(`\nProcessing ${blockNumbers.length} blocks (${transactions.length} discovered transactions) through the indexer...`);
 
   if (dryRun) {
@@ -1106,42 +1379,87 @@ async function processBlocks(
     blockNumbers.slice(0, 10).forEach((blockNumber, idx) => {
       console.log(`  ${idx + 1}. block ${blockNumber}, discovered txs=${txCountByBlock.get(blockNumber) || 0}`);
     });
-    return { processed: 0, errors: 0 };
+    return { processed: 0, errors: 0, failedBlocks: [] };
   }
 
   let processed = 0;
   let errors = 0;
+  const failedBlocks: number[] = [];
 
   for (const blockNumber of blockNumbers) {
-    try {
-      const response = await fetch(`${indexerUrl}/admin/reindex-block`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-        },
-        body: JSON.stringify({ blockNumber }),
-      });
+    let blockProcessed = false;
 
-      if (!response.ok) {
-        console.error(`Error processing block ${blockNumber}: ${response.status}`);
-        errors++;
-      } else {
-        processed++;
-        if (processed % 10 === 0) {
-          console.log(`  Progress: ${processed}/${blockNumbers.length} blocks (${errors} errors)`);
+    for (let attempt = 1; attempt <= REINDEX_BLOCK_MAX_ATTEMPTS; attempt++) {
+      try {
+        const response = await fetch(`${indexerUrl}/admin/reindex-block`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+          },
+          body: JSON.stringify({ blockNumber }),
+        });
+
+        if (response.ok) {
+          processed++;
+          if (processed % 10 === 0) {
+            console.log(`  Progress: ${processed}/${blockNumbers.length} blocks (${errors} errors)`);
+          }
+          blockProcessed = true;
+          break;
         }
-      }
 
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    } catch (error) {
-      console.error(`Error processing block ${blockNumber}:`, error);
+        const responseBody = summarizeResponseBody(await response.text());
+        const statusText = response.statusText ? ` ${response.statusText}` : '';
+        const responseSuffix = responseBody ? ` - ${responseBody}` : '';
+        const failureSummary = `${response.status}${statusText}${responseSuffix}`;
+        const shouldRetry = isRetryableReindexStatus(response.status) && attempt < REINDEX_BLOCK_MAX_ATTEMPTS;
+
+        if (shouldRetry) {
+          console.warn(
+            `Retrying block ${blockNumber} after attempt ${attempt}/${REINDEX_BLOCK_MAX_ATTEMPTS}: ${failureSummary}`,
+          );
+          await sleep(REINDEX_BLOCK_BASE_DELAY_MS * attempt);
+          continue;
+        }
+
+        console.error(`Error processing block ${blockNumber}: ${failureSummary}`);
+        failedBlocks.push(blockNumber);
+        errors++;
+        break;
+      } catch (error) {
+        const errorMessage = getErrorMessage(error);
+        const shouldRetry = attempt < REINDEX_BLOCK_MAX_ATTEMPTS;
+
+        if (shouldRetry) {
+          console.warn(
+            `Retrying block ${blockNumber} after request error on attempt ${attempt}/${REINDEX_BLOCK_MAX_ATTEMPTS}: ${errorMessage}`,
+          );
+          await sleep(REINDEX_BLOCK_BASE_DELAY_MS * attempt);
+          continue;
+        }
+
+        console.error(`Error processing block ${blockNumber}:`, error);
+        failedBlocks.push(blockNumber);
+        errors++;
+        break;
+      }
+    }
+
+    if (!blockProcessed && !failedBlocks.includes(blockNumber)) {
+      failedBlocks.push(blockNumber);
       errors++;
     }
+
+    await sleep(reindexDelayMs);
+  }
+
+  if (failedBlocks.length) {
+    console.error(`Failed block numbers (${failedBlocks.length}): ${summarizeFailedBlocks(failedBlocks)}`);
   }
 
   console.log(`Processed ${processed}/${blockNumbers.length} blocks (${errors} errors)`);
-  return { processed, errors };
+  return { processed, errors, failedBlocks };
 }
 
 async function updateBlockTracker(supabase: any, chainId: number, latestBlock: number) {
@@ -1165,6 +1483,8 @@ async function main() {
   const ethscriptionsMarketAddress = ETHSCRIPTIONS_MARKET_ADDRESS_L1;
   const etchMarketAddress = ETCH_MARKET_ADDRESS_L1;
   const ethscriptionsTransferProxyAddress = ETHSCRIPTIONS_TRANSFER_PROXY_ADDRESS_L1;
+  const emblemVaultWrapperAddress = EMBLEM_VAULT_WRAPPER_ADDRESS_L1;
+  const emblemMetadataCache = new Map<string, string | null>();
 
   console.log('\nStarting hybrid collection backfill...');
   console.log(`  Network: ${options.network}`);
@@ -1173,6 +1493,7 @@ async function main() {
   console.log(`  Strict Mode: ${options.strict}`);
   console.log(`  Force: ${options.force}`);
   console.log(`  Log Chunk Size: ${options.logChunkSize}`);
+  console.log(`  Reindex Delay: ${options.reindexDelayMs}ms`);
 
   try {
     if (!options.metadata) {
@@ -1300,6 +1621,7 @@ async function main() {
       ethscriptionsMarketDeploymentBlock,
       etchMarketDeploymentBlock,
       ethscriptionsTransferProxyDeploymentBlock,
+      emblemVaultWrapperDeploymentBlock,
     ] = await Promise.all([
       findContractDeploymentBlock(client, marketAddress, toBlock),
       auctionHouseAddress
@@ -1314,6 +1636,9 @@ async function main() {
       options.network === 'mainnet'
         ? findContractDeploymentBlock(client, ethscriptionsTransferProxyAddress, toBlock)
         : Promise.resolve(toBlock),
+      options.network === 'mainnet'
+        ? findContractDeploymentBlock(client, emblemVaultWrapperAddress, toBlock)
+        : Promise.resolve(toBlock),
     ]);
 
     const {
@@ -1325,6 +1650,7 @@ async function main() {
       ethscriptionsMarketTransactions,
       etchMarketTransactions,
       ethscriptionsTransferProxyTransactions,
+      emblemVaultWrapperTransactions,
     } = await collectTransactionsForRange({
       client,
       network: options.network,
@@ -1333,10 +1659,12 @@ async function main() {
       ethscriptionsMarketAddress,
       etchMarketAddress,
       ethscriptionsTransferProxyAddress,
+      emblemVaultWrapperAddress,
       fromBlock,
       toBlock,
       logChunkSize: options.logChunkSize,
       collectionHashIds,
+      emblemMetadataCache,
       creations,
       transferTransactions,
       marketDeploymentBlock,
@@ -1344,6 +1672,7 @@ async function main() {
       ethscriptionsMarketDeploymentBlock,
       etchMarketDeploymentBlock,
       ethscriptionsTransferProxyDeploymentBlock,
+      emblemVaultWrapperDeploymentBlock,
     });
 
     console.log('\nTransaction source summary:');
@@ -1354,6 +1683,7 @@ async function main() {
     console.log(`  Ethscriptions market log txs: ${ethscriptionsMarketTransactions.length}`);
     console.log(`  EtchMarket sale log txs: ${etchMarketTransactions.length}`);
     console.log(`  Ethscriptions transfer proxy log txs: ${ethscriptionsTransferProxyTransactions.length}`);
+    console.log(`  Emblem/OpenSea/Blur wrapper log txs: ${emblemVaultWrapperTransactions.length}`);
     console.log(`  Total unique txs: ${transactions.length}`);
     console.log(`  Replay block range: ${fromBlock}-${toBlock}`);
 
@@ -1366,10 +1696,13 @@ async function main() {
       options.indexerUrl,
       options.apiKey!,
       options.dryRun,
+      options.reindexDelayMs,
     );
 
     if (!options.dryRun && result.errors > 0) {
-      throw new Error(`Replay failed for ${result.errors} blocks; block tracker was not advanced`);
+      throw new Error(
+        `Replay failed for ${result.errors} blocks; block tracker was not advanced. Failed blocks: ${summarizeFailedBlocks(result.failedBlocks)}`
+      );
     }
 
     if (!options.dryRun) {
@@ -1389,6 +1722,7 @@ async function main() {
           ethscriptionsMarketTransactions: catchUpEthscriptionsMarketTransactions,
           etchMarketTransactions: catchUpEtchMarketTransactions,
           ethscriptionsTransferProxyTransactions: catchUpEthscriptionsTransferProxyTransactions,
+          emblemVaultWrapperTransactions: catchUpEmblemVaultWrapperTransactions,
         } = await collectTransactionsForRange({
           client,
           network: options.network,
@@ -1397,10 +1731,12 @@ async function main() {
           ethscriptionsMarketAddress,
           etchMarketAddress,
           ethscriptionsTransferProxyAddress,
+          emblemVaultWrapperAddress,
           fromBlock: catchUpFromBlock,
           toBlock: latestBlockNow,
           logChunkSize: options.logChunkSize,
           collectionHashIds,
+          emblemMetadataCache,
           creations,
           transferTransactions,
           marketDeploymentBlock,
@@ -1408,6 +1744,7 @@ async function main() {
           ethscriptionsMarketDeploymentBlock,
           etchMarketDeploymentBlock,
           ethscriptionsTransferProxyDeploymentBlock,
+          emblemVaultWrapperDeploymentBlock,
         });
 
         console.log('\nCatch-up source summary:');
@@ -1418,6 +1755,7 @@ async function main() {
         console.log(`  Ethscriptions market log txs: ${catchUpEthscriptionsMarketTransactions.length}`);
         console.log(`  EtchMarket sale log txs: ${catchUpEtchMarketTransactions.length}`);
         console.log(`  Ethscriptions transfer proxy log txs: ${catchUpEthscriptionsTransferProxyTransactions.length}`);
+        console.log(`  Emblem/OpenSea/Blur wrapper log txs: ${catchUpEmblemVaultWrapperTransactions.length}`);
         console.log(`  Total unique txs: ${catchUpTransactions.length}`);
 
         const catchUpBlockNumbers = getUniqueSortedBlockNumbers(catchUpTransactions);
@@ -1429,10 +1767,13 @@ async function main() {
           options.indexerUrl,
           options.apiKey!,
           options.dryRun,
+          options.reindexDelayMs,
         );
 
         if (catchUpResult.errors > 0) {
-          throw new Error(`Final catch-up replay failed for ${catchUpResult.errors} blocks; block tracker was not advanced`);
+          throw new Error(
+            `Final catch-up replay failed for ${catchUpResult.errors} blocks; block tracker was not advanced. Failed blocks: ${summarizeFailedBlocks(catchUpResult.failedBlocks)}`
+          );
         }
 
         finalBlock = latestBlockNow;

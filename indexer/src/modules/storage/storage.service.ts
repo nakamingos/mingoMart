@@ -721,6 +721,110 @@ export class StorageService implements OnModuleInit {
     return null;
   }
 
+  async getWrappedEthscriptionByWrapper(
+    wrapperVenue: db.EventVenue,
+    wrapperContract: string,
+    wrapperTokenId: string,
+  ): Promise<db.WrappedEthscription | null> {
+    const response: db.WrappedEthscriptionResponse = await this.supabase
+      .from('wrapped_ethscriptions' + this.suffix)
+      .select('*')
+      .eq('wrapperVenue', wrapperVenue)
+      .eq('wrapperContract', wrapperContract.toLowerCase())
+      .eq('wrapperTokenId', wrapperTokenId)
+      .limit(1);
+
+    const { data, error } = response;
+    if (error) throw error;
+    return data?.[0] || null;
+  }
+
+  async getActiveWrappedEthscriptionByHashId(
+    hashId: string,
+    wrapperVenue: db.EventVenue = 'emblem-vault',
+  ): Promise<db.WrappedEthscription | null> {
+    const response: db.WrappedEthscriptionResponse = await this.supabase
+      .from('wrapped_ethscriptions' + this.suffix)
+      .select('*')
+      .eq('hashId', hashId.toLowerCase())
+      .eq('wrapperVenue', wrapperVenue)
+      .eq('active', true)
+      .limit(1);
+
+    const { data, error } = response;
+    if (error) throw error;
+    return data?.[0] || null;
+  }
+
+  async upsertWrappedEthscription(
+    args: db.WrappedEthscriptionUpsert
+  ): Promise<db.WrappedEthscription> {
+    const now = new Date();
+    const hashId = args.hashId.toLowerCase();
+    const wrapperContract = args.wrapperContract.toLowerCase();
+
+    if (args.active) {
+      const { error } = await this.supabase
+        .from('wrapped_ethscriptions' + this.suffix)
+        .update({
+          active: false,
+          updatedAt: now,
+        })
+        .eq('hashId', hashId)
+        .eq('wrapperVenue', args.wrapperVenue)
+        .neq('wrapperTokenId', args.wrapperTokenId);
+
+      if (error) throw error;
+    }
+
+    const response: db.WrappedEthscriptionResponse = await this.supabase
+      .from('wrapped_ethscriptions' + this.suffix)
+      .upsert({
+        ...args,
+        hashId,
+        wrapperContract,
+        vaultAddress: args.vaultAddress?.toLowerCase() || null,
+        wrappedOwner: args.wrappedOwner?.toLowerCase() || null,
+        wrappedTxHash: args.wrappedTxHash?.toLowerCase() || null,
+        unwrappedTxHash: args.unwrappedTxHash?.toLowerCase() || null,
+        updatedAt: now,
+      }, {
+        onConflict: 'wrapperVenue,wrapperContract,wrapperTokenId',
+      })
+      .select();
+
+    const { data, error } = response;
+    if (error) throw error;
+    return data[0];
+  }
+
+  async markWrappedEthscriptionUnwrapped(
+    wrapperVenue: db.EventVenue,
+    wrapperContract: string,
+    wrapperTokenId: string,
+    args: {
+      unwrappedAtBlock?: number | null;
+      unwrappedTxHash?: string | null;
+    } = {},
+  ): Promise<void> {
+    const response: db.WrappedEthscriptionResponse = await this.supabase
+      .from('wrapped_ethscriptions' + this.suffix)
+      .update({
+        active: false,
+        status: 'unwrapped',
+        wrappedOwner: null,
+        unwrappedAtBlock: args.unwrappedAtBlock || null,
+        unwrappedTxHash: args.unwrappedTxHash?.toLowerCase() || null,
+        updatedAt: new Date(),
+      })
+      .eq('wrapperVenue', wrapperVenue)
+      .eq('wrapperContract', wrapperContract.toLowerCase())
+      .eq('wrapperTokenId', wrapperTokenId);
+
+    const { error } = response;
+    if (error) throw error;
+  }
+
   async addAttributesNew(data: db.AttributeItem[]) {
     const res = await this.supabase
       .from('attributes_new')
