@@ -13,6 +13,7 @@ import { EthscriptionsModule } from '@/modules/ethscriptions/ethscriptions.modul
 import { ProcessingModule } from '@/modules/processing/processing.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { CollectionAdminModule } from '@/modules/collection-admin/collection-admin.module';
+import { ExternalVenuesModule } from '@/modules/external-venues/external-venues.module';
 
 import { AdminController } from './admin.controller';
 @Module({
@@ -29,7 +30,8 @@ import { AdminController } from './admin.controller';
     NotifsModule,
     ProcessingModule,
     AuthModule,
-    CollectionAdminModule
+    CollectionAdminModule,
+    ExternalVenuesModule
   ],
   providers: [
     AdminService

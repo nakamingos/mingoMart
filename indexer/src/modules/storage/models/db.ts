@@ -50,6 +50,11 @@ export interface AuctionBidResponse {
   error: PostgrestError | null;
 }
 
+export interface WrappedEthscriptionResponse {
+  data: WrappedEthscription[];
+  error: PostgrestError | null;
+}
+
 export interface Listing {
   hashId: string
   createdAt: Date
@@ -100,6 +105,31 @@ export interface Ethscription {
   slug: string | null;
   locked: boolean;
 }
+
+export interface WrappedEthscription {
+  hashId: string;
+  wrapperVenue: EventVenue;
+  wrapperContract: string;
+  wrapperTokenId: string;
+  vaultAddress: string | null;
+  wrappedOwner: string | null;
+  active: boolean;
+  status: string | null;
+  metadataUrl: string | null;
+  metadata: Record<string, any> | null;
+  wrappedAtBlock: number | null;
+  unwrappedAtBlock: number | null;
+  wrappedTxHash: string | null;
+  unwrappedTxHash: string | null;
+  lastMetadataSyncAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type WrappedEthscriptionUpsert = Omit<
+  WrappedEthscription,
+  'createdAt' | 'updatedAt'
+>;
 
 export interface Collection {
   slug: string;

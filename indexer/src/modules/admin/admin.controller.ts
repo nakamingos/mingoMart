@@ -3,6 +3,7 @@ import { Body, Controller, HttpException, HttpStatus, Post, UseGuards } from "@n
 import { AdminService } from './admin.service';
 import { ProcessingService } from '@/modules/processing/processing.service';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
+import { ExternalVenuesService } from '@/modules/external-venues/external-venues.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
@@ -11,6 +12,7 @@ export class AdminController {
   constructor(
     private readonly adminSvc: AdminService,
     private readonly processingSvc: ProcessingService,
+    private readonly externalVenuesSvc: ExternalVenuesService,
   ) {}
 
   /**
@@ -41,6 +43,22 @@ export class AdminController {
   @Post('reindex-transaction')
   async reindexTransaction(@Body() body: { hash: `0x${string}` }): Promise<void> {
     return await this.processingSvc.processSingleTransaction(body.hash);
+  }
+
+  /**
+   * Syncs a known Emblem Vault wrapper token to local wrapper state.
+   * @param body - The request body containing the Emblem wrapper token ID.
+   * @returns The synced wrapper row, or null if the token does not map to a local ethscription.
+   */
+  @Post('sync-emblem-vault-token')
+  async syncEmblemVaultToken(@Body() body: { wrapperTokenId: string }) {
+    const { wrapperTokenId } = body;
+
+    if (!wrapperTokenId) {
+      throw new HttpException('Wrapper token ID is required', HttpStatus.BAD_REQUEST);
+    }
+
+    return this.externalVenuesSvc.syncEmblemVaultToken(wrapperTokenId);
   }
 
   /**
