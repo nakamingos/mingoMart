@@ -1584,8 +1584,12 @@ async function main() {
       }
     }
 
-    await populateAttributes(supabase, metadata.slug, itemsToProcess);
-    await ensureCollection(supabase, client, metadata, options.tableSuffix);
+    if (options.dryRun) {
+      console.log('\nDry run: skipping attribute and collection upserts');
+    } else {
+      await populateAttributes(supabase, metadata.slug, itemsToProcess);
+      await ensureCollection(supabase, client, metadata, options.tableSuffix);
+    }
 
     const transferTransactions: TransactionToProcess[] = transfers.map((transfer) => ({
       hash: transfer.transaction_hash.toLowerCase(),
