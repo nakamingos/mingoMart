@@ -21,6 +21,7 @@ seed.sql
 
 # backups
 local_backup/
+remote_backup/
 backup_*.dump
 .env.local
 .env.*.local
