@@ -53,6 +53,58 @@
     }
   }
 
+  .trait-option {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    min-width: 0;
+  }
+
+  .trait-option-checkbox {
+    display: block;
+    flex: 0 0 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    background-color: rgba(var(--text-color), 1);
+    border: .18rem solid rgba(var(--text-color), 1);
+
+    &.selected {
+      background-color: rgba(var(--highlight), 1);
+      border-color: rgba(var(--highlight), 1);
+    }
+  }
+
+  .trait-option-label,
+  .multi-select-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .multi-select-label {
+    color: rgba(var(--dark-text), 1);
+    font-size: 1.6rem;
+    font-weight: 600;
+  }
+
+  ::ng-deep {
+    .ng-select.ng-select-multiple {
+      .ng-select-container {
+        .ng-value-container {
+          flex-wrap: nowrap;
+
+          .ng-value {
+            max-width: 100%;
+            margin: 0;
+            background: none;
+            border: none;
+            color: rgba(var(--dark-text), 1);
+          }
+        }
+      }
+    }
+  }
+
   // Numeric dropdown styles to match ng-select exactly
   .numeric-dropdown-wrapper {
     position: relative;

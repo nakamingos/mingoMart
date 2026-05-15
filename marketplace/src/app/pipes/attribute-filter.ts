@@ -73,32 +73,42 @@ export class AttributeFilterPipe implements PipeTransform {
           // Skip trait_count as it's handled separately
           if (key === 'trait_count') return true;
 
-          // Find the attribute with matching key
-          const attribute = res.attributes?.find(attr => attr?.k === key);
+          const selectedValues = Array.isArray(value) ? value : [value];
+          if (!selectedValues.length) return true;
 
-          // Handle "none" case
-          if (value === 'none') {
-            return !attribute;
-          }
+          // Find all attributes with matching key in case a collection stores repeated keys.
+          const attributes = res.attributes?.filter(attr => attr?.k === key) || [];
 
-          // Handle range filters for numeric attributes (e.g., "1-10")
-          if (typeof value === 'string' && value.includes('-') && value.match(/^\d+-\d+$/)) {
-            const [minStr, maxStr] = value.split('-');
-            const min = parseInt(minStr, 10);
-            const max = parseInt(maxStr, 10);
+          return selectedValues.some((selectedValue) => {
+            if (!selectedValue) return false;
 
-            if (!isNaN(min) && !isNaN(max) && attribute?.v !== null && attribute?.v !== undefined) {
-              const attributeValue = parseInt(attribute.v.toString(), 10);
-              if (!isNaN(attributeValue)) {
-                return attributeValue >= min && attributeValue <= max;
-              }
+            // Handle "none" case
+            if (selectedValue === 'none') {
+              return !attributes.length;
             }
-            // If parsing fails, fall back to exact string match
-            return attribute?.v === value;
-          }
 
-          // Handle regular exact match case
-          return attribute?.v === value;
+            // Handle range filters for numeric attributes (e.g., "1-10")
+            if (selectedValue.includes('-') && selectedValue.match(/^\d+-\d+$/)) {
+              const [minStr, maxStr] = selectedValue.split('-');
+              const min = parseInt(minStr, 10);
+              const max = parseInt(maxStr, 10);
+
+              if (!isNaN(min) && !isNaN(max)) {
+                return attributes.some((attribute) => {
+                  if (attribute?.v === null || attribute?.v === undefined) return false;
+
+                  const attributeValue = parseInt(attribute.v.toString(), 10);
+                  return !isNaN(attributeValue) && attributeValue >= min && attributeValue <= max;
+                });
+              }
+
+              // If parsing fails, fall back to exact string match
+              return attributes.some((attribute) => attribute?.v?.toString() === selectedValue);
+            }
+
+            // Handle regular exact match case
+            return attributes.some((attribute) => attribute?.v?.toString() === selectedValue);
+          });
         });
       });
     }
