@@ -22,7 +22,7 @@ export interface Collection {
   twitter?: string;
   discord?: string;
   defaultBackground?: string;
-  mainTrait?: string;
+  mainTraits?: string[];
   attributeOrder?: string[];
   contractAddress?: string;
   type?: 'nft' | 'inscription';
