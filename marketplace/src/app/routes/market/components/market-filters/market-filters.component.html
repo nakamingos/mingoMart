@@ -31,10 +31,7 @@
             @for (item of filterData()[key]; track item) {
               <ng-option [value]="item">
                 <span class="trait-option">
-                  <span
-                    class="trait-option-checkbox"
-                    [class.selected]="isTraitValueSelected(key, item)">
-                  </span>
+                  <span class="trait-option-checkbox"></span>
                   <span class="trait-option-label">{{ item.toString() | titlecase }}</span>
                 </span>
               </ng-option>

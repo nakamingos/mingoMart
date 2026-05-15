@@ -157,14 +157,6 @@ export class MarketFiltersComponent implements OnDestroy {
     return Array.isArray(value) ? value.length > 0 : !!value;
   }
 
-  isTraitValueSelected(key: string, item: string | number): boolean {
-    const value = this.activeTraitFilters[key];
-    const normalizedItem = item.toString();
-
-    if (Array.isArray(value)) return value.includes(normalizedItem);
-    return value === normalizedItem;
-  }
-
   private normalizeTraitFilters(filters: TraitFilter): TraitFilter {
     return Object.entries(filters).reduce((normalized, [key, value]) => {
       if (value === null) return normalized;

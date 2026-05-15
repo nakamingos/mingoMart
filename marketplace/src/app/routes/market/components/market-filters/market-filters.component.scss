@@ -62,11 +62,11 @@
 
   .trait-option-checkbox {
     display: block;
-    flex: 0 0 1.1rem;
-    width: 1.1rem;
-    height: 1.1rem;
-    background-color: rgba(var(--text-color), 1);
-    border: .18rem solid rgba(var(--text-color), 1);
+    flex: 0 0 .95rem;
+    width: .95rem;
+    height: .95rem;
+    background-color: transparent;
+    border: .16rem solid rgba(var(--text-color), 1);
 
     &.selected {
       background-color: rgba(var(--highlight), 1);
@@ -89,9 +89,26 @@
 
   ::ng-deep {
     .ng-select.ng-select-multiple {
+      .ng-arrow-wrapper {
+        position: relative;
+        z-index: 3;
+        pointer-events: auto;
+
+        &::before {
+          content: '';
+          position: absolute;
+          inset: -.8rem;
+        }
+
+        .ng-arrow {
+          pointer-events: none;
+        }
+      }
+
       .ng-select-container {
         .ng-value-container {
           flex-wrap: nowrap;
+          min-width: 0;
 
           .ng-value {
             max-width: 100%;
@@ -99,6 +116,20 @@
             background: none;
             border: none;
             color: rgba(var(--dark-text), 1);
+          }
+
+          .ng-input {
+            min-width: 0;
+            max-width: calc(100% - 2rem);
+          }
+        }
+      }
+
+      .ng-dropdown-panel {
+        .ng-option.ng-option-selected {
+          .trait-option-checkbox {
+            background-color: rgba(var(--highlight), 1);
+            border-color: rgba(var(--highlight), 1);
           }
         }
       }
