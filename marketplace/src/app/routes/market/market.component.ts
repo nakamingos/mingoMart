@@ -151,6 +151,15 @@ export class MarketComponent {
   objectKeys = Object.keys;
   objectValues = Object.values;
 
+  countActiveTraitFilters(filters: TraitFilter | null | undefined): number {
+    if (!filters) return 0;
+
+    return Object.values(filters).reduce((count, value) => {
+      if (Array.isArray(value)) return count + value.filter(Boolean).length;
+      return value ? count + 1 : count;
+    }, 0);
+  }
+
   constructor(
     private store: Store<GlobalState>,
     public dataSvc: DataService,

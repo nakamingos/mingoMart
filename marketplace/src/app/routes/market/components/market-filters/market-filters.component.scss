@@ -53,6 +53,89 @@
     }
   }
 
+  .trait-option {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    min-width: 0;
+  }
+
+  .trait-option-checkbox {
+    display: block;
+    flex: 0 0 .95rem;
+    width: .95rem;
+    height: .95rem;
+    background-color: transparent;
+    border: .16rem solid rgba(var(--text-color), 1);
+
+    &.selected {
+      background-color: rgba(var(--highlight), 1);
+      border-color: rgba(var(--highlight), 1);
+    }
+  }
+
+  .trait-option-label,
+  .multi-select-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .multi-select-label {
+    color: rgba(var(--dark-text), 1);
+    font-size: 1.6rem;
+    font-weight: 600;
+  }
+
+  ::ng-deep {
+    .ng-select.ng-select-multiple {
+      .ng-arrow-wrapper {
+        position: relative;
+        z-index: 3;
+        pointer-events: auto;
+
+        &::before {
+          content: '';
+          position: absolute;
+          inset: -.8rem;
+        }
+
+        .ng-arrow {
+          pointer-events: none;
+        }
+      }
+
+      .ng-select-container {
+        .ng-value-container {
+          flex-wrap: nowrap;
+          min-width: 0;
+
+          .ng-value {
+            max-width: 100%;
+            margin: 0;
+            background: none;
+            border: none;
+            color: rgba(var(--dark-text), 1);
+          }
+
+          .ng-input {
+            min-width: 0;
+            max-width: calc(100% - 2rem);
+          }
+        }
+      }
+
+      .ng-dropdown-panel {
+        .ng-option.ng-option-selected {
+          .trait-option-checkbox {
+            background-color: rgba(var(--highlight), 1);
+            border-color: rgba(var(--highlight), 1);
+          }
+        }
+      }
+    }
+  }
+
   // Numeric dropdown styles to match ng-select exactly
   .numeric-dropdown-wrapper {
     position: relative;

@@ -32,8 +32,8 @@
                   (click)="toggleFilters()">
 
                   @if ((activeTraitFilters$ | async); as filters) {
-                    @if (objectKeys(filters).length) {
-                      <div class="count">{{ objectKeys(filters).length }}</div>
+                    @if (countActiveTraitFilters(filters)) {
+                      <div class="count">{{ countActiveTraitFilters(filters) }}</div>
                     }
                   }
                   Filter by Attribute

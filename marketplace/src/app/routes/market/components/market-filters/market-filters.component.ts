@@ -13,7 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, tap, debounceTime, Subject, Subscription } from 'rxjs';
 
 import { AttributesService } from '@/services/attributes.service';
-import { GlobalState } from '@/models/global-state';
+import { GlobalState, TraitFilter } from '@/models/global-state';
 
 import * as appStateActions from '@/state/app/app-state.actions';
 import { setActiveTraitFilters } from '@/state/market/market-state.actions';
@@ -41,7 +41,7 @@ export class MarketFiltersComponent implements OnDestroy {
   traitCount!: number;
   objectKeys = Object.keys;
 
-  activeTraitFilters: any = {};
+  activeTraitFilters: TraitFilter = {};
   rangeFilters: { [key: string]: { min: number; max: number; selectedMin: number; selectedMax: number } } = {};
 
   // Toggle state for individual numeric filter dropdowns
@@ -57,7 +57,7 @@ export class MarketFiltersComponent implements OnDestroy {
     tap((filters) => {
       const newFilters = { ...filters };
       delete newFilters.address;
-      this.activeTraitFilters = { ...newFilters };
+      this.activeTraitFilters = this.normalizeTraitFilters(newFilters);
     }),
   );
 
@@ -132,12 +132,52 @@ export class MarketFiltersComponent implements OnDestroy {
     const filters = { ...this.activeTraitFilters };
     let urlParams = new HttpParams();
     Object.keys(filters).forEach((key) => {
-      if (filters[key] === null) delete filters[key];
-      if (filters[key]) urlParams = urlParams.append(key, filters[key]);
+      const value = filters[key];
+
+      if (value === null || value === undefined || (Array.isArray(value) && !value.length)) {
+        delete filters[key];
+        return;
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach((item) => {
+          urlParams = urlParams.append(key, item);
+        });
+        return;
+      }
+
+      if (value) urlParams = urlParams.append(key, value);
     });
 
     this.location.go(this.location.path().split('?')[0], urlParams.toString());
     this.store.dispatch(setActiveTraitFilters({ traitFilters: { ...filters } }));
+  }
+
+  hasActiveFilter(value: string | string[] | null | undefined): boolean {
+    return Array.isArray(value) ? value.length > 0 : !!value;
+  }
+
+  private normalizeTraitFilters(filters: TraitFilter): TraitFilter {
+    return Object.entries(filters).reduce((normalized, [key, value]) => {
+      if (value === null) return normalized;
+
+      if (Array.isArray(value)) {
+        normalized[key] = value;
+        return normalized;
+      }
+
+      normalized[key] = this.shouldUseMultiSelect(key, value) ? [value] : value;
+      return normalized;
+    }, {} as TraitFilter);
+  }
+
+  private shouldUseMultiSelect(key: string, value: string): boolean {
+    if (key === 'trait_count') return false;
+    return !this.isRangeFilterValue(value);
+  }
+
+  private isRangeFilterValue(value: string): boolean {
+    return /^\d+-\d+$/.test(value);
   }
 
   // Check if a filter key contains all numeric values

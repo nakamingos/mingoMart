@@ -11,13 +11,29 @@
           <ng-select
             [(ngModel)]="activeTraitFilters[key]"
             [placeholder]="key === 'trait_count' ? 'Trait Count' : key"
+            [multiple]="true"
+            [closeOnSelect]="false"
+            [hideSelected]="false"
             [searchable]="true"
-            [class.active]="filters[key]"
+            [class.active]="hasActiveFilter(filters[key])"
             (change)="selectFilter($event)">
+
+            <ng-template ng-multi-label-tmp let-items="items">
+              <span class="multi-select-label">
+                @if (items.length === 1) {
+                  {{ items[0].toString() | titlecase }}
+                } @else {
+                  {{ items.length }} selected
+                }
+              </span>
+            </ng-template>
 
             @for (item of filterData()[key]; track item) {
               <ng-option [value]="item">
-                {{ item.toString() | titlecase }}
+                <span class="trait-option">
+                  <span class="trait-option-checkbox"></span>
+                  <span class="trait-option-label">{{ item.toString() | titlecase }}</span>
+                </span>
               </ng-option>
             }
           </ng-select>

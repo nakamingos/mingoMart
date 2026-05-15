@@ -174,7 +174,7 @@ export type TxFunction =
   | 'settleAuction';
 
 export interface TraitFilter {
-  [key: string]: string | null;
+  [key: string]: string | string[] | null;
 }
 
 export interface TxFilterItem {
