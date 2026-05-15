@@ -73,12 +73,14 @@ export class AttributesService {
               const originalAttributes = item.sha ? res![item.sha] : [];
               if (!originalAttributes) return item;
               const mainTraits = collection?.mainTraits?.filter(Boolean) || [];
+              const promotedTrait = mainTraits.find((trait: string) =>
+                originalAttributes.some((attribute: Attribute) => (
+                  attribute.k === trait && attribute.v !== null && attribute.v !== undefined && attribute.v !== ''
+                ))
+              );
               const attributes = [...originalAttributes]?.sort((a: Attribute, b: Attribute) => {
-                const aIndex = mainTraits.indexOf(a.k);
-                const bIndex = mainTraits.indexOf(b.k);
-                if (aIndex > -1 && bIndex > -1) return aIndex - bIndex;
-                if (aIndex > -1) return -1;
-                if (bIndex > -1) return 1;
+                if (a.k === promotedTrait) return -1;
+                if (b.k === promotedTrait) return 1;
                 return 0;
               });
               return { ...item, attributes };
