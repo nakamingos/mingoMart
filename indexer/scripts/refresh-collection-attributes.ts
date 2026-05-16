@@ -30,6 +30,8 @@ type Options = {
   dryRun: boolean;
 };
 
+const UPSERT_BATCH_SIZE = 500;
+
 function parseArgs(): Options {
   const args = process.argv.slice(2);
   const options: Options = {
@@ -183,15 +185,15 @@ async function upsertAttributes(
   supabase: ReturnType<typeof initSupabase>,
   rows: ReturnType<typeof buildAttributeRows>,
 ) {
-  const { error: newError } = await supabase
-    .from('attributes_new')
-    .upsert(rows, { onConflict: 'sha' });
-  if (newError) throw newError;
-
-  const { error: legacyError } = await supabase
-    .from('attributes')
-    .upsert(rows, { onConflict: 'sha' });
-  if (legacyError) throw legacyError;
+  for (const table of ['attributes_new', 'attributes']) {
+    for (let index = 0; index < rows.length; index += UPSERT_BATCH_SIZE) {
+      const batch = rows.slice(index, index + UPSERT_BATCH_SIZE);
+      const { error } = await supabase
+        .from(table)
+        .upsert(batch, { onConflict: 'sha' });
+      if (error) throw error;
+    }
+  }
 }
 
 async function uploadAttributesFile(
