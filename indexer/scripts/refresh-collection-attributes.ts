@@ -150,6 +150,7 @@ async function verifyExistingShaCoverage(
       .from('ethscriptions')
       .select('sha')
       .eq('slug', metadata.slug)
+      .order('sha', { ascending: true })
       .range(from, to);
 
     if (error) throw error;
