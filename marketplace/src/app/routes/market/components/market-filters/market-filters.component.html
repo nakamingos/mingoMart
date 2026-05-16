@@ -21,7 +21,7 @@
             <ng-template ng-multi-label-tmp let-items="items">
               <span class="multi-select-label">
                 @if (items.length === 1) {
-                  {{ items[0].toString() | titlecase }}
+                  {{ items[0].toString() }}
                 } @else {
                   {{ items.length }} selected
                 }
@@ -32,7 +32,7 @@
               <ng-option [value]="item">
                 <span class="trait-option">
                   <span class="trait-option-checkbox"></span>
-                  <span class="trait-option-label">{{ item.toString() | titlecase }}</span>
+                  <span class="trait-option-label">{{ item.toString() }}</span>
                 </span>
               </ng-option>
             }
