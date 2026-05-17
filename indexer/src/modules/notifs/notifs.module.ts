@@ -11,6 +11,7 @@ import { TwitterService } from './services/twitter.service';
 
 import { StorageModule } from '@/modules/storage/storage.module';
 import { AppConfigModule } from '@/config/config.module';
+import { CardsModule } from '@/modules/cards/cards.module';
 @Module({
   controllers: [
     NotifsController
@@ -20,6 +21,7 @@ import { AppConfigModule } from '@/config/config.module';
     HttpModule,
     SharedModule,
     StorageModule,
+    CardsModule,
   ],
   providers: [
     NotifsService,

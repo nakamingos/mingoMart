@@ -4,6 +4,8 @@ import { StorageService } from '@/modules/storage/storage.service';
 import { ImageService } from './services/image.service';
 import { rarityData } from '@/modules/notifs/constants/rarity';
 
+const PUBLIC_SUPABASE_URL = 'https://oafirqjkcmgmjononxiy.supabase.co';
+
 interface CachedCard {
   url: string;
   timestamp: number;
@@ -71,57 +73,7 @@ export class CardsService implements OnModuleInit {
 
       const { ethscription, collection, attributes } = data;
 
-      // Generate custom social share image
-      let imageUrl = 'https://etherphunks.eth.limo/poster.png';
-
-      // Check cache first
-      const cacheKey = `details-${hashId}`;
-      const cachedUrl = this.getCachedCard(cacheKey);
-
-      if (cachedUrl) {
-        imageUrl = cachedUrl;
-      } else {
-        try {
-          // Transform attributes to match expected format with proper rarity calculation
-          const transformedAttributes = Object.keys(attributes.values).map((attrKey: string) => {
-            const v = Array.isArray(attributes.values[attrKey])
-              ? attributes.values[attrKey][0]
-              : attributes.values[attrKey];
-
-            // Calculate rarity from rarityData (same as notifs module)
-            const rarity = rarityData[ethscription.slug]?.[v] || Infinity;
-
-            return {
-              k: attrKey,
-              v,
-              rarity
-            };
-          }).sort((a, b) => (a.rarity || Infinity) - (b.rarity || Infinity)); // Sort by rarity, rarest first
-
-          const imageBuffer = await this.imgSvc.generateSocialShareImage({
-            ethscription,
-            collection,
-            attributes: transformedAttributes
-          });
-
-          // Upload image to storage and get public URL
-          const socialImageFilename = `details-${hashId}.png`;
-          await this.storageSvc.uploadCardImage(
-            imageBuffer,
-            socialImageFilename,
-            'png'
-          );
-
-          // Use public URL instead of data URI for better social media crawler support
-          imageUrl = `https://kcbuycbhynlmsrvoegzp.supabase.co/storage/v1/object/public/static/cards/${socialImageFilename}`;
-
-          // Cache the URL
-          this.setCachedCard(cacheKey, imageUrl);
-        } catch (error) {
-          console.error('Failed to generate social share image:', error);
-          imageUrl = 'https://etherphunks.eth.limo/poster.png';
-        }
-      }
+      const imageUrl = await this.generateEthscriptionCardImageUrlFromData(hashId, data);
 
       // Extract name from attributes or use token ID
       const nameAttr = attributes?.values?.['Name'] || attributes?.values?.['name'];
@@ -146,6 +98,66 @@ export class CardsService implements OnModuleInit {
       console.error('Error generating ethscription card:', error);
       return this.generateFallbackHtml('ethscription', { hashId });
     }
+  }
+
+  async generateEthscriptionCardImageUrl(hashId: string): Promise<string> {
+    const data = await this.storageSvc.getEthscriptionWithCollectionAndAttributes(hashId);
+    if (!data) return 'https://etherphunks.eth.limo/poster.png';
+
+    return this.generateEthscriptionCardImageUrlFromData(hashId, data);
+  }
+
+  private async generateEthscriptionCardImageUrlFromData(
+    hashId: string,
+    data: Awaited<ReturnType<StorageService['getEthscriptionWithCollectionAndAttributes']>>
+  ): Promise<string> {
+    let imageUrl = 'https://etherphunks.eth.limo/poster.png';
+    const cacheKey = `details-${hashId}`;
+    const cachedUrl = this.getCachedCard(cacheKey);
+
+    if (cachedUrl) return cachedUrl;
+
+    try {
+      const { ethscription, collection, attributes } = data;
+
+      const transformedAttributes = Object.keys(attributes.values).map((attrKey: string) => {
+        const v = Array.isArray(attributes.values[attrKey])
+          ? attributes.values[attrKey][0]
+          : attributes.values[attrKey];
+
+        const rarity = rarityData[ethscription.slug]?.[v] || Infinity;
+
+        return {
+          k: attrKey,
+          v,
+          rarity
+        };
+      }).sort((a, b) => (a.rarity || Infinity) - (b.rarity || Infinity));
+
+      const imageBuffer = await this.imgSvc.generateSocialShareImage({
+        ethscription,
+        collection,
+        attributes: transformedAttributes
+      });
+
+      const socialImageFilename = `details-${hashId}.png`;
+      await this.storageSvc.uploadCardImage(
+        imageBuffer,
+        socialImageFilename,
+        'png'
+      );
+
+      imageUrl = this.getPublicStorageUrl(`static/cards/${socialImageFilename}`);
+      this.setCachedCard(cacheKey, imageUrl);
+    } catch (error) {
+      console.error('Failed to generate social share image:', error);
+    }
+
+    return imageUrl;
+  }
+
+  private getPublicStorageUrl(path: string): string {
+    return `${PUBLIC_SUPABASE_URL}/storage/v1/object/public/${path}`;
   }
 
   /**
@@ -186,7 +198,7 @@ export class CardsService implements OnModuleInit {
           );
 
           // Use public URL instead of data URI for better social media crawler support
-          imageUrl = `https://kcbuycbhynlmsrvoegzp.supabase.co/storage/v1/object/public/static/cards/${socialImageFilename}`;
+          imageUrl = this.getPublicStorageUrl(`static/cards/${socialImageFilename}`);
 
           // Cache the URL
           this.setCachedCard(cacheKey, imageUrl);

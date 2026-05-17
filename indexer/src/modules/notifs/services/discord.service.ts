@@ -51,21 +51,20 @@ export class DiscordService {
 
     // Get appropriate channel based on chain ID
     const chainId = this.configSvc.chain.chainIdL1;
-    const channel = this.client.channels.cache.get(chainId === 1 ? '1202621714127912994' : '1227387575723888722') as TextChannel;
-
-    // Build rich embed message with link - Discord will automatically fetch Open Graph image
-    const descriptionWithLink = `${codeBlock(data.message)}\n\n🔗 ${data.link}`;
+    const channel = this.client.channels.cache.get(chainId === 1 ? '1376577560003088394' : '1376577560003088394') as TextChannel;
 
     const exampleEmbed = new EmbedBuilder()
       .setColor(0xC3FF00)
       .setTitle(data.title)
       .setURL(data.link)
-      .setDescription(descriptionWithLink)
-      // Discord will automatically fetch the og:image from the link
+      .setDescription(codeBlock(data.message))
       // .setTimestamp()
       .setFooter({ text: 'Be Phree. Be Phunky. 👍' });
 
-    // Send the message with embed - Discord will auto-generate preview from link
+    if (data.imageUrl) {
+      exampleEmbed.setImage(data.imageUrl);
+    }
+
     await channel.send({ embeds: [exampleEmbed] });
   }
 }

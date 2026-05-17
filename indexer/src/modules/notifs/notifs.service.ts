@@ -13,6 +13,7 @@ import { TwitterService } from './services/twitter.service';
 import { Web3Service } from '@/modules/shared/services/web3.service';
 
 import { AppConfigService } from '@/config/config.service';
+import { CardsService } from '@/modules/cards/cards.service';
 
 /**
  * Service for handling notifications about marketPlace sales
@@ -28,7 +29,8 @@ export class NotifsService implements OnModuleInit {
     private readonly twitterSvc: TwitterService,
     private readonly discordSvc: DiscordService,
     private readonly storageSvc: StorageService,
-    private readonly configSvc: AppConfigService
+    private readonly configSvc: AppConfigService,
+    private readonly cardsSvc: CardsService,
   ) {}
 
   async onModuleInit() {
@@ -97,11 +99,13 @@ export class NotifsService implements OnModuleInit {
     const title = `${collection.singleName} #${ethscription.tokenId} was flipped`;
     const message = `From: ${fromAddress}\nTo: ${toAddress}\n\nFor: ${value} ETH ($${this.formatCash(Number(value) * this.usdPrice)})`;
     const link = `${baseUrl}/details/${ethscription.hashId}`;
+    const imageUrl = await this.cardsSvc.generateEthscriptionCardImageUrl(ethscription.hashId);
 
     return {
       title,
       message,
       link,
+      imageUrl,
     };
   }
 

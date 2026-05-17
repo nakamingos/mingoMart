@@ -4,6 +4,7 @@ export interface NotificationMessage {
   title: string;
   message: string;
   link: string;
+  imageUrl?: string;
   imageBuffer?: Buffer; // Optional - kept for backwards compatibility but not used
   filename?: string; // Optional - kept for backwards compatibility but not used
 }

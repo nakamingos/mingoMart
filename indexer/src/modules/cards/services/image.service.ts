@@ -6,6 +6,8 @@ import { Collection, Ethscription } from '@/modules/storage/models/db';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
+const PUBLIC_SUPABASE_URL = 'https://oafirqjkcmgmjononxiy.supabase.co';
+
 @Injectable()
 export class ImageService implements OnModuleInit {
 
@@ -79,10 +81,10 @@ export class ImageService implements OnModuleInit {
     const text3Width = ctx.measureText(text3).width;
     ctx.fillText(text3, (canvasWidth - text3Width) - 60, bottomBarPos + 155);
 
-    const baseImageUrl = `https://kcbuycbhynlmsrvoegzp.supabase.co/storage/v1/object/public/images`;
+    const baseImageUrl = `${PUBLIC_SUPABASE_URL}/storage/v1/object/public/static/images`;
     let image: ArrayBuffer | null = null;
     try {
-      const response = await fetch(`${baseImageUrl}/${data.ethscription.sha}.png`);
+      const response = await fetch(`${baseImageUrl}/${data.ethscription.sha}${data.collection.hasTransparents ? '_transparent' : ''}`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       image = await response.arrayBuffer();
     } catch (err) {
@@ -206,7 +208,7 @@ export class ImageService implements OnModuleInit {
     const urlText = `etherphunks.eth.limo/${collection.slug}`;
     ctx.fillText(urlText, collectionNameX, bottomBarPos + 105);
 
-    const baseImageUrl = `https://kcbuycbhynlmsrvoegzp.supabase.co/storage/v1/object/public/static/images`;
+    const baseImageUrl = `${PUBLIC_SUPABASE_URL}/storage/v1/object/public/static/images`;
 
     if (previewItems.length > 0) {
       const gridSize = Math.min(4, previewItems.length);
