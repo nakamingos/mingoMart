@@ -3,6 +3,7 @@
 
 :host {
   font-family: var(--secondary-font-stack);
+  text-transform: uppercase;
   display: block;
   position: fixed;
   z-index: 9999;
@@ -114,6 +115,7 @@
 
           app-address {
             font-family: var(--secondary-font-stack);
+            text-transform: uppercase;
             color: rgba(var(--header-text), 1);
             font-size: 1.4rem;
             font-weight: normal;
@@ -123,6 +125,7 @@
 
         button {
           font-family: var(--secondary-font-stack);
+          text-transform: uppercase;
           color: rgba(var(--header-highlight), 1);
           background-color: rgba(var(--header-text), 1);
 
@@ -180,6 +183,7 @@
             align-items: center;
 
             font-family: var(--secondary-font-stack);
+            text-transform: uppercase;
             font-size: 1.2rem;
 
             color: rgba(var(--base-color), 1);

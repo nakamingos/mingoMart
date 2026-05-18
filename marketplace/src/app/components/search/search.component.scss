@@ -24,6 +24,7 @@ form {
     right: 0;
 
     font-family: var(--secondary-font-stack);
+    text-transform: uppercase;
     font-size: 1.4rem;
     font-weight: normal;
     text-align: center;
@@ -53,6 +54,7 @@ form {
       background-color: rgba(var(--black), .1);
 
       font-family: var(--secondary-font-stack);
+      text-transform: uppercase;
       font-size: 1.4rem;
       color: rgba(var(--black), 1);
       border-radius: 0;
@@ -63,6 +65,7 @@ form {
 
       &::placeholder {
         font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
         font-size: 1.2rem;
         font-weight: normal;
         transform: translateY(-1px);
@@ -121,9 +124,11 @@ form {
       flex-direction: column;
 
       font-family: var(--secondary-font-stack);
+      text-transform: uppercase;
 
       button {
         font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
       }
 
       .dropdown-header {

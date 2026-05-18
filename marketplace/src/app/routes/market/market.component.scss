@@ -71,6 +71,7 @@
         height: 2rem;
 
         font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
         font-size: 1.2rem;
         font-weight: normal;
         text-align: center;
@@ -264,6 +265,7 @@ form {
   height: 100%;
 
   font-family: var(--secondary-font-stack);
+  text-transform: uppercase;
 
   .top-bar {
     padding-bottom: 2rem;
@@ -371,6 +373,7 @@ form {
 
       &::placeholder {
         font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
         font-size: 1.2rem;
         font-weight: normal;
         transform: translateY(-1px);
@@ -404,6 +407,7 @@ form {
 
   button {
     font-family: var(--secondary-font-stack);
+    text-transform: uppercase;
     font-size: 1.4rem;
     font-weight: normal;
   }

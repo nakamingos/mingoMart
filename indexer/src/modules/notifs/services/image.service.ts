@@ -43,7 +43,7 @@ export class ImageService {
     const canvasHeight = canvasMax;
 
     // Register custom font
-    registerFont(path.join(__dirname, '../../../_static/retro-computer.ttf'), { family: 'RetroComputer' });
+    registerFont(path.join(__dirname, '../../../_static/Pizzascript10px-Regular.otf'), { family: 'Pizzascript' });
 
     // Define brand colors
     const colors = {
@@ -73,37 +73,37 @@ export class ImageService {
 
     // Draw collection name
     ctx.fillStyle = colors.base;
-    ctx.font = 'bold 34px RetroComputer';
+    ctx.font = 'bold 34px Pizzascript';
     ctx.fillText(data.collection.singleName, 25, bottomBarPos + 65);
 
     // Draw token ID
     ctx.fillStyle = colors.base;
-    ctx.font = 'bold 100px RetroComputer';
+    ctx.font = 'bold 100px Pizzascript';
     ctx.fillText(`${data.ethscription.tokenId}`, 20, canvasHeight - 35);
 
     // Draw rarity number
     ctx.fillStyle = colors.blue;
-    ctx.font = 'bold 22px RetroComputer';
+    ctx.font = 'bold 22px Pizzascript';
     const rarityNumberWidth = ctx.measureText(`${data.attributes[0].rarity}`).width;
     ctx.fillText(`${data.attributes[0].rarity}`, (canvasWidth - rarityNumberWidth) - 40, bottomBarPos + 65);
 
     // Draw rarity text line 1
     ctx.fillStyle = colors.base;
-    ctx.font = 'bold 22px RetroComputer';
+    ctx.font = 'bold 22px Pizzascript';
     const text = `One of`;
     const textWidth = ctx.measureText(text).width;
     ctx.fillText(text, (canvasWidth - textWidth) - 40 - (rarityNumberWidth + 10), bottomBarPos + 65);
 
     // Draw rarity text line 2
     ctx.fillStyle = colors.blue;
-    ctx.font = 'bold 22px RetroComputer';
+    ctx.font = 'bold 22px Pizzascript';
     const text2 = `${data.attributes[0].v}`;
     const text2Width = ctx.measureText(text2).width;
     ctx.fillText(text2, (canvasWidth - text2Width) - 40, bottomBarPos + 95);
 
     // Draw rarity text line 3
     ctx.fillStyle = colors.base;
-    ctx.font = 'bold 22px RetroComputer';
+    ctx.font = 'bold 22px Pizzascript';
     const text3 = `${data.collection.singleName}s`;
     const text3Width = ctx.measureText(text3).width;
     ctx.fillText(text3, (canvasWidth - text3Width) - 40, bottomBarPos + 125);

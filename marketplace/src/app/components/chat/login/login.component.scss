@@ -3,6 +3,7 @@
 
 :host {
   font-family: var(--secondary-font-stack);
+  text-transform: uppercase;
   color: rgba(var(--white), 1);
   font-weight: 400;
   text-align: center;
@@ -82,6 +83,7 @@
     color: rgba(var(--black), 1);
 
     font-family: var(--secondary-font-stack);
+    text-transform: uppercase;
     font-weight: 400;
     font-size: 1.2rem;
   }
@@ -138,6 +140,7 @@
 
       label {
         font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
         font-size: 1rem;
         font-weight: 400;
         line-height: 1.35;
@@ -158,6 +161,7 @@
     text-align: center;
     font-size: 2.6rem;
     font-family: var(--secondary-font-stack);
+    text-transform: uppercase;
     font-weight: 400;
     padding: .5rem 1rem;
 
@@ -168,6 +172,7 @@
 
   .error-message {
     font-family: var(--secondary-font-stack);
+    text-transform: uppercase;
     font-size: 1.2rem;
     font-weight: 400;
     line-height: 1.35;
@@ -185,6 +190,7 @@
       color: rgba(var(--black), 1);
 
       font-family: var(--secondary-font-stack);
+      text-transform: uppercase;
       font-weight: 400;
       font-size: 1.2rem;
     }

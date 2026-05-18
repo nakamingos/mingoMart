@@ -121,6 +121,7 @@
         .ng-input > input,
         .ng-value {
           font-family: var(--secondary-font-stack);
+          text-transform: uppercase;
           font-size: 1.6rem;
           font-weight: normal;
           color: rgba(var(--black), .25);

@@ -21,6 +21,7 @@
 
       .rank {
         font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
         font-size: 1.1rem;
         font-weight: normal;
         color: rgba(var(--background), 1);
@@ -161,6 +162,7 @@
           justify-content: center;
 
           font-family: var(--secondary-font-stack);
+          text-transform: uppercase;
           font-size: 1.2rem;
           line-height: 1.5;
           font-weight: normal;

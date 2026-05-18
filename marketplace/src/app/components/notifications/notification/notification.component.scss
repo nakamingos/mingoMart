@@ -4,6 +4,7 @@
 :host {
   display: block;
   font-family: var(--secondary-font-stack);
+  text-transform: uppercase;
 }
 
 .txn-item {
@@ -32,6 +33,7 @@
     justify-content: center;
 
     font-family: var(--secondary-font-stack);
+    text-transform: uppercase;
     font-size: 1.2rem;
     font-weight: normal;
 
@@ -105,6 +107,7 @@
         align-items: center;
 
         font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
         font-size: 1rem;
         color: rgba(var(--highlight), 1);
         font-weight: normal;

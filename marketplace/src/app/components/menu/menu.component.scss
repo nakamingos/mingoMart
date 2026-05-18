@@ -61,6 +61,7 @@ section {
       font-size: 1.2rem;
       font-weight: normal;
       font-family: var(--secondary-font-stack);
+      text-transform: uppercase;
 
       background-color: rgba(var(--background), 1);
 
@@ -102,6 +103,7 @@ section {
         margin-bottom: 1rem;
 
         font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
         color: rgba(var(--white), 1);
         text-decoration: none;
 
@@ -185,6 +187,7 @@ section {
         font-size: 1.2rem;
         font-weight: normal;
         font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
 
         background-color: rgba(var(--background), 1);
 
@@ -212,6 +215,7 @@ section {
       margin-bottom: 3rem;
 
       font-family: var(--secondary-font-stack);
+      text-transform: uppercase;
       color: rgba(var(--black), 1);
       font-size: 1.6rem;
 
@@ -240,6 +244,7 @@ section {
       margin-bottom: 3rem;
 
       font-family: var(--secondary-font-stack);
+      text-transform: uppercase;
       color: rgba(var(--black), 1);
 
       background-color: rgba(var(--highlight), 1);
@@ -330,6 +335,7 @@ section {
     .notifications-wrapper {
       h3 {
         font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
         font-size: 1.2rem;
         font-weight: normal;
         padding-bottom: 1rem;
@@ -349,6 +355,7 @@ section {
 
         p {
           font-family: var(--secondary-font-stack);
+          text-transform: uppercase;
           font-size: 1.2rem;
         }
 

@@ -7,6 +7,7 @@
   height: 100%;
 
   font-family: var(--secondary-font-stack);
+  text-transform: uppercase;
   color: rgba(var(--white), 1);
   font-weight: 400;
 }
@@ -216,6 +217,7 @@
 
       &::placeholder {
         font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
         color: rgba(var(--white), .25);
         font-size: 1.2rem;
         font-weight: 400;
@@ -226,6 +228,7 @@
 
     button {
       font-family: var(--secondary-font-stack);
+      text-transform: uppercase;
       color: rgba(var(--base-color), 1);
       background-color: rgba(var(--pink), 1);
       font-size: 1.4rem;
