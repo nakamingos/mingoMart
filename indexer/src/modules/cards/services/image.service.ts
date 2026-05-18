@@ -7,6 +7,40 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 
 const PUBLIC_SUPABASE_URL = 'https://oafirqjkcmgmjononxiy.supabase.co';
+const RARITY_TRAIT_WRAP_LENGTH = 21;
+
+function splitRarityTraitText(value: string): string[] {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+
+  if (!normalized) return [''];
+
+  const shouldWrap = normalized.length > RARITY_TRAIT_WRAP_LENGTH || normalized.includes(' ');
+  if (!shouldWrap) return [normalized];
+
+  if (!normalized.includes(' ')) {
+    return [
+      normalized.slice(0, -RARITY_TRAIT_WRAP_LENGTH),
+      normalized.slice(-RARITY_TRAIT_WRAP_LENGTH),
+    ].filter(Boolean);
+  }
+
+  const words = normalized.split(' ');
+  let secondLine = words[words.length - 1];
+  let splitIndex = words.length - 1;
+
+  while (splitIndex > 1) {
+    const candidate = `${words[splitIndex - 1]} ${secondLine}`;
+    if (candidate.length > RARITY_TRAIT_WRAP_LENGTH) break;
+
+    secondLine = candidate;
+    splitIndex--;
+  }
+
+  return [
+    words.slice(0, splitIndex).join(' '),
+    secondLine,
+  ].filter(Boolean);
+}
 
 @Injectable()
 export class ImageService implements OnModuleInit {
@@ -28,9 +62,9 @@ export class ImageService implements OnModuleInit {
     const canvasHeight = 630;
 
     const colors = {
-      base: '#C3FF00',
-      pink: '#FF03B4',
-      blue: '#00FFC9',
+      base: '#FF008C',
+      pink: '#C3FF00',
+      blue: '#5B28FF',
     };
 
     const canvas = createCanvas(canvasWidth, canvasHeight);
@@ -58,28 +92,41 @@ export class ImageService implements OnModuleInit {
     ctx.font = '400 100px RetroComputer';
     ctx.fillText(`${data.ethscription.tokenId}`, 30, canvasHeight - 40);
 
-    ctx.fillStyle = colors.blue;
+    const rightPadding = 60;
+    const rarityLineY = bottomBarPos + 65;
+    const traitLineY = bottomBarPos + 110;
+    const collectionLineY = bottomBarPos + 155;
+    const oneOfText = 'One of';
+    const rarityNumberText = `${data.attributes[0].rarity}`;
+    const traitLines = splitRarityTraitText(`${data.attributes[0].v}`);
+    const shouldStackTrait = traitLines.length > 1;
+
     ctx.font = '400 33px RetroComputer';
-    const rarityNumberWidth = ctx.measureText(`${data.attributes[0].rarity}`).width;
-    ctx.fillText(`${data.attributes[0].rarity}`, (canvasWidth - rarityNumberWidth) - 60, bottomBarPos + 65);
+    const rarityNumberWidth = ctx.measureText(rarityNumberText).width;
+    const oneOfTextWidth = ctx.measureText(oneOfText).width;
+    const firstTraitLineWidth = shouldStackTrait ? ctx.measureText(traitLines[0]).width : 0;
+    const rarityNumberX = canvasWidth - rightPadding - rarityNumberWidth - (shouldStackTrait ? firstTraitLineWidth + 15 : 0);
+    const oneOfTextX = rarityNumberX - oneOfTextWidth - 15;
 
     ctx.fillStyle = colors.base;
-    ctx.font = '400 33px RetroComputer';
-    const text = `One of`;
-    const textWidth = ctx.measureText(text).width;
-    ctx.fillText(text, (canvasWidth - textWidth) - 60 - (rarityNumberWidth + 15), bottomBarPos + 65);
+    ctx.fillText(oneOfText, oneOfTextX, rarityLineY);
 
     ctx.fillStyle = colors.blue;
-    ctx.font = '400 33px RetroComputer';
-    const text2 = `${data.attributes[0].v}`;
-    const text2Width = ctx.measureText(text2).width;
-    ctx.fillText(text2, (canvasWidth - text2Width) - 60, bottomBarPos + 110);
+    ctx.fillText(rarityNumberText, rarityNumberX, rarityLineY);
+
+    if (shouldStackTrait) {
+      ctx.fillText(traitLines[0], canvasWidth - rightPadding - firstTraitLineWidth, rarityLineY);
+    }
+
+    const traitText = shouldStackTrait ? traitLines[1] : traitLines[0];
+    const traitTextWidth = ctx.measureText(traitText).width;
+    ctx.fillText(traitText, canvasWidth - rightPadding - traitTextWidth, traitLineY);
 
     ctx.fillStyle = colors.base;
     ctx.font = '400 33px RetroComputer';
     const text3 = `${data.collection.singleName}s`;
     const text3Width = ctx.measureText(text3).width;
-    ctx.fillText(text3, (canvasWidth - text3Width) - 60, bottomBarPos + 155);
+    ctx.fillText(text3, canvasWidth - rightPadding - text3Width, collectionLineY);
 
     const baseImageUrl = `${PUBLIC_SUPABASE_URL}/storage/v1/object/public/static/images`;
     let image: ArrayBuffer | null = null;
@@ -116,8 +163,8 @@ export class ImageService implements OnModuleInit {
             logo,
             35,
             topBarHeight + 35,
-            480 / 1.5,
-            98 / 1.5
+            321,
+            176
           );
           resolve();
         };
@@ -144,8 +191,8 @@ export class ImageService implements OnModuleInit {
     console.log(collection);
 
     const colors = {
-      base: '#C3FF00',
-      pink: '#FF03B4',
+      base: '#FF008C',
+      pink: '#C3FF00',
       blue: '#00FFC9',
     };
 
@@ -171,7 +218,7 @@ export class ImageService implements OnModuleInit {
     const logoX = 34;
 
     if (collection.image) {
-      const logoBackgroundColor = `#${collection.defaultBackground ?? 'C3FF00'}`;
+      const logoBackgroundColor = `#${collection.defaultBackground ?? 'FF03B4'}`;
       ctx.fillStyle = logoBackgroundColor;
       ctx.fillRect(logoX, logoY, logoSize, logoSize);
 
@@ -255,8 +302,8 @@ export class ImageService implements OnModuleInit {
             logo,
             35,
             topBarHeight + 35,
-            480 / 1.5,
-            98 / 1.5
+            400,
+            100
           );
           resolve();
         };

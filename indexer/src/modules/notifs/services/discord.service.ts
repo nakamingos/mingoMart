@@ -54,18 +54,22 @@ export class DiscordService {
     const channel = this.client.channels.cache.get(chainId === 1 ? '1376577560003088394' : '1376577560003088394') as TextChannel;
 
     const exampleEmbed = new EmbedBuilder()
-      .setColor(0xC3FF00)
+      .setColor(0xFF03B4)
       .setTitle(data.title)
       .setURL(data.link)
       .setDescription(codeBlock(data.message))
       // .setTimestamp()
-      .setFooter({ text: 'Be Phree. Be Phunky. 👍' });
+      .setFooter({ text: 'Be Rad. Be Comrade. 🫡' });
 
     if (data.imageUrl) {
       exampleEmbed.setImage(data.imageUrl);
     }
 
-    await channel.send({ embeds: [exampleEmbed] });
+    await channel.send({
+      content: '<@&1376800446076948551>',
+      allowedMentions: { roles: ['1376800446076948551'] },
+      embeds: [exampleEmbed],
+    });
   }
 }
 

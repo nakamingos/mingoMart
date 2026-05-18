@@ -262,7 +262,7 @@ export class CardsService implements OnModuleInit {
   <meta property="twitter:site" content="@ethereumphunks">
 
   <!-- Discord -->
-  <meta name="theme-color" content="#C3FF00">
+  <meta name="theme-color" content="#FF03B4">
 </head>
 <body></body>
 </html>`;
