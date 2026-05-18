@@ -133,7 +133,7 @@ export class ImageService {
 
     // Load and draw logo
     const logo = new Image();
-    const logoSrc = path.join(__dirname, '../../../_static/eplogo.png');
+    const logoSrc = path.join(__dirname, '../../../_static/mmlogo.png');
     logo.onload = () => {
       ctx.drawImage(logo, 40, 60, 320, 65);
     };

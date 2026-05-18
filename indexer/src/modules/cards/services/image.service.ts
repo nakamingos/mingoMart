@@ -1,36 +1,35 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 
 import { createCanvas, Image, registerFont } from 'canvas';
+import type { CanvasRenderingContext2D } from 'canvas';
 
 import { Collection, Ethscription } from '@/modules/storage/models/db';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
 const PUBLIC_SUPABASE_URL = 'https://oafirqjkcmgmjononxiy.supabase.co';
-const RARITY_TRAIT_WRAP_LENGTH = 21;
+const RARITY_TRAIT_MAX_WIDTH_RATIO = 0.6;
 
-function splitRarityTraitText(value: string): string[] {
-  const normalized = value.replace(/\s+/g, ' ').trim();
+function splitRarityTraitText(value: string, ctx: CanvasRenderingContext2D, maxWidth: number): string[] {
+  const normalized = value.replace(/\s+/g, ' ').trim().toUpperCase();
 
-  if (!normalized) return [''];
-
-  const shouldWrap = normalized.length > RARITY_TRAIT_WRAP_LENGTH || normalized.includes(' ');
-  if (!shouldWrap) return [normalized];
-
-  if (!normalized.includes(' ')) {
-    return [
-      normalized.slice(0, -RARITY_TRAIT_WRAP_LENGTH),
-      normalized.slice(-RARITY_TRAIT_WRAP_LENGTH),
-    ].filter(Boolean);
+  if (!normalized || ctx.measureText(normalized).width <= maxWidth) {
+    return [normalized];
   }
 
   const words = normalized.split(' ');
+  if (words.length < 2) {
+    return [normalized];
+  }
+
   let secondLine = words[words.length - 1];
   let splitIndex = words.length - 1;
 
   while (splitIndex > 1) {
     const candidate = `${words[splitIndex - 1]} ${secondLine}`;
-    if (candidate.length > RARITY_TRAIT_WRAP_LENGTH) break;
+    if (ctx.measureText(candidate).width > maxWidth) {
+      break;
+    }
 
     secondLine = candidate;
     splitIndex--;
@@ -42,11 +41,15 @@ function splitRarityTraitText(value: string): string[] {
   ].filter(Boolean);
 }
 
+function cardText(value: string | number): string {
+  return `${value}`.toUpperCase();
+}
+
 @Injectable()
 export class ImageService implements OnModuleInit {
 
   onModuleInit() {
-    registerFont(path.join(__dirname, '../../../_static/retro-computer.ttf'), { family: 'RetroComputer' });
+    registerFont(path.join(__dirname, '../../../_static/Pizzascript10px-Regular.otf'), { family: 'Pizzascript' });
   }
 
   async generateSocialShareImage(data: {
@@ -63,8 +66,8 @@ export class ImageService implements OnModuleInit {
 
     const colors = {
       base: '#FF008C',
-      pink: '#C3FF00',
-      blue: '#5B28FF',
+      green: '#00FF73',
+      purple: '#5B28FF',
     };
 
     const canvas = createCanvas(canvasWidth, canvasHeight);
@@ -78,30 +81,33 @@ export class ImageService implements OnModuleInit {
     const bottomBarPos = canvasHeight - bottomBarHeight;
 
     const topBarHeight = 20;
-    ctx.fillStyle = colors.pink;
+    ctx.fillStyle = colors.green;
     ctx.fillRect(0, 0, canvasWidth, topBarHeight);
 
-    ctx.fillStyle = colors.pink;
+    ctx.fillStyle = colors.green;
     ctx.fillRect(0, bottomBarPos, canvasWidth, bottomBarHeight);
 
     ctx.fillStyle = colors.base;
-    ctx.font = '400 36px RetroComputer';
-    ctx.fillText(data.collection.singleName, 34, bottomBarPos + 65);
+    ctx.font = '400 48px Pizzascript';
+    ctx.fillText(cardText(data.collection.singleName), 34, bottomBarPos + 65);
 
     ctx.fillStyle = colors.base;
-    ctx.font = '400 100px RetroComputer';
+    ctx.font = '400 137px Pizzascript';
     ctx.fillText(`${data.ethscription.tokenId}`, 30, canvasHeight - 40);
 
     const rightPadding = 60;
     const rarityLineY = bottomBarPos + 65;
     const traitLineY = bottomBarPos + 110;
     const collectionLineY = bottomBarPos + 155;
-    const oneOfText = 'One of';
+    const oneOfText = 'ONE OF';
     const rarityNumberText = `${data.attributes[0].rarity}`;
-    const traitLines = splitRarityTraitText(`${data.attributes[0].v}`);
+    ctx.font = '400 45px Pizzascript';
+    const traitLines = splitRarityTraitText(
+      `${data.attributes[0].v}`,
+      ctx,
+      canvasWidth * RARITY_TRAIT_MAX_WIDTH_RATIO,
+    );
     const shouldStackTrait = traitLines.length > 1;
-
-    ctx.font = '400 33px RetroComputer';
     const rarityNumberWidth = ctx.measureText(rarityNumberText).width;
     const oneOfTextWidth = ctx.measureText(oneOfText).width;
     const firstTraitLineWidth = shouldStackTrait ? ctx.measureText(traitLines[0]).width : 0;
@@ -111,7 +117,7 @@ export class ImageService implements OnModuleInit {
     ctx.fillStyle = colors.base;
     ctx.fillText(oneOfText, oneOfTextX, rarityLineY);
 
-    ctx.fillStyle = colors.blue;
+    ctx.fillStyle = colors.purple;
     ctx.fillText(rarityNumberText, rarityNumberX, rarityLineY);
 
     if (shouldStackTrait) {
@@ -123,8 +129,8 @@ export class ImageService implements OnModuleInit {
     ctx.fillText(traitText, canvasWidth - rightPadding - traitTextWidth, traitLineY);
 
     ctx.fillStyle = colors.base;
-    ctx.font = '400 33px RetroComputer';
-    const text3 = `${data.collection.singleName}s`;
+    ctx.font = '400 45px Pizzascript';
+    const text3 = cardText(`${data.collection.singleName}s`);
     const text3Width = ctx.measureText(text3).width;
     ctx.fillText(text3, canvasWidth - rightPadding - text3Width, collectionLineY);
 
@@ -156,15 +162,15 @@ export class ImageService implements OnModuleInit {
 
     try {
       const logo = new Image();
-      const logoSrc = path.join(__dirname, '../../../_static/eplogo.png');
+      const logoSrc = path.join(__dirname, '../../../_static/mmlogo.png');
       await new Promise<void>(async (resolve, reject) => {
         logo.onload = () => {
           ctx.drawImage(
             logo,
             35,
             topBarHeight + 35,
-            321,
-            176
+            296,
+            60
           );
           resolve();
         };
@@ -192,7 +198,7 @@ export class ImageService implements OnModuleInit {
 
     const colors = {
       base: '#FF008C',
-      pink: '#C3FF00',
+      green: '#00FF73',
       blue: '#00FFC9',
     };
 
@@ -207,10 +213,10 @@ export class ImageService implements OnModuleInit {
     const bottomBarPos = canvasHeight - bottomBarHeight;
 
     const topBarHeight = 20;
-    ctx.fillStyle = colors.pink;
+    ctx.fillStyle = colors.green;
     ctx.fillRect(0, 0, canvasWidth, topBarHeight);
 
-    ctx.fillStyle = colors.pink;
+    ctx.fillStyle = colors.green;
     ctx.fillRect(0, bottomBarPos, canvasWidth, bottomBarHeight);
 
     const logoSize = 80;
@@ -246,13 +252,13 @@ export class ImageService implements OnModuleInit {
     }
 
     ctx.fillStyle = colors.base;
-    ctx.font = '400 36px RetroComputer';
+    ctx.font = '400 48px Pizzascript';
     const collectionNameX = collection.image ? logoX + logoSize + 15 : logoX;
-    ctx.fillText(collection.name, collectionNameX, bottomBarPos + 65);
+    ctx.fillText(cardText(collection.name), collectionNameX, bottomBarPos + 65);
 
     ctx.fillStyle = colors.base;
-    ctx.font = '400 28px RetroComputer';
-    const urlText = `etherphunks.eth.limo/${collection.slug}`;
+    ctx.font = '400 39px Pizzascript';
+    const urlText = cardText(`etherphunks.eth.limo/${collection.slug}`);
     ctx.fillText(urlText, collectionNameX, bottomBarPos + 105);
 
     const baseImageUrl = `${PUBLIC_SUPABASE_URL}/storage/v1/object/public/static/images`;
@@ -295,7 +301,7 @@ export class ImageService implements OnModuleInit {
 
     try {
       const logo = new Image();
-      const logoSrc = path.join(__dirname, '../../../_static/eplogo.png');
+      const logoSrc = path.join(__dirname, '../../../_static/mmlogo.png');
       await new Promise<void>(async (resolve, reject) => {
         logo.onload = () => {
           ctx.drawImage(
