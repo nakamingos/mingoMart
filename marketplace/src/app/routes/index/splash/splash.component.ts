@@ -38,7 +38,7 @@ export class SplashComponent {
 
   readonly IMAGE_LIMIT = 9;
   readonly MAX_IMAGE_SIZE = 2000;
-  readonly defaultImage = { src: '/loadingphunk.png', type: 'loading' };
+  readonly defaultImage = { src: '/loadingmingo.gif', type: 'loading' };
   readonly defaultImages: SplashImage[] = Array(this.IMAGE_LIMIT).fill(this.defaultImage);
 
   centerIndex = signal<number>(Math.floor(this.IMAGE_LIMIT / 2));
