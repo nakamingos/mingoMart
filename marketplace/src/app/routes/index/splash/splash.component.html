@@ -13,7 +13,8 @@
     <div
       class="image-wrapper"
       [class.center]="idx === centerIndex()"
-      [class]="image.type">
+      [class]="image.type"
+      (dblclick)="openImage(image)">
 
       <img [src]="image.src" width="320" height="320" />
     </div>

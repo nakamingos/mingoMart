@@ -1,5 +1,6 @@
 import { Component, ElementRef, input, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 
 import { Store } from '@ngrx/store';
 import { LazyLoadImageModule } from 'ng-lazyload-image';
@@ -9,13 +10,13 @@ import { combineLatest, from, of, shareReplay, startWith, switchMap, tap } from 
 import { Collection } from '@/models/data.state';
 import { SplashImage } from '@/models/image.model';
 import { GlobalState } from '@/models/global-state';
+import { Phunk } from '@/models/db';
 
 import { PixelArtService } from '@/services/pixel-art.service';
 import { ImageService } from '@/services/image.service';
 
 import { selectIsMobile } from '@/state/app/app-state.selectors';
 import { CollectionInfoComponent } from '@/components/collection-info/collection-info.component';
-import { fromBytes } from 'viem';
 
 @Component({
   selector: 'app-splash',
@@ -60,10 +61,10 @@ export class SplashComponent {
     switchMap((collection) => {
       if (!collection) return of(this.defaultImages);
 
-      const shas = collection.previews?.map(({ sha }) => sha);
-      if (!shas?.length) return of(this.defaultImages);
+      const previews = collection.previews?.filter((preview) => !!preview.sha);
+      if (!previews?.length) return of(this.defaultImages);
 
-      return from(this.createDefaultImageArray(shas, collection.slug));
+      return from(this.createDefaultImageArray(previews, collection.slug));
     }),
     tap((images) => this.currentImages.set(images)),
     shareReplay({ bufferSize: 1, refCount: true }) // Cache the result so it doesn't recompute unnecessarily
@@ -103,7 +104,8 @@ export class SplashComponent {
   constructor(
     private store: Store<GlobalState>,
     private pixelArtSvc: PixelArtService,
-    private imageSvc: ImageService
+    private imageSvc: ImageService,
+    private router: Router
   ) {}
 
   /**
@@ -139,23 +141,25 @@ export class SplashComponent {
   }
 
   /**
-   * Creates an array of processed images from a list of SHA hashes
+   * Creates an array of processed images from collection preview items
    *
-   * @param shas - Array of SHA hashes identifying the images to fetch and process
+   * @param previews - Collection preview items identifying the images to fetch and process
    * @returns Promise that resolves when image processing is complete
    */
-  private async createDefaultImageArray(shas: string[], slug: string): Promise<SplashImage[]> {
-    if (!shas?.length) return [];
+  private async createDefaultImageArray(previews: Phunk[], slug: string): Promise<SplashImage[]> {
+    if (!previews?.length) return [];
 
     const imageArray = [...this.defaultImages];
     let validImages = 0;
     let currentIndex = 0;
 
     // Keep processing until we have 9 valid images or run out of SHAs
-    while (validImages < this.IMAGE_LIMIT && currentIndex < shas.length) {
+    while (validImages < this.IMAGE_LIMIT && currentIndex < previews.length) {
       // Process next batch of images in parallel
-      const batchSize = Math.min(5, shas.length - currentIndex);
-      const batchPromises = shas.slice(currentIndex, currentIndex + batchSize).map(async (sha) => {
+      const batchSize = Math.min(5, previews.length - currentIndex);
+      const batchPromises = previews.slice(currentIndex, currentIndex + batchSize).map(async (preview) => {
+        const sha = preview.sha;
+
         try {
           const image = await this.fetchPreviewImage(sha);
 
@@ -173,7 +177,8 @@ export class SplashComponent {
 
           return {
             src: base64,
-            type
+            type,
+            hashId: preview.hashId
           };
         } catch (error) {
           console.error(`Error processing image ${sha}:`, error);
@@ -250,5 +255,12 @@ export class SplashComponent {
         }
       }
     }
+  }
+
+  openImage(image: SplashImage): void {
+    if (!image.hashId) return;
+    if (!window.matchMedia('(pointer: fine)').matches) return;
+
+    this.router.navigate(['/', 'details', image.hashId]);
   }
 }
