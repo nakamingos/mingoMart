@@ -30,7 +30,8 @@
     cursor: pointer;
 
     .image-wrapper {
-      width: 4.2rem;
+      flex: 0 0 3.6rem;
+      width: 3.6rem;
       height: 3.6rem;
       margin-right: .5rem;
 
@@ -109,8 +110,12 @@
       background: none;
 
       .image-wrapper {
+        flex: 0 0 3.6rem;
         width: 3.6rem;
+        min-width: 3.6rem;
         height: 3.6rem;
+        min-height: 3.6rem;
+        aspect-ratio: 1;
         margin-right: .65rem;
 
         background-color: rgba(var(--base-color), 1);
@@ -194,9 +199,12 @@
         }
 
         .image-wrapper {
+          flex: 0 0 4rem;
           margin: 0;
           width: 4rem;
+          min-width: 4rem;
           height: 4rem;
+          min-height: 4rem;
         }
       }
     }

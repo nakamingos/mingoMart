@@ -6,7 +6,7 @@
 
     @if (activeCollection; as collection) {
       @if (collection.image; as image) {
-        <div class="image-wrapper">
+        <div class="image-wrapper" [style.background-color]="imageBackgroundColor(collection.defaultBackground)">
           <img [src]="image" />
         </div>
       }
@@ -29,7 +29,9 @@
         [class.active]="activeCollection?.slug === collection.slug"
         [class.admin]="!collection.active">
 
-        <div class="image-wrapper">
+        <div
+          class="image-wrapper"
+          [style.background-color]="imageBackgroundColor(collection.defaultBackground)">
           <img [src]="collection.image" />
         </div>
 

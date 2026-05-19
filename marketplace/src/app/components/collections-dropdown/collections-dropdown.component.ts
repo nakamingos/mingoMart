@@ -8,6 +8,7 @@ import { GlobalState } from '@/models/global-state';
 import { firstValueFrom } from 'rxjs';
 
 import { MarketType } from '@/models/market.state';
+import { normalizeDefaultBackground } from '@/constants/background-color';
 
 import * as dataStateSelectors from '@/state/data/data-state.selectors';
 import * as appStateSelectors from '@/state/app/app-state.selectors';
@@ -29,6 +30,10 @@ export class CollectionsDropdownComponent {
   collections$ = this.store.select(dataStateSelectors.selectCollections);
   activeCollection$ = this.store.select(dataStateSelectors.selectActiveCollection);
   dropdownActive$ = this.store.select(appStateSelectors.selectCollectionsMenuActive);
+
+  imageBackgroundColor(defaultBackground?: string | null): string | null {
+    return normalizeDefaultBackground(defaultBackground);
+  }
 
   constructor(
     private store: Store<GlobalState>,
