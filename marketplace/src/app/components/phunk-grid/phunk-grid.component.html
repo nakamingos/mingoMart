@@ -56,6 +56,10 @@
         (marketType === 'owned' && viewType === 'market') &&
         phunk.owner === escrowAddress && !phunk.listing
       "
+      [class.wrapped]="
+        (marketType === 'owned' && viewType === 'market') &&
+        phunk.event?.type === 'wrapped'
+      "
       [class.listing]="
         (
           marketType === 'listings' ||

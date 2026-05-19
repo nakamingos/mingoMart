@@ -122,6 +122,14 @@
       }
     }
 
+    &.wrapped {
+      .image-wrapper {
+        img {
+          background-color: rgba(var(--wrapped-color), 1);
+        }
+      }
+    }
+
     &.listing {
       .image-wrapper {
         img {

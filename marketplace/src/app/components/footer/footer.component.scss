@@ -22,20 +22,33 @@
       a {
         padding: 0 1rem;
 
-        svg {
+        .social-icon {
+          display: block;
           width: 2.4rem;
-          height: auto;
+          height: 2.4rem;
 
-          path {
-            fill: rgba(var(--text-color), .65);
-          }
+          background-color: rgba(var(--text-color), .65);
+          mask-position: center;
+          mask-repeat: no-repeat;
+          mask-size: contain;
+          -webkit-mask-position: center;
+          -webkit-mask-repeat: no-repeat;
+          -webkit-mask-size: contain;
+        }
+
+        .x-icon {
+          mask-image: url('/x-pixel-logo.svg');
+          -webkit-mask-image: url('/x-pixel-logo.svg');
+        }
+
+        .github-icon {
+          mask-image: url('/github-pixel-logo.svg');
+          -webkit-mask-image: url('/github-pixel-logo.svg');
         }
 
         &:active {
-          svg {
-            path {
-              fill: rgba(var(--text-color), 1);
-            }
+          .social-icon {
+            background-color: rgba(var(--text-color), 1);
           }
         }
       }

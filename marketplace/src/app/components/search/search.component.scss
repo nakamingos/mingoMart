@@ -34,6 +34,13 @@ form {
     height: 100%;
   }
 
+  button.submit {
+    :host-context(body[data-theme="dark"]) & {
+      background-color: rgba(var(--green), 1);
+      color: rgba(var(--highlight), 1);
+    }
+  }
+
   .input-wrapper {
     position: relative;
 

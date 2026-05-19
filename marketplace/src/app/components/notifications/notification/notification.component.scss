@@ -38,6 +38,12 @@
     font-weight: normal;
 
     background-color: rgba(var(--green), 1);
+    color: rgba(var(--highlight), 1);
+
+    :host-context(body[data-theme="light"]) & {
+      background-color: rgba(var(--highlight), 1);
+      color: rgba(var(--green), 1);
+    }
   }
 
   .single-image {
@@ -89,7 +95,7 @@
 
       strong {
         font-weight: normal;
-        color: rgba(var(--highlight), 1);
+        color: rgba(var(--green), 1);
       }
     }
 
@@ -101,7 +107,27 @@
       padding-top: .75rem;
 
       a,
-      button,
+      button {
+        display: inline-flex;
+        align-items: center;
+
+        font-family: var(--secondary-font-stack);
+        text-transform: uppercase;
+        font-size: 1rem;
+        color: rgba(var(--green), 1);
+        font-weight: normal;
+
+        background: none;
+        padding: 0;
+
+        svg {
+          margin-left: .5rem;
+          path {
+            fill: rgba(var(--green), 1);
+          }
+        }
+      }
+
       span {
         display: inline-flex;
         align-items: center;
@@ -114,13 +140,6 @@
 
         background: none;
         padding: 0;
-
-        svg {
-          margin-left: .5rem;
-          path {
-            fill: rgba(var(--highlight), 1);
-          }
-        }
       }
 
       .timestamp {

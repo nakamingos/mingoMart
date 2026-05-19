@@ -162,9 +162,17 @@
   &.active {
     color: rgba(var(--highlight-text), 1);
 
+    :host-context(body[data-theme="light"]) & {
+      color: rgba(var(--green), 1);
+    }
+
     svg {
       path {
         fill: rgba(var(--highlight-text), 1);
+
+        :host-context(body[data-theme="light"]) & {
+          fill: rgba(var(--green), 1);
+        }
       }
     }
   }

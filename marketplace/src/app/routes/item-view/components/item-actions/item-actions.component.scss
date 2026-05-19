@@ -74,6 +74,11 @@ button,
   background-color: rgba(var(--highlight), 1);
   color: rgba(var(--background), 1);
 
+  :host-context(body[data-theme="dark"]) & {
+    background-color: rgba(var(--green), 1);
+    color: rgba(var(--black), 1);
+  }
+
   p {
     font-size: 1.4rem;
     line-height: 1.4;
@@ -82,6 +87,10 @@ button,
     a {
       font-size: 1.4rem;
       color: rgba(var(--background), 1);
+
+      :host-context(body[data-theme="dark"]) & {
+        color: rgba(var(--black), 1);
+      }
     }
 
     .small {
@@ -99,8 +108,17 @@ button,
     color: rgba(var(--background), 1);
     background-color: rgba(var(--background), .1);
 
+    :host-context(body[data-theme="dark"]) & {
+      color: rgba(var(--black), 1);
+      background-color: rgba(var(--black), .1);
+    }
+
     &::placeholder {
       color: rgba(var(--background), .3);
+
+      :host-context(body[data-theme="dark"]) & {
+        color: rgba(var(--black), .3);
+      }
     }
   }
 
@@ -133,6 +151,10 @@ button,
             font-size: 1.2rem;
             font-weight: 600;
             color: rgba(var(--background), 1);
+
+            :host-context(body[data-theme="dark"]) & {
+              color: rgba(var(--black), 1);
+            }
           }
 
           input {

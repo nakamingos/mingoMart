@@ -82,6 +82,10 @@
     background-color: rgba(var(--highlight-text), 1);
     color: rgba(var(--black), 1);
 
+    :host-context(body[data-theme="light"]) & {
+      background-color: rgba(var(--green), 1);
+    }
+
     font-family: var(--secondary-font-stack);
     text-transform: uppercase;
     font-weight: 400;
@@ -188,6 +192,10 @@
     button {
       background-color: rgba(var(--highlight-text), 1);
       color: rgba(var(--black), 1);
+
+      :host-context(body[data-theme="light"]) & {
+        background-color: rgba(var(--green), 1);
+      }
 
       font-family: var(--secondary-font-stack);
       text-transform: uppercase;

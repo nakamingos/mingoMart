@@ -59,6 +59,16 @@
           image-rendering: pixelated;
         }
       }
+
+      &:not(.standalone) {
+        :host-context(body[data-theme="dark"]) & {
+          --header-text: var(--black);
+        }
+
+        :host-context(body[data-theme="light"]) & {
+          --header-text: var(--green);
+        }
+      }
     }
 
     .search-wrapper {

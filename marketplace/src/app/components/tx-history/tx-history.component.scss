@@ -198,6 +198,19 @@
             }
           }
         }
+
+        &.wrapped,
+        &.unwrapped {
+          td {
+            background-color: rgba(var(--wrapped-color), .5);
+
+            .cell-inner {
+              &.type-label {
+                border-left: .3rem solid rgba(var(--wrapped-color), 1);
+              }
+            }
+          }
+        }
       }
     }
 

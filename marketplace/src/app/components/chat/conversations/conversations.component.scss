@@ -29,6 +29,10 @@
     background-color: rgba(var(--highlight-text), 1);
     color: rgba(var(--black), 1);
 
+    :host-context(body[data-theme="light"]) & {
+      background-color: rgba(var(--green), 1);
+    }
+
     font-family: var(--secondary-font-stack);
     text-transform: uppercase;
     font-weight: 400;
@@ -53,6 +57,11 @@
   text-align: center;
   justify-content: center;
   align-items: center;
+
+  :host-context(body[data-theme="light"]) & {
+    background-color: rgba(var(--black), 1);
+    color: rgba(var(--green), 1);
+  }
 
   span {
     font-size: 3rem;
@@ -85,6 +94,12 @@
     input {
       width: calc(100% - 9rem);
       height: 100%;
+      color: rgba(var(--white), 1);
+      background-color: rgba(var(--white), .05);
+
+      &::placeholder {
+        color: rgba(var(--white), .25);
+      }
     }
 
     button {
@@ -97,6 +112,10 @@
 
       background-color: rgba(var(--highlight-text), 1);
       color: rgba(var(--dark-grey), 1);
+
+      :host-context(body[data-theme="light"]) & {
+        background-color: rgba(var(--green), 1);
+      }
 
       &.disabled {
         opacity: .5;
@@ -113,7 +132,11 @@
   height: 3rem;
   padding: 0 1rem;
 
-  background-color: rgba(var(--highlight-text), 1);
+  background-color: rgba(var(--green), 1);
+
+  :host-context(body[data-theme="light"]) & {
+    background-color: rgba(var(--highlight), 1);
+  }
 
   h2 {
     font-size: 1.2rem;
@@ -148,7 +171,11 @@
         width: 4rem;
         height: 4rem;
 
-        background-color: rgba(var(--highlight-text), 1);
+  background-color: rgba(var(--highlight-text), 1);
+
+  :host-context(body[data-theme="light"]) & {
+    background-color: rgba(var(--highlight), 1);
+  }
 
         img {
           width: 100%;

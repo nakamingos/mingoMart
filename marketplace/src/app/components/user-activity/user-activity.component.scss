@@ -168,6 +168,13 @@ section {
       }
     }
 
+    &.wrapped,
+    &.unwrapped {
+      .image-wrapper {
+        background-color: rgba(var(--wrapped-color), 1);
+      }
+    }
+
     // &.escrow {
     //   .image-wrapper {
     //     background-color: rgba(var(--escrow-color), 1);
