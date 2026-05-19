@@ -36,15 +36,47 @@
       display: flex;
       align-items: center;
 
-      width: 19rem;
+      width: 20rem;
       height: 4rem;
 
       pointer-events: all;
+      position: relative;
+      overflow: hidden;
 
-      svg {
-        path {
-          // fill: rgba(var(--green), 1);
-        }
+      > svg {
+        display: none;
+      }
+
+      .logo-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: rgba(var(--header-text), 1);
+        mask-position: left center;
+        mask-repeat: no-repeat;
+        mask-size: 100% 100%;
+        -webkit-mask-position: left center;
+        -webkit-mask-repeat: no-repeat;
+        -webkit-mask-size: 100% 100%;
+      }
+
+      .logo-main {
+        mask-image: url('/mingomart-logo.svg');
+        -webkit-mask-image: url('/mingomart-logo.svg');
+      }
+
+      .logo-hover {
+        opacity: 0;
+        transition: opacity 0.6s ease;
+        mask-image: url('/mingomart-logo-hover.svg');
+        -webkit-mask-image: url('/mingomart-logo-hover.svg');
+      }
+
+      &:hover .logo-hover {
+        opacity: 1;
       }
 
       &.standalone {
@@ -315,12 +347,10 @@
     .inner {
       .logo {
         overflow: hidden;
-        width: 15rem;
+        width: 11.5rem;
 
-        svg {
-          overflow: visible;
+        .logo-layer {
           width: 20rem;
-          // transform: translate(0, .25rem);
         }
       }
 
@@ -347,20 +377,14 @@
 
       .logo {
         overflow: hidden;
-        width: 3rem;
+        width: 7.7rem;
         transform: translate(0, .25rem);
 
         // border: 1px solid blue;
 
-        svg {
-          overflow: visible;
+        .logo-layer {
           width: 20rem;
-
-          path {
-            &#wordmark {
-              // display: none;
-            }
-          }
+          transform: translateX(-3.8rem);
         }
       }
 
