@@ -24,7 +24,7 @@
     grid-template-columns: auto 2fr auto;
     grid-template-areas: "logo search user-tools";
     align-items: center;
-    gap: 2rem;
+    gap: 1.25rem;
 
     // border: 1px solid red;
 
@@ -354,6 +354,7 @@
         .logo-layer {
           width: 21rem;
           height: 4.5rem;
+          transform: translateX(-1.5rem);
         }
       }
 
@@ -371,7 +372,7 @@
   @media (max-width: $mobile) {
     .inner {
       grid-template-columns: 4rem 1fr;
-      // grid-template-rows: auto 1fr;
+      grid-template-rows: 1fr 1fr;
       grid-template-areas: "logo user-tools" "search search";
       gap: 0;
 
@@ -387,7 +388,7 @@
 
         .logo-layer {
           width: 20rem;
-          transform: translateX(-3.8rem);
+          transform: translateX(-4.8rem);
         }
       }
 
