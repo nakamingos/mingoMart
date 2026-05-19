@@ -85,7 +85,7 @@
 
     .image-wrapper {
       img {
-        background-color: rgba(var(--base-color), 1);
+        background-color: var(--item-base-background, rgba(var(--base-color), 1));
         display: block;
         width: 100%;
         height: auto;
@@ -150,6 +150,14 @@
       .image-wrapper {
         img {
           background-color: rgba(var(--magma), 1);
+        }
+      }
+    }
+
+    .image-wrapper {
+      &.transparent-background {
+        img {
+          background-color: transparent;
         }
       }
     }

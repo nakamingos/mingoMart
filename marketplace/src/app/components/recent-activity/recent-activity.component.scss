@@ -144,13 +144,13 @@ section {
     }
 
     $event-color-groups: (
-      (created sale phunkbought): var(--base-color),
-      (transfer): var(--transferred-color),
-      (offered phunkoffered phunkofferwithdrawn phunknolongerforsale): var(--listed-color),
-      (phunkbidentered phunkbidwithdrawn ): var(--bid-color),
-      (bridgein bridgeout): var(--magma),
-      (wrapped unwrapped): var(--wrapped-color),
-      (auctioncreated auctionbid auctionextended auctionsettled): var(--bid-color)
+      (created sale phunkbought): var(--event-base-background, rgba(var(--base-color), 1)),
+      (transfer): rgba(var(--transferred-color), 1),
+      (offered phunkoffered phunkofferwithdrawn phunknolongerforsale): rgba(var(--listed-color), 1),
+      (phunkbidentered phunkbidwithdrawn ): rgba(var(--bid-color), 1),
+      (bridgein bridgeout): rgba(var(--magma), 1),
+      (wrapped unwrapped): rgba(var(--wrapped-color), 1),
+      (auctioncreated auctionbid auctionextended auctionsettled): rgba(var(--bid-color), 1)
     );
 
     @each $events, $color in $event-color-groups {
@@ -161,14 +161,20 @@ section {
 
       #{$selectors} {
         .image-wrapper {
-          background-color: rgba(#{$color}, 1);
+          background-color: #{$color};
         }
 
         .labels-wrapper {
           .token-id {
-            color: rgba(#{$color}, 1);
+            color: #{$color};
           }
         }
+      }
+    }
+
+    .image-wrapper {
+      &.transparent-background {
+        background-color: transparent;
       }
     }
 

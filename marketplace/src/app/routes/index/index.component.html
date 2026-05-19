@@ -67,6 +67,7 @@
                       [limit]="(isMobile$ | async) ? 100 : 110"
                       [marketType]="'owned'"
                       [activeSort]="SortOption.PRICE_LOW"
+                      [defaultBackground]="activeCollection.defaultBackground"
                     />
                   </div>
                 </section>
@@ -93,6 +94,7 @@
                   [limit]="(isMobile$ | async) ? 100 : 110"
                   [marketType]="'listings'"
                   [activeSort]="SortOption.PRICE_LOW"
+                  [defaultBackground]="activeCollection.defaultBackground"
                 />
               }
             </div>
@@ -113,6 +115,7 @@
                     [limit]="(isMobile$ | async) ? 100 : 110"
                     [marketType]="'auctions'"
                     [activeSort]="SortOption.PRICE_HIGH"
+                    [defaultBackground]="activeCollection.defaultBackground"
                   />
               </div>
             </section>
@@ -142,6 +145,7 @@
                     [limit]="(isMobile$ | async) ? 100 : 110"
                     [marketType]="'all'"
                     [activeSort]="SortOption.ID"
+                    [defaultBackground]="activeCollection.defaultBackground"
                   />
                 }
               }

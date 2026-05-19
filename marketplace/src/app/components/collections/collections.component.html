@@ -9,7 +9,7 @@
 
         <div class="collection-details">
           <div class="collection-image">
-            <img [src]="collection.image" alt="{{ collection.name }}" />
+            <img [src]="collection.image" [style.background-color]="imageBackgroundColor(collection)" alt="{{ collection.name }}" />
           </div>
           <div class="title">{{ collection.name }}</div>
         </div>
@@ -25,6 +25,7 @@
         [limit]="10"
         [marketType]="'owned'"
         [activeSort]="SortOption.PRICE_LOW"
+        [defaultBackground]="collection.defaultBackground"
       />
     </div>
   }

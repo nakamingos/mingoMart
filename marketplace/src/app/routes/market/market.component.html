@@ -123,6 +123,7 @@
               [traitFilters]="(activeTraitFilters$ | async)"
               [phunkData]="phunkData.data"
               [slug]="(activeCollection$ | async)?.slug || ''"
+              [defaultBackground]="(activeCollection$ | async)?.defaultBackground"
               [total]="phunkData.total"
               [selectAll]="selectAll"
               [walletAddress]="(walletAddress$ | async)"

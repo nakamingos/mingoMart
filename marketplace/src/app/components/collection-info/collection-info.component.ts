@@ -2,6 +2,7 @@ import { Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { Collection } from '@/models/data.state';
+import { normalizeDefaultBackground } from '@/constants/background-color';
 
 @Component({
   standalone: true,
@@ -15,5 +16,9 @@ import { Collection } from '@/models/data.state';
 export class CollectionInfoComponent {
 
   collection = input<Collection | null>();
+
+  imageBackgroundColor(): string | null {
+    return normalizeDefaultBackground(this.collection()?.defaultBackground);
+  }
 
 }

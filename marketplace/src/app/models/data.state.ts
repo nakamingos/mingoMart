@@ -21,7 +21,7 @@ export interface Collection {
   website?: string;
   twitter?: string;
   discord?: string;
-  defaultBackground?: string;
+  defaultBackground?: string | null;
   mainTraits?: string[];
   attributeOrder?: string[];
   contractAddress?: string;

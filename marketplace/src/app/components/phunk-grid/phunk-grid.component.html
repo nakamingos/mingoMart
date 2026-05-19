@@ -92,10 +92,11 @@
         class="item-link"
         [routerLink]="['/', 'details', phunk.hashId]">
 
-        <div class="image-wrapper">
+        <div class="image-wrapper" [class.transparent-background]="hasTransparentBackground(phunk)">
           <img
             [lazyLoad]="phunk | imageUrlPipe"
             [defaultImage]="'/loadingmingo.gif'"
+            [style.--item-base-background]="baseImageBackgroundColor(phunk)"
             width="50"
             height="50"
           />

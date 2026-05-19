@@ -32,7 +32,7 @@
         class="event-item"
         [class]="event.type | lowercase">
 
-        <div class="image-wrapper">
+        <div class="image-wrapper" [class.transparent-background]="hasTransparentBackground()" [style.--event-base-background]="imageBackgroundColor()">
           <img
             [lazyLoad]="dataSvc.staticUrl + '/static/images/' + event.sha"
             [defaultImage]="'/loadingmingo.gif'"

@@ -57,7 +57,6 @@ export class DataStateEffects {
     ),
     map(([, collections, slug]) => collections.find((c) => c.slug === slug)),
     filter((activeCollection) => !!activeCollection),
-    distinctUntilChanged((a, b) => a?.slug === b?.slug),
     map((activeCollection) => dataStateActions.setActiveCollection({ activeCollection: { ...activeCollection! } }))
   ));
 

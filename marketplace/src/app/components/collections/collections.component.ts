@@ -7,6 +7,7 @@ import { GlobalState } from '@/models/global-state';
 
 import { DataService } from '@/services/data.service';
 import { SortOption } from '@/models/sorts.model';
+import { normalizeDefaultBackground } from '@/constants/background-color';
 
 import { PhunkGridComponent } from '../phunk-grid/phunk-grid.component';
 import { selectCollections } from '@/state/data/data-state.selectors';
@@ -36,6 +37,10 @@ export class CollectionsComponent {
   )
 
   SortOption = SortOption;
+
+  imageBackgroundColor(collection: { defaultBackground?: string | null }): string | null {
+    return normalizeDefaultBackground(collection.defaultBackground);
+  }
 
   constructor(
     private dataSvc: DataService,

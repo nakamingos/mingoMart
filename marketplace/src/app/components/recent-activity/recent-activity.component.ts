@@ -23,6 +23,7 @@ import * as appStateSelectors from '@/state/app/app-state.selectors';
 
 import { Collection } from '@/models/data.state';
 import { firstValueFrom, tap } from 'rxjs';
+import { normalizeDefaultBackground } from '@/constants/background-color';
 
 @Component({
   standalone: true,
@@ -111,5 +112,13 @@ export class RecentActivityComponent {
   resetPagination() {
     this.store.dispatch(appStateActions.setEventPage({ page: 0 }));
     this.scroller?.nativeElement?.scrollTo({ left: 0, top: 0 });
+  }
+
+  hasTransparentBackground(): boolean {
+    return this.collection()?.defaultBackground === null;
+  }
+
+  imageBackgroundColor(): string | null {
+    return normalizeDefaultBackground(this.collection()?.defaultBackground);
   }
 }

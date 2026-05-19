@@ -13,6 +13,7 @@ import { ViewType } from '@/models/view-types';
 import { Phunk } from '@/models/db';
 
 import { DataService } from '@/services/data.service';
+import { normalizeDefaultBackground } from '@/constants/background-color';
 
 import { WeiToEthPipe } from '@/pipes/wei-to-eth.pipe';
 import { FormatCashPipe } from '@/pipes/format-cash.pipe';
@@ -68,6 +69,7 @@ export class PhunkGridComponent implements OnChanges {
   @Input() phunkData!: Phunk[] | null;
   @Input() total: number = 0;
   @Input() limit: number = 0;
+  @Input() defaultBackground?: string | null;
 
   @Input() showLabels: boolean = true;
   @Input() traitFilters!: TraitFilter | null;
@@ -200,5 +202,19 @@ export class PhunkGridComponent implements OnChanges {
 
   childrenLength() {
     return [...this.el.nativeElement.children].filter((child: HTMLElement) => !child.classList.contains('more')).length;
+  }
+
+  private getDefaultBackground(phunk?: Phunk): string | null | undefined {
+    return phunk?.collection && 'defaultBackground' in phunk.collection
+      ? phunk.collection.defaultBackground
+      : this.defaultBackground;
+  }
+
+  baseImageBackgroundColor(phunk?: Phunk): string | null {
+    return normalizeDefaultBackground(this.getDefaultBackground(phunk));
+  }
+
+  hasTransparentBackground(phunk?: Phunk): boolean {
+    return this.getDefaultBackground(phunk) === null;
   }
 }
