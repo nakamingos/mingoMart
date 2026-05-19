@@ -21,13 +21,13 @@ export class ThemeService {
       '--background': '0, 0, 0',
       '--text-color': '255, 255, 255',
       '--dark-text': '255, 255, 255',
-      '--highlight': '255, 4, 180',
+      '--highlight': '255, 0, 140',
       '--highlight-text': '195, 255, 0',
-      '--button-background': '255, 4, 180',
+      '--button-background': '255, 0, 140',
       '--button-color': '195, 255, 0',
 
       '--header-text': '195, 255, 0',
-      '--header-highlight': '255, 4, 180',
+      '--header-highlight': '255, 0, 140',
 
       '--header-text-active': '0, 0, 0',
       '--header-highlight-active': '195, 255, 0'
@@ -37,8 +37,8 @@ export class ThemeService {
       '--background': '195, 255, 0',
       '--text-color': '0, 0, 0',
       '--dark-text': '0, 0, 0',
-      '--highlight': '255, 4, 180',
-      '--highlight-text': '255, 4, 180',
+      '--highlight': '255, 0, 140',
+      '--highlight-text': '255, 0, 140',
       '--button-background': '0, 0, 0',
       '--button-color': '195, 255, 0',
 

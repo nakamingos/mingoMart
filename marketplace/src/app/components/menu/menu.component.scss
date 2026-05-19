@@ -64,6 +64,11 @@ section {
       text-transform: uppercase;
 
       background-color: rgba(var(--background), 1);
+      color: rgba(var(--green), 1);
+
+      :host-context(body[data-theme="light"]) & {
+        background-color: rgba(var(--highlight), 1);
+      }
 
       display: flex;
       align-items: center;
@@ -76,7 +81,7 @@ section {
         transform: rotate(180deg);
 
         path {
-          fill: rgba(var(--highlight), 1);
+          fill: rgba(var(--green), 1);
         }
       }
 
@@ -190,6 +195,10 @@ section {
         text-transform: uppercase;
 
         background-color: rgba(var(--background), 1);
+
+        :host-context(body[data-theme="light"]) & {
+          background-color: rgba(var(--highlight), 1);
+        }
 
         display: flex;
         align-items: center;

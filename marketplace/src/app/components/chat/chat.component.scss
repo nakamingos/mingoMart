@@ -27,7 +27,7 @@
   &[data-active-view='login'] {
     svg {
       path {
-        fill: rgba(var(--base-color), 1);
+        fill: rgba(var(--highlight-text), 1);
       }
     }
   }

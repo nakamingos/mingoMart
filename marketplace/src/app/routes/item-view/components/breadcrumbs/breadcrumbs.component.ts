@@ -92,7 +92,7 @@ export class BreadcrumbsComponent {
 
       // If not transparent, fill with background color first
       if (!transparent && phunk.isSupported) {
-        this.ctx.fillStyle = '#FF04B4';
+        this.ctx.fillStyle = '#FF008C';
         this.ctx.fillRect(0, 0, this.width / this.scale, this.height / this.scale);
       }
 
