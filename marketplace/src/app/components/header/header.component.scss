@@ -35,9 +35,10 @@
       grid-area: logo;
       display: flex;
       align-items: center;
+      margin-top: 0.1rem;
 
       width: 20rem;
-      height: 4rem;
+      height: 4.05rem;
 
       pointer-events: all;
       position: relative;
@@ -348,9 +349,11 @@
       .logo {
         overflow: hidden;
         width: 11.5rem;
+        height: 4.4rem;
 
         .logo-layer {
-          width: 20rem;
+          width: 21rem;
+          height: 4.5rem;
         }
       }
 
