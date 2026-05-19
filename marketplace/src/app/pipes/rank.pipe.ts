@@ -16,8 +16,8 @@ export class RankPipe implements PipeTransform {
     let color: string;
 
     if (rank <= 1) {
-      // Ultra rare #0 - Hot Pink (even more special than #1)
-      color = 'rgba(var(--pink), 1)';
+      // Ultra rare #0 - Neon Green (even more special than #1)
+      color = 'rgba(var(--green), 1)';
     } else if (rank <= 10) {
       // Top 10 - Purple (bid color)
       color = 'rgba(var(--bid-color), 1)';

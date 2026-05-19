@@ -43,7 +43,7 @@
 
       svg {
         path {
-          // fill: rgba(var(--pink), 1);
+          // fill: rgba(var(--green), 1);
         }
       }
 
@@ -187,7 +187,7 @@
             font-size: 1.2rem;
 
             color: rgba(var(--base-color), 1);
-            background-color: rgba(var(--pink), 1);
+            background-color: rgba(var(--green), 1);
 
             @include trans();
 
@@ -222,7 +222,7 @@
               height: 100%;
               width: 100%;
 
-              background-color: rgba(var(--pink), .5);
+              background-color: rgba(var(--green), .5);
               animation: ripple 2s .35s infinite cubic-bezier(0.21, 0.53, 0.56, 0.8);
 
               mix-blend-mode: difference;

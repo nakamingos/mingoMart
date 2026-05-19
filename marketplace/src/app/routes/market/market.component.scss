@@ -49,7 +49,7 @@
   button {
     height: 3.6rem;
     margin-left: 1rem;
-    border: .3rem solid rgba(var(--pink), 1);
+    border: .3rem solid rgba(var(--green), 1);
 
     &.filters-button {
       position: relative;
@@ -65,7 +65,7 @@
         justify-content: center;
 
         background-color: rgba(var(--highlight), 1);
-        color: rgba(var(--pink), 1);
+        color: rgba(var(--green), 1);
 
         width: 2rem;
         height: 2rem;
@@ -135,7 +135,7 @@
       font-weight: 700;
 
       span {
-        color: rgba(var(--pink), 1);
+        color: rgba(var(--green), 1);
       }
     }
 
@@ -165,7 +165,7 @@
 
         .label {}
         .value {
-          color: rgba(var(--pink), 1);
+          color: rgba(var(--green), 1);
         }
       }
 
