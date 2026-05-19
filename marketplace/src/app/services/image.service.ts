@@ -41,6 +41,11 @@ export class ImageService {
         'Cache-Control': 'max-age=31536000' // 1 year
       }
     });
+
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image ${sha}: ${imageResponse.status}`);
+    }
+
     const imageBuffer = await imageResponse.arrayBuffer();
     return imageBuffer;
   }

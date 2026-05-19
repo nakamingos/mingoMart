@@ -76,16 +76,119 @@ export class PixelArtService {
     const width = parseInt(viewBox[2]) || 0;
     const height = parseInt(viewBox[3]) || 0;
 
+    const backgroundColors = node.children.filter((child) => child.attributes.x === '0');
+    const filters = this.getStripFilters(
+      backgroundColors.map((child) => child.attributes.fill),
+      node.children.map((child) => child.attributes.fill),
+      slug
+    );
+    // console.log({width, height, backgroundColors, filters});
+
+    for (const child of node.children) {
+      if (child.name === 'rect' && child.attributes?.fill) {
+        const color = tinycolor(child.attributes.fill);
+        const brightness = tinycolor(color).getBrightness();
+        const alpha = (brightness / 255);
+        const opaque = tinycolor({ r: 0, g: 0, b: 0, a: (1 - alpha) });
+
+        colorMap[child.attributes.fill] = (colorMap[child.attributes.fill] || 0) + 1;
+
+        // Remove Skin Tone
+        if (filters.indexOf(child.attributes.fill) > -1) child.attributes.fill = '#00000000';
+        // Remove Transparent
+        else if (child.attributes.fill === '#000000ff') continue;
+        else child.attributes.fill = opaque.toString('hex8');
+      }
+    }
+
+    // console.log(colorMap);
+    return node;
+
+    // // Display colors with visual styling
+    // removable.forEach(color => {
+    //   console.log(`%c${color}`, `background-color: ${color}; color: black; padding: 2px 8px; border-radius: 4px;`);
+    // });
+
+    // Or display all at once (simpler approach)
+    // console.log('Removable colors:');
+    // removable.forEach(color => {
+    //   console.log(`%c ${color} `, `background-color: ${color}; color: black; padding: 2px 8px; border-radius: 4px; margin: 2px; display: inline-block;`);
+    // });
+  }
+
+  stripColorsToPngDataUri(buffer: ArrayBuffer, slug: string): string {
+    const png = UPNG.decode(buffer);
+    const { width, height } = png;
+    const rgbaBuffer = UPNG.toRGBA8(png);
+    const rgbaData = new Uint8Array(rgbaBuffer[0]);
+    const outputData = new Uint8Array(rgbaData.length);
+    const allFills: string[] = [];
+    const backgroundFills: string[] = [];
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const index = (y * width + x) * 4;
+        const fill = this.rgbaDataToFill(rgbaData, index);
+        if (fill === '#00000000') continue;
+
+        allFills.push(fill);
+        if (x === 0) backgroundFills.push(fill);
+      }
+    }
+
+    const filters = this.getStripFilters(backgroundFills, allFills, slug);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const index = (y * width + x) * 4;
+        const fill = this.rgbaDataToFill(rgbaData, index);
+
+        if (fill === '#00000000' || filters.includes(fill)) {
+          outputData[index] = 0;
+          outputData[index + 1] = 0;
+          outputData[index + 2] = 0;
+          outputData[index + 3] = 0;
+          continue;
+        }
+
+        if (fill === '#000000ff') {
+          outputData[index] = 0;
+          outputData[index + 1] = 0;
+          outputData[index + 2] = 0;
+          outputData[index + 3] = 255;
+          continue;
+        }
+
+        const brightness = tinycolor(fill).getBrightness();
+        const alpha = 1 - (brightness / 255);
+        outputData[index] = 0;
+        outputData[index + 1] = 0;
+        outputData[index + 2] = 0;
+        outputData[index + 3] = Math.round(alpha * 255);
+      }
+    }
+
+    const strippedPng = UPNG.encode([outputData.buffer], width, height, 0);
+    return `data:image/png;base64,${this.arrayBufferToBase64(strippedPng)}`;
+  }
+
+  private rgbaDataToFill(rgbaData: Uint8Array, index: number): string {
+    const r = rgbaData[index];
+    const g = rgbaData[index + 1];
+    const b = rgbaData[index + 2];
+    const a = rgbaData[index + 3];
+    return `#${this.colorSvc.rgbaToHex(r, g, b, a)}`;
+  }
+
+  private getStripFilters(backgroundFills: string[], allFills: string[], slug: string): string[] {
     let removable: string[] = [];
     if (slug === 'unpunks') {
-      removable = [...new Set(node.children
-        .map((child) => child.attributes.fill)
+      removable = [...new Set(allFills
         .filter((fill) => fill.startsWith('#c') || fill.startsWith('#bb') || fill.startsWith('#ba') || fill.startsWith('#bd') || fill.startsWith('#be') || fill.startsWith('#bc') || fill.startsWith('#bf')))];
     }
 
-    const backgroundColors = node.children.filter((child) => child.attributes.x === '0');
-    const filters = [
-      ...new Set(backgroundColors.map((child) => child.attributes.fill)),
+    return [
+      ...new Set(backgroundFills),
       ...[
         // Phunks
         '#ffffffff', // White
@@ -119,38 +222,6 @@ export class PixelArtService {
         ...removable,
       ]
     ];
-    // console.log({width, height, backgroundColors, filters});
-
-    for (const child of node.children) {
-      if (child.name === 'rect' && child.attributes?.fill) {
-        const color = tinycolor(child.attributes.fill);
-        const brightness = tinycolor(color).getBrightness();
-        const alpha = (brightness / 255);
-        const opaque = tinycolor({ r: 0, g: 0, b: 0, a: (1 - alpha) });
-
-        colorMap[child.attributes.fill] = (colorMap[child.attributes.fill] || 0) + 1;
-
-        // Remove Skin Tone
-        if (filters.indexOf(child.attributes.fill) > -1) child.attributes.fill = '#00000000';
-        // Remove Transparent
-        else if (child.attributes.fill === '#000000ff') continue;
-        else child.attributes.fill = opaque.toString('hex8');
-      }
-    }
-
-    // console.log(colorMap);
-    return node;
-
-    // // Display colors with visual styling
-    // removable.forEach(color => {
-    //   console.log(`%c${color}`, `background-color: ${color}; color: black; padding: 2px 8px; border-radius: 4px;`);
-    // });
-
-    // Or display all at once (simpler approach)
-    // console.log('Removable colors:');
-    // removable.forEach(color => {
-    //   console.log(`%c ${color} `, `background-color: ${color}; color: black; padding: 2px 8px; border-radius: 4px; margin: 2px; display: inline-block;`);
-    // });
   }
 
   /**

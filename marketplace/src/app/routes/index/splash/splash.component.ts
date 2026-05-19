@@ -157,14 +157,12 @@ export class SplashComponent {
       const batchSize = Math.min(5, shas.length - currentIndex);
       const batchPromises = shas.slice(currentIndex, currentIndex + batchSize).map(async (sha) => {
         try {
-          const image = await this.imageSvc.fetchSupportedImageBySha(sha);
+          const image = await this.fetchPreviewImage(sha);
 
           let base64 = null;
           let type: SplashImage['type'] = 'gray';
           if (image.byteLength > this.MAX_IMAGE_SIZE) {
-            const imageBase64 = this.pixelArtSvc.arrayBufferToBase64(image);
-            base64 = `data:image/jpeg;base64,${imageBase64}`;
-            type = 'jpeg';
+            base64 = this.pixelArtSvc.stripColorsToPngDataUri(image, slug);
           } else {
             const pixels = await this.pixelArtSvc.processPixelArtImage(image);
             const svg = this.pixelArtSvc.convertToSvg(pixels);
@@ -197,6 +195,14 @@ export class SplashComponent {
     }
 
     return imageArray;
+  }
+
+  private async fetchPreviewImage(sha: string): Promise<ArrayBuffer> {
+    try {
+      return await this.imageSvc.fetchSupportedImageBySha(`${sha}_transparent`);
+    } catch {
+      return this.imageSvc.fetchSupportedImageBySha(sha);
+    }
   }
 
   /**
