@@ -43,6 +43,7 @@ export interface Collection {
 export interface DataState {
   usd: number | null;
   events: Event[] | null;
+  hasMoreEvents: boolean;
   userOpenBids: Phunk[];
 
   txHistory: any[] | null;

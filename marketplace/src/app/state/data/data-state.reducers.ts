@@ -6,6 +6,7 @@ import * as actions from '../data/data-state.actions';
 export const initialState: DataState = {
   usd: null,
   events: null,
+  hasMoreEvents: false,
   userOpenBids: [],
   txHistory: null,
   leaderboard: null,
@@ -23,10 +24,11 @@ export const dataStateReducer: ActionReducer<DataState, Action> = createReducer(
     };
     return setUsd
   }),
-  on(actions.setEvents, (state, { events }) => {
+  on(actions.setEvents, (state, { events, hasMoreEvents }) => {
     const setEvents = {
       ...state,
       events,
+      hasMoreEvents,
     };
     return setEvents
   }),

@@ -105,11 +105,13 @@
       }
     }
 
-    <button
-      class="event-item view-more"
-      (click)="paginateEvents()">
+    @if (showViewMore$ | async) {
+      <button
+        class="event-item view-more"
+        (click)="paginateEvents()">
 
-      View<br />More
-    </button>
+        View<br />More
+      </button>
+    }
   </div>
 </section>

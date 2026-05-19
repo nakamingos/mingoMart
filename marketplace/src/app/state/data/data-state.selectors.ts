@@ -14,6 +14,11 @@ export const selectEvents = createSelector(
   (appState: DataState) => appState.events
 );
 
+export const selectHasMoreEvents = createSelector(
+  selectDataState,
+  (appState: DataState) => appState.hasMoreEvents
+);
+
 // export const selectUserOpenBids = createSelector(
 //   selectDataState,
 //   (appState: DataState) => appState.userOpenBids

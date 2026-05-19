@@ -22,7 +22,7 @@ export const fetchEvents = createAction(
 
 export const setEvents = createAction(
   '[Data State] Set Events',
-  props<{ events: any[] }>()
+  props<{ events: any[]; hasMoreEvents: boolean }>()
 );
 
 // export const dbEventTriggered = createAction(

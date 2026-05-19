@@ -21,6 +21,9 @@ import { MarketState, MarketType } from '@/models/market.state';
 import { Phunk, Event } from '@/models/db';
 import { defaultSort, marketSorts } from '@/constants/sorts';
 
+const EVENT_PAGE_SIZE = 24;
+const EVENT_FETCH_SIZE = EVENT_PAGE_SIZE + 1;
+
 @Injectable()
 export class MarketStateEffects {
 
@@ -146,27 +149,37 @@ export class MarketStateEffects {
       ]).pipe(
         // tap(([eventTypeFilter, page]) => console.log('fetchEvents$', {eventTypeFilter, page})),
         switchMap(([eventTypeFilter, page]) =>
-          this.dataSvc.fetchEvents(page * 24, 24, eventTypeFilter, marketSlug).pipe(
-            map(events => ({ events, page }))
+          this.dataSvc.fetchEvents(page * EVENT_PAGE_SIZE, EVENT_FETCH_SIZE, eventTypeFilter, marketSlug).pipe(
+            map((events) => ({
+              events: events.slice(0, EVENT_PAGE_SIZE),
+              hasMoreEvents: events.length > EVENT_PAGE_SIZE,
+              page,
+            }))
           )
         ),
-        scan((acc, { events, page }) => {
-          if (page === 0) return events;
-          return [...acc, ...events];
-        }, [] as Event[]),
-        map((events) => ({ events, marketSlug })),
+        scan((acc, { events, hasMoreEvents, page }) => {
+          const nextEvents = page === 0 ? events : [...acc.events, ...events];
+          return {
+            events: nextEvents,
+            hasMoreEvents,
+          };
+        }, {
+          events: [] as Event[],
+          hasMoreEvents: false,
+        }),
+        map(({ events, hasMoreEvents }) => ({ events, hasMoreEvents, marketSlug })),
       );
     }),
     withLatestFrom(this.store.select(marketStateSelectors.selectMarketSlug)),
     filter(([{ marketSlug }, currentMarketSlug]) => marketSlug === currentMarketSlug),
     // tap((events) => console.log('fetchEvents$', events)),
-    map(([{ events }]) => dataStateActions.setEvents({ events })),
+    map(([{ events, hasMoreEvents }]) => dataStateActions.setEvents({ events, hasMoreEvents })),
   ));
 
   clearEventsOnMarketSlugChange$ = createEffect(() => this.actions$.pipe(
     ofType(marketStateActions.setMarketSlug),
     distinctUntilChanged((a, b) => a.marketSlug === b.marketSlug),
-    map(() => dataStateActions.setEvents({ events: [] })),
+    map(() => dataStateActions.setEvents({ events: [], hasMoreEvents: false })),
   ));
 
   setActionData$ = createEffect(() => this.actions$.pipe(

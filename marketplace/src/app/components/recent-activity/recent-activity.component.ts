@@ -22,7 +22,7 @@ import * as appStateActions from '@/state/app/app-state.actions';
 import * as appStateSelectors from '@/state/app/app-state.selectors';
 
 import { Collection } from '@/models/data.state';
-import { firstValueFrom, tap } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { normalizeDefaultBackground } from '@/constants/background-color';
 
 @Component({
@@ -44,6 +44,8 @@ import { normalizeDefaultBackground } from '@/constants/background-color';
   styleUrls: ['./recent-activity.component.scss']
 })
 export class RecentActivityComponent {
+
+  readonly pageSize = 24;
 
   @ViewChild('scroller') scroller!: ElementRef<HTMLDivElement>;
 
@@ -89,6 +91,7 @@ export class RecentActivityComponent {
 
   usd$ = this.store.select(dataStateSelectors.selectUsd);
   events$ = this.store.select(dataStateSelectors.selectEvents);
+  showViewMore$ = this.store.select(dataStateSelectors.selectHasMoreEvents);
 
   constructor(
     private store: Store<GlobalState>,
