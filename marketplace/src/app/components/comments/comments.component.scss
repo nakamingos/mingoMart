@@ -71,7 +71,7 @@ h2 {
       color: rgba(var(--text-color), 1);
 
       &.active {
-        color: rgba(var(--base-color), 1);
+        color: rgba(var(--highlight-text), 1);
       }
     }
 
@@ -82,7 +82,7 @@ h2 {
       background: none;
       font-size: 1.4rem;
       font-weight: 600;
-      color: rgba(var(--base-color), 1);
+      color: rgba(var(--highlight-text), 1);
     }
 
     .comment-header {
@@ -170,7 +170,7 @@ h2 {
 
   .replies {
     margin-left: $padding;
-    border-left: .2rem solid rgba(var(--base-color), 1);
+    border-left: .2rem solid rgba(var(--highlight-text), 1);
     margin-left: 0.5rem;
 
     .reply-form-wrapper {
@@ -223,7 +223,7 @@ h2 {
 
   .comment-button {
     padding: 1rem;
-    background-color: rgba(var(--base-color), 1);
+    background-color: rgba(var(--highlight-text), 1);
     color: rgba(var(--black), 1);
 
     &.disabled {
@@ -250,12 +250,12 @@ h2 {
 
       padding: 0;
 
-      border: .2rem solid rgba(var(--base-color), 1);
+      border: .2rem solid rgba(var(--highlight-text), 1);
       background: none;
 
       font-family: var(--secondary-font-stack);
       text-transform: uppercase;
-      color: rgba(var(--base-color), 1);
+      color: rgba(var(--highlight-text), 1);
 
       opacity: .5;
 

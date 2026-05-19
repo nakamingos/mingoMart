@@ -5,7 +5,7 @@
 
   .ngx-slider-pointer {
     border-radius: 0 !important;
-    background-color: rgba(var(--highlight), 1) !important;
+    background-color: rgba(var(--highlight-text), 1) !important;
 
     transform: scale(.6) !important;
     transform-origin: 0% 50% !important;
@@ -17,7 +17,7 @@
 
   .ngx-slider-bar {
     border-radius: 0 !important;
-    background-color: rgba(var(--highlight), 0.2) !important;
+    background-color: rgba(var(--highlight-text), 0.2) !important;
     margin: 0 !important;
     padding-top: 0.35rem !important;
     padding-bottom: 0.35rem !important;
@@ -32,7 +32,7 @@
   }
 
   .ngx-slider-bubble {
-    color: rgba(var(--highlight), 1) !important;
+    color: rgba(var(--highlight-text), 1) !important;
   }
 
   .ngx-slider-floor {

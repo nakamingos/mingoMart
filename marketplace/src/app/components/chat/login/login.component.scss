@@ -28,7 +28,7 @@
   h2 {
     font-size: 1.5rem;
     font-weight: 400;
-    color: rgba(var(--base-color), 1);
+    color: rgba(var(--highlight-text), 1);
     text-align: left;
     max-width: 18rem;
   }
@@ -36,7 +36,7 @@
   img {
     width: 5rem;
     height: 5rem;
-    background-color: rgba(var(--base-color), 1);
+    background-color: rgba(var(--highlight-text), 1);
     image-rendering: pixelated;
   }
 }
@@ -79,7 +79,7 @@
   }
 
   button {
-    background-color: rgba(var(--base-color), 1);
+    background-color: rgba(var(--highlight-text), 1);
     color: rgba(var(--black), 1);
 
     font-family: var(--secondary-font-stack);
@@ -118,7 +118,7 @@
       font-size: 1.3rem;
       font-weight: 400;
       line-height: 1.35;
-      color: rgba(var(--base-color), 1);
+      color: rgba(var(--highlight-text), 1);
     }
 
     h3 {
@@ -166,7 +166,7 @@
     padding: .5rem 1rem;
 
     &:focus {
-      box-shadow: 0 0 0 0.2rem rgba(var(--base-color), 1);
+      box-shadow: 0 0 0 0.2rem rgba(var(--highlight-text), 1);
     }
   }
 
@@ -186,7 +186,7 @@
     justify-content: center;
 
     button {
-      background-color: rgba(var(--base-color), 1);
+      background-color: rgba(var(--highlight-text), 1);
       color: rgba(var(--black), 1);
 
       font-family: var(--secondary-font-stack);

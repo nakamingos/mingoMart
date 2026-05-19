@@ -75,13 +75,13 @@
 
     &.behind1 {
       .value {
-        color: rgba(var(--base-color), 1);
+        color: rgba(var(--green), 1);
       }
     }
 
     &.behind2 {
       .value {
-        color: rgba(var(--escrow-color), 1);
+        color: rgba(var(--green), 1);
       }
     }
 
@@ -106,13 +106,13 @@
 
   &.active {
     // color: rgba(var(--black), 1);
-    color: rgba(var(--base-color), 1);
+    color: rgba(var(--green), 1);
 
     .expand-button {
       svg {
         transform: rotate(180deg);
         path {
-          fill: rgba(var(--base-color), 1);
+          fill: rgba(var(--green), 1);
         }
       }
     }
@@ -160,11 +160,11 @@
   }
 
   &.active {
-    color: rgba(var(--base-color), 1);
+    color: rgba(var(--highlight-text), 1);
 
     svg {
       path {
-        fill: rgba(var(--base-color), 1);
+        fill: rgba(var(--highlight-text), 1);
       }
     }
   }
@@ -178,7 +178,7 @@ app-chat {
 
   background-color: rgba(var(--dark-grey), 1);
   // background-color: rgba(var(--bid-color), 1);
-  border: .3rem solid rgba(var(--base-color), 1);
+  border: .3rem solid rgba(var(--highlight-text), 1);
 
   width: 100%;
   max-width: 50rem;
@@ -196,5 +196,5 @@ app-logger {
   height: 50rem;
 
   background-color: rgba(var(--dark-grey), 1);
-  border: .3rem solid rgba(var(--base-color), 1);
+  border: .3rem solid rgba(var(--highlight-text), 1);
 }

@@ -17,7 +17,7 @@
       font-size: 1.4rem;
       font-weight: normal;
       text-decoration: none;
-      color: rgba(var(--highlight), 1);
+      color: rgba(var(--highlight-text), 1);
 
       svg {
         width: 1rem;
@@ -25,7 +25,7 @@
         margin-right: .5rem;
 
         path {
-          fill: rgba(var(--highlight), 1);
+          fill: rgba(var(--highlight-text), 1);
         }
       }
     }
@@ -51,7 +51,7 @@
       align-items: center;
 
       a {
-        color: rgba(var(--highlight), 1);
+        color: rgba(var(--highlight-text), 1);
         text-decoration: none;
         padding-left: .5rem;
       }
@@ -65,7 +65,7 @@
         svg {
           width: 2rem;
           height: 2rem;
-          fill: rgba(var(--highlight), 1);
+          fill: rgba(var(--highlight-text), 1);
         }
       }
     }

@@ -23,7 +23,7 @@ h1, h2, h3, h4 {
 
 .highlight {
   font-weight: 700;
-  color: rgba(var(--highlight), 1);
+  color: rgba(var(--highlight-text), 1);
   text-decoration: none;
 }
 
@@ -50,13 +50,13 @@ p {
   }
 
   a {
-    color: rgba(var(--highlight), 1);
+    color: rgba(var(--highlight-text), 1);
     text-decoration: underline;
   }
 
   strong {
     font-weight: normal;
-    color: rgba(var(--highlight), 1);
+    color: rgba(var(--highlight-text), 1);
   }
 
   &:last-child {

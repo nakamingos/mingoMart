@@ -75,11 +75,11 @@
         &.ng-option-marked,
         &.ng-option-selected {
           background: none;
-          color: rgba(var(--highlight), 1);
+          color: rgba(var(--highlight-text), 1);
 
           &.ng-option-selected {
             background: none;
-            color: rgba(var(--highlight), 1);
+            color: rgba(var(--highlight-text), 1);
           }
         }
       }
@@ -102,7 +102,7 @@
   &.ng-select-focused:not(.ng-select-opened),
   &.active {
     .ng-select-container {
-      border: .2rem solid rgba(var(--highlight), 1);
+      border: .2rem solid rgba(var(--highlight-text), 1);
       box-shadow: none;
     }
   }

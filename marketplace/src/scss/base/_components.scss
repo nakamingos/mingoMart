@@ -22,8 +22,8 @@ a.button {
   font-size: 1.6rem;
   text-decoration: none;
 
-  color: rgba(var(--highlight), 1);
-  background-color: rgba(var(--button-color), 1);
+  color: rgba(var(--button-color), 1);
+  background-color: rgba(var(--button-background), 1);
 
   &:active {
     transform: translate(0, 1px);

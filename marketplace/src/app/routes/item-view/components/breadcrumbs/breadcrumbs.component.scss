@@ -46,8 +46,8 @@
         justify-content: flex-end;
 
         button {
-          background-color: rgba(var(--highlight), 1);
-          color: rgba(var(--background), 1);
+          background-color: rgba(var(--highlight-text), 1);
+          color: rgba(var(--black), 1);
           padding: .5rem 1.5rem;
           font-size: 1.4rem;
 
@@ -70,7 +70,7 @@
 
           font-weight: 300;
           font-size: 1.8rem;
-          color: rgba(var(--highlight), 1);
+          color: rgba(var(--highlight-text), 1);
           text-decoration: none;
 
           background: none;
@@ -88,7 +88,7 @@
           background: none;
           padding: .5rem 1rem;
           margin: 0;
-          color: rgba(var(--highlight), 1);
+          color: rgba(var(--highlight-text), 1);
           font-weight: 700;
           font-size: 1.4rem;
 

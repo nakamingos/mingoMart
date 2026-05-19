@@ -22,8 +22,8 @@ button,
 
   &.external-button {
     background: none;
-    color: rgba(var(--background), 1);
-    background-color: rgba(var(--highlight), 1);
+    color: rgba(var(--button-color), 1);
+    background-color: rgba(var(--button-background), 1);
 
     background-image: url('data:image/svg+xml;utf8,<svg height="15" viewBox="0 0 15 15" width="15" xmlns="http://www.w3.org/2000/svg"><path d="m0 15v-15h6v3h-3v6h3v3h6v-3h3v6zm9-9v3h-3v-3zm6-6v6h-3v-3h-3v-3z" fill="black" fill-rule="evenodd"/></svg>');
     background-size: 1.2rem;
@@ -33,7 +33,7 @@ button,
 
   &.send-to-auction-button {
     background-color: rgba(var(--bid-color), 1);
-    color: rgba(var(--highlight), 1);
+    color: rgba(var(--highlight-text), 1);
   }
 
   &.advanced-options-button {
@@ -52,14 +52,14 @@ button,
 
   &.active {
     background: none;
-    color: rgba(var(--highlight), 1);
-    box-shadow: 0 .2rem 0 0 rgba(var(--highlight), 1);
+    color: rgba(var(--highlight-text), 1);
+    box-shadow: 0 .2rem 0 0 rgba(var(--highlight-text), 1);
 
     &.advanced-options-button {
       background: rgba(var(--background), 1);
       border: .2rem solid rgba(var(--background), 0);
       box-shadow: none;
-      color: rgba(var(--highlight), 1);
+      color: rgba(var(--highlight-text), 1);
     }
   }
 }
@@ -160,18 +160,18 @@ button,
       margin-bottom: 1rem;
 
       background-color: rgba(var(--background), 1);
-      color: rgba(var(--highlight), 1);
+      color: rgba(var(--highlight-text), 1);
 
       label {
-        color: rgba(var(--highlight), 1);
+        color: rgba(var(--highlight-text), 1);
       }
 
       input {
-        color: rgba(var(--highlight), 1);
+        color: rgba(var(--highlight-text), 1);
         background-color: rgba(var(--dark-grey), 1);
 
         &::placeholder {
-          color: rgba(var(--highlight), .5);
+          color: rgba(var(--highlight-text), .5);
         }
       }
     }
@@ -228,7 +228,7 @@ button,
     line-height: 1.4;
 
     a, span {
-      color: rgba(var(--highlight), 1);
+      color: rgba(var(--highlight-text), 1);
       font-weight: 700;
       text-decoration: underline;
       cursor: pointer;

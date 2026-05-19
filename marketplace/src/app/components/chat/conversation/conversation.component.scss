@@ -30,7 +30,7 @@
         transform: rotate(180deg);
 
         path {
-          fill: rgba(var(--base-color), 1);
+          fill: rgba(var(--highlight-text), 1);
         }
       }
     }
@@ -40,7 +40,7 @@
     width: 2.4rem;
     height: 2.4rem;
 
-    background-color: rgba(var(--base-color), 1);
+    background-color: rgba(var(--highlight-text), 1);
 
     img {
       width: 100%;
@@ -60,13 +60,13 @@
     font-weight: 400;
 
     a {
-      color: rgba(var(--base-color), 1);
+      color: rgba(var(--highlight-text), 1);
       text-decoration: none;
     }
 
     app-address {
       font-size: 1.4rem;
-      color: rgba(var(--base-color), 1);
+      color: rgba(var(--highlight-text), 1);
     }
   }
 }
@@ -158,7 +158,7 @@
           .content {
             background: none;
             border: .2rem solid rgba(var(--base-color), .25);
-            color: rgba(var(--base-color), 1);
+            color: rgba(var(--highlight-text), 1);
             font-size: 1.2rem;
             font-weight: 400;
             margin-bottom: 3rem;
@@ -229,7 +229,7 @@
     button {
       font-family: var(--secondary-font-stack);
       text-transform: uppercase;
-      color: rgba(var(--base-color), 1);
+      color: rgba(var(--highlight-text), 1);
       background-color: rgba(var(--green), 1);
       font-size: 1.4rem;
       font-weight: 400;

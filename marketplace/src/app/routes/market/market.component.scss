@@ -49,7 +49,12 @@
   button {
     height: 3.6rem;
     margin-left: 1rem;
-    border: .3rem solid rgba(var(--green), 1);
+    border: .3rem solid rgba(var(--highlight), 1);
+
+    :host-context(body[data-theme="light"]) & {
+      border-color: rgba(var(--green), 1);
+      color: rgba(var(--green), 1);
+    }
 
     &.filters-button {
       position: relative;
@@ -64,8 +69,8 @@
         align-items: center;
         justify-content: center;
 
-        background-color: rgba(var(--highlight), 1);
-        color: rgba(var(--green), 1);
+        background-color: rgba(var(--highlight-text), 1);
+        color: rgba(var(--black), 1);
 
         width: 2rem;
         height: 2rem;
@@ -81,9 +86,11 @@
     &.all-none {
       margin-left: 1rem;
       background: none;
+      border-color: rgba(var(--green), 1);
+      color: rgba(var(--highlight), 1);
 
       &.all {
-        background-color: rgba(var(--highlight), 1);
+        background-color: rgba(var(--green), 1);
         color: rgba(var(--black), 1);
       }
     }
@@ -92,8 +99,17 @@
       position: relative;
 
       background-color: rgba(var(--background), 1);
-      border-color: rgba(var(--highlight), 1);
-      color: rgba(var(--highlight), 1);
+      border-color: rgba(var(--highlight-text), 1);
+      color: rgba(var(--highlight-text), 1);
+
+      :host-context(body[data-theme="light"]) & {
+        border-color: rgba(var(--highlight), 1);
+        color: rgba(var(--highlight), 1);
+      }
+
+      &.select {
+        border-color: rgba(var(--highlight), 1);
+      }
     }
 
     &.select {
@@ -127,15 +143,24 @@
     margin-top: 1rem;
     padding: 1rem;
 
-    background-color: rgba(var(--highlight), 1);
+    background-color: rgba(var(--green), 1);
     color: rgba(var(--black), 1);
+
+    :host-context(body[data-theme="light"]) & {
+      background-color: rgba(var(--highlight), 1);
+      color: rgba(var(--black), 1);
+    }
 
     .selected-label {
       font-size: 1.4rem;
       font-weight: 700;
 
       span {
-        color: rgba(var(--green), 1);
+        color: rgba(var(--highlight), 1);
+
+        :host-context(body[data-theme="light"]) & {
+          color: rgba(var(--green), 1);
+        }
       }
     }
 
@@ -147,6 +172,15 @@
         position: relative;
         margin-left: .5rem;
         font-size: 1.4rem;
+        background-color: rgba(var(--button-background), 1);
+        color: rgba(var(--button-color), 1);
+        border-color: rgba(var(--highlight), 1);
+
+        :host-context(body[data-theme="light"]) & {
+          background-color: rgba(var(--black), 1);
+          color: rgba(var(--highlight), 1);
+          border-color: rgba(var(--green), 1);
+        }
 
         &.disabled {
           opacity: .5;
