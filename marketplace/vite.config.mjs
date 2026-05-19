@@ -14,6 +14,10 @@ import { environmentSetupPlugin, coinbaseExclusionPlugin, htmlRenamingPlugin, pw
 
 import fs from "fs";
 
+const packageJson = JSON.parse(
+  fs.readFileSync(resolve(__dirname, "package.json"), "utf-8")
+);
+
 
 /**
  * Main Vite configuration function
@@ -109,6 +113,10 @@ export default defineConfig(({ command, mode }) => {
     root: "src",
     base: "/",
     publicDir: "../public",
+
+    define: {
+      __APP_VERSION__: JSON.stringify(packageJson.version),
+    },
 
     // Module resolution configuration
     resolve: {
