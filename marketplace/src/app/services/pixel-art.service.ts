@@ -76,13 +76,17 @@ export class PixelArtService {
     const width = parseInt(viewBox[2]) || 0;
     const height = parseInt(viewBox[3]) || 0;
 
-    const backgroundColors = node.children.filter((child) => child.attributes.x === '0');
+    // Background edge detection is intentionally disabled now that splash previews
+    // prefer pre-cut transparent assets. Keeping this here documents the old
+    // heuristic without letting it remove foreground colors by accident.
+    // const backgroundColors = node.children.filter((child) => child.attributes.x === '0');
+    const backgroundColors: string[] = [];
     const filters = this.getStripFilters(
-      backgroundColors.map((child) => child.attributes.fill),
+      backgroundColors,
       node.children.map((child) => child.attributes.fill),
       slug
     );
-    // console.log({width, height, backgroundColors, filters});
+    // console.log({width, height, filters});
 
     for (const child of node.children) {
       if (child.name === 'rect' && child.attributes?.fill) {
@@ -123,6 +127,9 @@ export class PixelArtService {
     const rgbaData = new Uint8Array(rgbaBuffer[0]);
     const outputData = new Uint8Array(rgbaData.length);
     const allFills: string[] = [];
+    // See stripColors(): this used to collect left-edge/background fills, but
+    // transparent splash assets should not need automatic background removal.
+    // const backgroundFills: string[] = [];
     const backgroundFills: string[] = [];
 
     for (let y = 0; y < height; y++) {
@@ -132,7 +139,7 @@ export class PixelArtService {
         if (fill === '#00000000') continue;
 
         allFills.push(fill);
-        if (x === 0) backgroundFills.push(fill);
+        // if (x === 0) backgroundFills.push(fill);
       }
     }
 

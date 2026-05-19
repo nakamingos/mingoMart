@@ -194,7 +194,20 @@ export class SplashComponent {
       currentIndex += batchSize;
     }
 
-    return imageArray;
+    return this.centerValidImages(imageArray);
+  }
+
+  private centerValidImages(images: SplashImage[]): SplashImage[] {
+    const validImages = images.filter((image) => image.type !== 'loading');
+    if (validImages.length >= this.IMAGE_LIMIT) return images;
+
+    const centeredImages = [...this.defaultImages];
+    const startIndex = Math.floor((this.IMAGE_LIMIT - validImages.length) / 2);
+    validImages.forEach((image, index) => {
+      centeredImages[startIndex + index] = image;
+    });
+
+    return centeredImages;
   }
 
   private async fetchPreviewImage(sha: string): Promise<ArrayBuffer> {

@@ -32,6 +32,7 @@
       display: block;
       width: var(--inscription-size);
       height: var(--inscription-size);
+      object-fit: contain;
       image-rendering: pixelated;
     }
 
