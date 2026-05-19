@@ -21,28 +21,30 @@ export class ThemeService {
       '--background': '0, 0, 0',
       '--text-color': '255, 255, 255',
       '--dark-text': '255, 255, 255',
-      '--highlight': '195, 255, 0',
-      '--button-color': '255, 4, 180',
+      '--highlight': '255, 4, 180',
+      '--highlight-text': '195, 255, 0',
+      '--button-color': '195, 255, 0',
 
-      '--header-text': '255, 4, 180',
-      '--header-highlight': '195, 255, 0',
-
-      '--header-text-active': '0, 0, 0',
-      '--header-highlight-active': '255, 4, 180'
-    },
-    light: {
-      label: 'Light',
-      '--background': '255, 4, 180',
-      '--text-color': '0, 0, 0',
-      '--dark-text': '0, 0, 0',
-      '--highlight': '195, 255, 0',
-      '--button-color': '0, 0, 0',
-
-      '--header-text': '0, 0, 0',
+      '--header-text': '195, 255, 0',
       '--header-highlight': '255, 4, 180',
 
       '--header-text-active': '0, 0, 0',
-      '--header-highlight-active': '255, 4, 180'
+      '--header-highlight-active': '195, 255, 0'
+    },
+    light: {
+      label: 'Light',
+      '--background': '195, 255, 0',
+      '--text-color': '0, 0, 0',
+      '--dark-text': '0, 0, 0',
+      '--highlight': '255, 4, 180',
+      '--highlight-text': '255, 4, 180',
+      '--button-color': '0, 0, 0',
+
+      '--header-text': '0, 0, 0',
+      '--header-highlight': '195, 255, 0',
+
+      '--header-text-active': '0, 0, 0',
+      '--header-highlight-active': '195, 255, 0'
     }
   }
 

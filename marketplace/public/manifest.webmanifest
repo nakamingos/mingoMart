@@ -1,7 +1,7 @@
 {
   "name": "EtherPhunks Market",
   "short_name": "EtherPhunks",
-  "theme_color": "#C3FF00",
+  "theme_color": "#FF04B4",
   "background_color": "#000000",
   "display": "standalone",
   "scope": "./",
