@@ -38,13 +38,14 @@ const pointsAddress = environment.pointsAddress;
 const bridgeAddressL2 = environment.bridgeAddressL2;
 const auctionHouseAddress = environment.auctionHouseAddress;
 
-const projectId = 'd183619f342281fd3f3ff85716b6016a';
+const projectId = '75afbc114c2285cb55ce9619befb0ea9';
+const appUrl = window.location.origin;
 
 const metadata = {
   name: 'Ethereum Phunks Market',
   description: 'A decentralized marketplace for Ethereum Phunks & Curated Ethscription Collections',
-  url: 'https://etherphunks.eth.limo',
-  icons: ['https://etherphunks.eth.limo/favicon.ico']
+  url: appUrl,
+  icons: [`${appUrl}/favicon.ico`]
 };
 
 const themeVariables = {
@@ -1240,4 +1241,3 @@ export class Web3Service {
     return hash;
   }
 }
-
