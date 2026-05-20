@@ -703,7 +703,7 @@ export class ItemActionsComponent {
 
       const typedData: any = {
         domain: {
-          name: 'EtherPhunks',
+          name: 'Mingo Mart 🦩',
           version: '1',
           chainId: BigInt(chainId),
         },
@@ -828,7 +828,7 @@ export class ItemActionsComponent {
    */
   async checkConsenus(phunk: Phunk): Promise<void> {
     const res = await this.dataSvc.checkConsensus([phunk]);
-    if (!res[0]?.consensus) throw new Error('Consensus not reached. Contact Support @etherphunks');
+    if (!res[0]?.consensus) throw new Error('Consensus not reached. Contact Support @NoMoreLabs');
   }
 
   /**

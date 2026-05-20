@@ -75,7 +75,7 @@ export class AdminAuthService {
 
       // Create the typed data for collection-specific login verification
       const domain = {
-        name: 'EtherPhunks Admin',
+        name: 'Mingo Mart Admin',
         version: '1',
         chainId: environment.chainId,
       };

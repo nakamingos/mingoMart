@@ -42,8 +42,8 @@ const projectId = '75afbc114c2285cb55ce9619befb0ea9';
 const appUrl = window.location.origin;
 
 const metadata = {
-  name: 'Ethereum Phunks Market',
-  description: 'A decentralized marketplace for Ethereum Phunks & Curated Ethscription Collections',
+  name: 'Mingo Mart 🦩',
+  description: 'A decentralized marketplace for Nakamingos🦩 & Curated Ethscription Collections',
   url: appUrl,
   icons: [`${appUrl}/favicon.ico`]
 };
