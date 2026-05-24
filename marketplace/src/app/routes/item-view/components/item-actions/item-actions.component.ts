@@ -9,7 +9,7 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { filter, firstValueFrom, map, switchMap } from 'rxjs';
 import { signTypedData } from '@wagmi/core';
 
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 import { GlobalState, Notification } from '@/models/global-state';
 
 import { Web3Service } from '@/services/web3.service';
@@ -49,7 +49,7 @@ interface ActionsState {
 })
 export class ItemActionsComponent {
 
-  phunk = input.required<Phunk>();
+  phunk = input.required<MarketItem>();
   phunk$ = toObservable(this.phunk);
 
   disabled = input.required<boolean>();
@@ -295,11 +295,11 @@ export class ItemActionsComponent {
     // console.log({hashId, value, address});
 
     let notification: Notification = {
-      id: this.utilSvc.createIdFromString('offerPhunkForSale' + hashId),
+      id: this.utilSvc.createIdFromString('offerHashForSale' + hashId),
       timestamp: Date.now(),
       slug: phunk.slug,
       type: 'wallet',
-      function: 'offerPhunkForSale',
+      function: 'offerHashForSale',
       hashId,
       tokenId: phunk.tokenId,
       value,
@@ -322,11 +322,11 @@ export class ItemActionsComponent {
 
       let hash;
       if (phunk.isEscrowed) {
-        hash = await this.web3Svc.offerPhunkForSale(hashId, value, address);
+        hash = await this.web3Svc.offerHashForSale(hashId, value, address);
       } else if (phunk.nft) {
-        hash = await this.web3Svc.offerPhunkForSaleL2(hashId, value, address);
+        hash = await this.web3Svc.offerHashForSaleL2(hashId, value, address);
       } else {
-        hash = await this.web3Svc.escrowAndOfferPhunkForSale(hashId, value, address);
+        hash = await this.web3Svc.escrowAndOfferHashForSale(hashId, value, address);
       }
 
       notification = {
@@ -425,17 +425,17 @@ export class ItemActionsComponent {
    *
    * @throws {Error} If hashId is invalid or transaction cannot be processed
    */
-  async phunkNoLongerForSale(): Promise<void> {
+  async hashNoLongerForSale(): Promise<void> {
     const phunk = this.phunk();
     const hashId = phunk.hashId;
     if (!hashId) throw new Error('Invalid hashId');
 
     let notification: Notification = {
-      id: this.utilSvc.createIdFromString('phunkNoLongerForSale' + hashId),
+      id: this.utilSvc.createIdFromString('hashNoLongerForSale' + hashId),
       timestamp: Date.now(),
       slug: phunk.slug,
       type: 'wallet',
-      function: 'phunkNoLongerForSale',
+      function: 'hashNoLongerForSale',
       hashId,
       tokenId: phunk.tokenId,
     };
@@ -446,9 +446,9 @@ export class ItemActionsComponent {
 
       let hash;
       if (phunk.nft) {
-        hash = await this.web3Svc.phunkNoLongerForSaleL2(hashId);
+        hash = await this.web3Svc.hashNoLongerForSaleL2(hashId);
       } else {
-        hash = await this.web3Svc.phunkNoLongerForSale(hashId);
+        hash = await this.web3Svc.hashNoLongerForSale(hashId);
       }
       if (!hash) throw new Error('Could not process transaction');
 
@@ -487,7 +487,7 @@ export class ItemActionsComponent {
    *
    * @throws {Error} If hashId is invalid, consensus is not reached, or prevOwner is invalid
    */
-  async buyPhunk(): Promise<void> {
+  async buyHash(): Promise<void> {
     const phunk = this.phunk();
     const hashId = phunk.hashId;
     if (!hashId) throw new Error('Invalid hashId');
@@ -495,11 +495,11 @@ export class ItemActionsComponent {
     const value = phunk.listing?.minValue;
 
     let notification: Notification = {
-      id: this.utilSvc.createIdFromString('buyPhunk' + hashId),
+      id: this.utilSvc.createIdFromString('buyHash' + hashId),
       timestamp: Date.now(),
       slug: phunk.slug,
       type: 'wallet',
-      function: 'buyPhunk',
+      function: 'buyHash',
       hashId,
       tokenId: phunk.tokenId,
       value: Number(this.web3Svc.weiToEth(value)),
@@ -513,9 +513,9 @@ export class ItemActionsComponent {
 
       let hash: string | undefined = undefined;
       if (phunk.nft) {
-        hash = await this.web3Svc.buyPhunkL2(hashId);
+        hash = await this.web3Svc.buyHashL2(hashId);
       } else {
-        hash = await this.web3Svc.batchBuyPhunks([phunk]);
+        hash = await this.web3Svc.batchBuyHashes([phunk]);
       }
 
       if (!hash) throw new Error('Could not process transaction');
@@ -554,17 +554,17 @@ export class ItemActionsComponent {
    *
    * @throws {Error} If hashId is invalid, address is invalid, or consensus is not reached
    */
-  async transferPhunk(): Promise<void> {
+  async transferHash(): Promise<void> {
     const phunk = this.phunk();
     const hashId = phunk.hashId;
     if (!hashId) throw new Error('Invalid hashId');
 
     let notification: Notification = {
-      id: this.utilSvc.createIdFromString('transferPhunk' + hashId),
+      id: this.utilSvc.createIdFromString('transferHash' + hashId),
       timestamp: Date.now(),
       slug: phunk.slug,
       type: 'wallet',
-      function: 'transferPhunk',
+      function: 'transferHash',
       hashId,
       tokenId: phunk.tokenId,
     };
@@ -581,7 +581,7 @@ export class ItemActionsComponent {
 
       await this.checkConsenus(phunk);
 
-      const hash = await this.web3Svc.transferPhunk(hashId, toAddress);
+      const hash = await this.web3Svc.transferHash(hashId, toAddress);
       notification = {
         ...notification,
         type: 'pending',
@@ -615,17 +615,17 @@ export class ItemActionsComponent {
    *
    * @throws {Error} If hashId is invalid or transaction cannot be processed
    */
-  async withdrawPhunk(): Promise<void> {
+  async withdrawHash(): Promise<void> {
     const phunk = this.phunk();
     const hashId = phunk.hashId;
     if (!hashId) throw new Error('Invalid hashId');
 
     let notification: Notification = {
-      id: this.utilSvc.createIdFromString('withdrawPhunk' + hashId),
+      id: this.utilSvc.createIdFromString('withdrawHash' + hashId),
       timestamp: Date.now(),
       slug: phunk.slug,
       type: 'wallet',
-      function: 'withdrawPhunk',
+      function: 'withdrawHash',
       hashId,
       tokenId: phunk.tokenId,
     };
@@ -633,7 +633,7 @@ export class ItemActionsComponent {
     try {
       this.store.dispatch(upsertNotification({ notification }));
 
-      const hash = await this.web3Svc.withdrawPhunk(hashId);
+      const hash = await this.web3Svc.withdrawHash(hashId);
       if (!hash) throw new Error('Could not process transaction');
       notification = {
         ...notification,
@@ -755,7 +755,7 @@ export class ItemActionsComponent {
         relayResponse.signature.v,
       ];
 
-      const hash = await this.web3Svc.lockPhunk(hexArr);
+      const hash = await this.web3Svc.lockHash(hexArr);
       if (!hash) throw new Error('Could not process transaction');
       notification = {
         ...notification,
@@ -826,7 +826,7 @@ export class ItemActionsComponent {
    * @param phunk - The phunk to check consensus for
    * @throws {Error} If consensus is not reached
    */
-  async checkConsenus(phunk: Phunk): Promise<void> {
+  async checkConsenus(phunk: MarketItem): Promise<void> {
     const res = await this.dataSvc.checkConsensus([phunk]);
     if (!res[0]?.consensus) throw new Error('Consensus not reached. Contact Support @NoMoreLabs');
   }

@@ -1,9 +1,9 @@
-<app-phunk-grid
+<app-market-item-grid
   [marketType]="'all'"
   [activeSort]="sortOption.ID"
   [viewType]="'compact'"
   [limit]="44"
-  [phunkData]="(phunkData$ | async) || []"
+  [marketItemData]="(marketItemData$ | async) || []"
   [slug]="selectedCollectionSlug() || ''"
 />
 

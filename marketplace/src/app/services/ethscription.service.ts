@@ -3,7 +3,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 
 import { fromHex } from 'viem';
 
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 import { DecodedData, MIME_TYPE_MAP } from '@/models/ethscriptions';
 
 import { Web3Service } from './web3.service';
@@ -24,7 +24,7 @@ export class EthscriptionService {
    * Processes a phunk's image data from the blockchain
    * @param phunk The phunk object containing the hash ID
    */
-  async fetchImage(phunk: Phunk | null, transparentVersion: boolean): Promise<DecodedData | null> {
+  async fetchImage(phunk: MarketItem | null, transparentVersion: boolean): Promise<DecodedData | null> {
     if (!phunk) return null;
 
     let imageData;
@@ -40,7 +40,7 @@ export class EthscriptionService {
     return this.decodeDataURI(imageData);
   }
 
-  async fetchHostedImage(phunk: Phunk | null, transparentVersion: boolean): Promise<string | null> {
+  async fetchHostedImage(phunk: MarketItem | null, transparentVersion: boolean): Promise<string | null> {
     const image = await this.imageSvc.fetchSupportedImageBySha((`${phunk?.sha}${transparentVersion ? '_transparent' : ''}`) as string);
 
     // Convert ArrayBuffer to base64 string

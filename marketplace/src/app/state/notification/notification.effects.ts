@@ -135,7 +135,7 @@ export class NotificationEffects {
 
   checkEventForPurchaseFromUser(event: Event, userAddress: string) {
     if (!userAddress) return;
-    if (event.type === 'PhunkBought' && event.from.toLowerCase() === userAddress?.toLowerCase()) {
+    if (event.type === 'HashBought' && event.from.toLowerCase() === userAddress?.toLowerCase()) {
       // This phunk was bought FROM the active user.
       // We can notify them of this purchase
       this.store.dispatch(upsertNotification({

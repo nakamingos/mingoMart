@@ -14,9 +14,9 @@ export const selectActiveTraitFilters = createSelector(
   (appState: MarketState) => appState.activeTraitFilters
 );
 
-export const selectSelectedPhunks = createSelector(
+export const selectSelectedMarketItems = createSelector(
   selectMarketState,
-  (appState: MarketState) => appState.selectedPhunks
+  (appState: MarketState) => appState.selectedMarketItems
 );
 
 export const selectActiveMarketRouteData = createSelector(

@@ -1,12 +1,12 @@
 @if ((marketType$ | async); as marketType) {
   <div class="inner">
 
-    @if ((activeMarketRouteData$ | async); as phunkData) {
+    @if ((activeMarketRouteData$ | async); as marketItemData) {
       @if ((activeCollection$ | async); as collection) {
         <app-market-header
           [marketType]="marketType"
           [collection]="collection"
-          [phunkData]="phunkData"
+          [marketItemData]="marketItemData"
         />
       }
 
@@ -114,17 +114,17 @@
           }
 
           <div class="grid-area-wrapper">
-            <app-phunk-grid
+            <app-market-item-grid
               [observe]="true"
               [marketType]="marketType"
               [narrow]="showComments"
               [activeSort]="(activeSort$ | async)!"
               [limit]="250"
               [traitFilters]="(activeTraitFilters$ | async)"
-              [phunkData]="phunkData.data"
+              [marketItemData]="marketItemData.data"
               [slug]="(activeCollection$ | async)?.slug || ''"
               [defaultBackground]="(activeCollection$ | async)?.defaultBackground"
-              [total]="phunkData.total"
+              [total]="marketItemData.total"
               [selectAll]="selectAll"
               [walletAddress]="(walletAddress$ | async)"
               [selectable]="
@@ -159,7 +159,7 @@
   @if (isListingBulk) {
     <form [formGroup]="bulkActionsForm" class="list">
       <div class="top-bar">
-        <h2 i18n>Bulk List <span class="highlight">{{ bulkActionsForm.value.listingPhunks?.length }}</span> items</h2>
+        <h2 i18n>Bulk List <span class="highlight">{{ bulkActionsForm.value.listingItems?.length }}</span> items</h2>
         @if (deselected.length) {
           <div class="ineligible">{{ deselected.length }} Selected items are not eligible to be listed</div>
         }
@@ -168,8 +168,8 @@
       </div>
 
       <div class="selected-wrapper">
-        <ng-container formArrayName="listingPhunks">
-          @for (item of selectedPhunksFormArray.controls; track item.value.hashId; let i = $index) {
+        <ng-container formArrayName="listingItems">
+          @for (item of selectedMarketItemsFormArray.controls; track item.value.hashId; let i = $index) {
             <div [formGroupName]="i">
 
               <div class="selected">
@@ -182,14 +182,14 @@
                 />
 
                 <div class="form-group">
-                  <label [for]="item.value.phunkId">List Price</label>
+                  <label [for]="item.value.tokenId">List Price</label>
                   <input
                     type="number"
-                    [id]="item.value.phunkId"
+                    [id]="item.value.tokenId"
                     [placeholder]="item.value.listing ? ((item.value.listing?.minValue | weiToEth) + 'Ξ') : 'ETH'"
                     formControlName="listPrice"
                   />
-                  @if (selectedPhunksFormArray.controls[i].get('listPrice')?.value) {
+                  @if (selectedMarketItemsFormArray.controls[i].get('listPrice')?.value) {
                     <button tabindex="-1" class="copy" (click)="copyToNext(i)">Copy</button>
                   }
                 </div>
@@ -207,14 +207,14 @@
   } @else if (isTransferingBulk) {
     <form [formGroup]="bulkActionsForm" class="transfer">
       <div class="top-bar">
-        <h2 i18n>Bulk transfer <span class="highlight">{{ bulkActionsForm.value.transferPhunks?.length }}</span> Phunks</h2>
+        <h2 i18n>Bulk transfer <span class="highlight">{{ bulkActionsForm.value.transferItems?.length }}</span> items</h2>
         @if (deselected.length) {
           <div class="ineligible">{{ deselected.length }} Selected items are not eligible to be transferred</div>
         }
       </div>
 
       <div class="image-grid-wrapper">
-        @for (item of selectedPhunksFormArray.controls; track item.value.sha; let i = $index) {
+        @for (item of selectedMarketItemsFormArray.controls; track item.value.sha; let i = $index) {
           <div class="image">
             <img
               [lazyLoad]="dataSvc.staticUrl + '/static/images/' + item.value.sha"
@@ -224,7 +224,7 @@
         }
       </div>
 
-      @if (bulkActionsForm.value.transferPhunks?.length) {
+      @if (bulkActionsForm.value.transferItems?.length) {
         <div class="form-group">
           <label i18n for="transfer-address">Transfer to address</label>
           <input #transferAddressInput type="text" id="transfer-address" [formControl]="transferAddress"
@@ -240,14 +240,14 @@
   } @else if (isEscrowingBulk) {
     <form [formGroup]="bulkActionsForm" class="escrow">
       <div class="top-bar">
-        <h2 i18n>Bulk Escrow <span class="highlight">{{ bulkActionsForm.value.escrowPhunks?.length }}</span> items</h2>
+        <h2 i18n>Bulk Escrow <span class="highlight">{{ bulkActionsForm.value.escrowItems?.length }}</span> items</h2>
         @if (deselected.length) {
           <div class="ineligible">{{ deselected.length }} Selected items are not eligible to be escrowed</div>
         }
       </div>
 
       <div class="image-grid-wrapper">
-        @for (item of selectedPhunksFormArray.controls; track item.value.hashId; let i = $index) {
+        @for (item of selectedMarketItemsFormArray.controls; track item.value.hashId; let i = $index) {
           <div class="image">
             <img
               [lazyLoad]="dataSvc.staticUrl + '/static/images/' + item.value.sha"
@@ -257,7 +257,7 @@
         }
       </div>
 
-      @if (bulkActionsForm.value.escrowPhunks?.length) {
+      @if (bulkActionsForm.value.escrowItems?.length) {
         <div class="form-actions">
           <button type="reset" (click)="closeSlideout()">Cancel</button>
           <button type="submit" (click)="submitBatchEscrow()" [class.disabled]="indexerIsBehind">Escrow All</button>
@@ -267,14 +267,14 @@
   } @else if (isWithdrawingBulk) {
     <form [formGroup]="bulkActionsForm" class="withdraw">
       <div class="top-bar">
-        <h2 i18n>Bulk Withdraw <span class="highlight">{{ bulkActionsForm.value.withdrawPhunks?.length }}</span> items</h2>
+        <h2 i18n>Bulk Withdraw <span class="highlight">{{ bulkActionsForm.value.withdrawItems?.length }}</span> items</h2>
         @if (deselected.length) {
           <div class="ineligible">{{ deselected.length }} Selected items are not eligible to be withdrawn</div>
         }
       </div>
 
       <div class="image-grid-wrapper">
-        @for (item of selectedPhunksFormArray.controls; track item.value.hashId; let i = $index) {
+        @for (item of selectedMarketItemsFormArray.controls; track item.value.hashId; let i = $index) {
           <div class="image">
             <img
               [lazyLoad]="dataSvc.staticUrl + '/static/images/' + item.value.sha"
@@ -284,7 +284,7 @@
         }
       </div>
 
-      @if (bulkActionsForm.value.withdrawPhunks?.length) {
+      @if (bulkActionsForm.value.withdrawItems?.length) {
         <div class="form-actions">
           <button type="reset" (click)="closeSlideout()">Cancel</button>
           <button type="submit" (click)="submitBatchWithdraw()" [class.disabled]="indexerIsBehind">Withdraw All</button>
@@ -294,14 +294,14 @@
   } @else if (isBuyingBulk) {
     <form [formGroup]="bulkActionsForm" class="buy">
       <div class="top-bar">
-        <h2 i18n>Buy <span class="highlight">{{ bulkActionsForm.value.buyPhunks?.length }}</span> items</h2>
+        <h2 i18n>Buy <span class="highlight">{{ bulkActionsForm.value.buyItems?.length }}</span> items</h2>
         @if (deselected.length) {
           <div class="ineligible">{{ deselected.length }} Selected items are not eligible to be purchased</div>
         }
       </div>
 
       <div class="items-wrapper">
-        @for (item of selectedPhunksFormArray.controls; track item.value.hashId; let i = $index) {
+        @for (item of selectedMarketItemsFormArray.controls; track item.value.hashId; let i = $index) {
           <div class="image-wrapper">
             <img
               [lazyLoad]="dataSvc.staticUrl + '/static/images/' + item.value.sha"
@@ -310,7 +310,7 @@
           </div>
           <div class="value-wrapper">
             <span class="token">
-              #{{ item.value.phunkId }}
+              #{{ item.value.tokenId }}
             </span>
             <span class="eth">
               {{ (item.value.listing?.minValue | weiToEth) | number }}Ξ
@@ -324,7 +324,7 @@
       <div class="total-wrapper">
         <div class="label">Total</div>
         <div class="value-wrapper">
-          @if ((bulkActionsForm.value.buyPhunks || []) | calc : 'totalListingsValue'; as totalValue) {
+          @if ((bulkActionsForm.value.buyItems || []) | calc : 'totalListingsValue'; as totalValue) {
             <span class="eth">
               {{ (totalValue) | number : '1.0-5' }}Ξ
             </span>
@@ -338,7 +338,7 @@
         </div>
       </div>
 
-      @if (bulkActionsForm.value.buyPhunks?.length) {
+      @if (bulkActionsForm.value.buyItems?.length) {
         <div class="form-actions">
           <button type="reset" (click)="closeSlideout()">Cancel</button>
           <button type="submit" (click)="submitBatchBuy()" [class.disabled]="indexerIsBehind">Buy All</button>

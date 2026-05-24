@@ -11,7 +11,7 @@ import * as notificationSelectors from '@/state/notification/notification.select
 
 import { map } from 'rxjs';
 
-export type TxFunction = 'sendToEscrow' | 'phunkNoLongerForSale' | 'offerPhunkForSale' | 'withdrawBidForPhunk' | 'acceptBidForPhunk' | 'buyPhunk' | 'enterBidForPhunk' | 'transferPhunk' | 'withdrawPhunk';
+export type TxFunction = 'sendToEscrow' | 'hashNoLongerForSale' | 'offerHashForSale' | 'withdrawBidForHash' | 'acceptBidForHash' | 'buyHash' | 'enterBidForHash' | 'transferHash' | 'withdrawHash';
 
 @Component({
   selector: 'app-notifications',

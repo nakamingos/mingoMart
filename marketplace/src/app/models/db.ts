@@ -4,10 +4,10 @@ import { EventType, EventVenue } from './global-state';
 
 export interface Account {
   id: string;
-  phunks?: Phunk[];
+  marketItems?: MarketItem[];
 }
 
-export interface Phunk {
+export interface MarketItem {
   slug: string
   hashId: string
   tokenId: number

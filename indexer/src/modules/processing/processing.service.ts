@@ -178,7 +178,7 @@ export class ProcessingService {
     if (ethscriptionsEvents?.length) events.push(...ethscriptionsEvents);
 
     // Process marketplace events
-    const marketplaceEvents = await this.marketplaceSvc.processEtherPhunkMarketplaceEvents(
+    const marketplaceEvents = await this.marketplaceSvc.processMingoMartMarketplaceEvents(
       transaction,
       receipt,
       createdAt
@@ -186,7 +186,7 @@ export class ProcessingService {
     if (marketplaceEvents?.length) events.push(...marketplaceEvents);
 
     // Process auction events
-    const auctionEvents = await this.auctionsSvc.processEtherPhunkAuctionEvents(
+    const auctionEvents = await this.auctionsSvc.processMingoMartAuctionEvents(
       transaction,
       receipt,
       createdAt

@@ -6,7 +6,7 @@ import { Observable, from, switchMap, filter, tap, shareReplay, of, map, take, f
 
 import { GlobalState } from '@/models/global-state';
 import { Attribute, AttributeItems } from '@/models/attributes';
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 
 import { StorageService } from '@/services/storage.service';
 
@@ -51,13 +51,13 @@ export class AttributesService {
   }
 
   /**
-   * Adds attributes to an array of Phunks
+   * Adds attributes to an array of market items
    * @param slug Collection slug
-   * @param phunks Array of Phunks to add attributes to
+   * @param marketItems Array of market items to add attributes to
    */
-  addAttributes(slug: string | undefined, phunks: Phunk[]): Observable<Phunk[]> {
-    if (!phunks.length) return of(phunks);
-    if (!slug) return of(phunks);
+  addAttributes(slug: string | undefined, marketItems: MarketItem[]): Observable<MarketItem[]> {
+    if (!marketItems.length) return of(marketItems);
+    if (!slug) return of(marketItems);
 
     return this.getAttributes(slug).pipe(
       filter((res: AttributeItems | null) => !!res),
@@ -69,7 +69,7 @@ export class AttributesService {
           }),
           map((collections: Collection[]) => collections.find((c: Collection) => c.slug === slug)),
           map((collection: Collection | undefined) => {
-            return phunks.map((item: Phunk) => {
+            return marketItems.map((item: MarketItem) => {
               const originalAttributes = item.sha ? res![item.sha] : [];
               if (!originalAttributes) return item;
               const mainTraits = collection?.mainTraits?.filter(Boolean) || [];

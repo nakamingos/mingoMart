@@ -1,7 +1,7 @@
 import { EventType, GlobalState } from '@/models/global-state';
 import { createAction, props } from '@ngrx/store';
 
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 
 // import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { Collection } from '@/models/data.state';
@@ -32,7 +32,7 @@ export const setEvents = createAction(
 
 // export const setUserOpenBids = createAction(
 //   '[Data State] Set User Open Bids',
-//   props<{ userOpenBids: Phunk[] }>()
+//   props<{ userOpenBids: MarketItem[] }>()
 // );
 
 export const fetchLeaderboard = createAction(

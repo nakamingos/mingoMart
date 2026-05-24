@@ -17,7 +17,7 @@ import { DataService } from '@/services/data.service';
 
 import { EventType, GlobalState } from '@/models/global-state';
 import { getEventVenueLabel } from '@/constants/event-venues';
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 
 import { environment } from '@environments/environment';
 
@@ -47,7 +47,7 @@ export class TxHistoryComponent implements OnChanges {
   ZERO_ADDRESS = zeroAddress;
   explorerUrl = environment.explorerUrl;
 
-  @Input() phunk!: Phunk;
+  @Input() phunk!: MarketItem;
 
   private fetchTxHistory = new BehaviorSubject<string | null>(null);
   fetchTxHistory$ = this.fetchTxHistory.asObservable();
@@ -65,11 +65,11 @@ export class TxHistoryComponent implements OnChanges {
     created: 'Created',
     transfer: 'Transfer',
     escrow: 'Escrow',
-    PhunkOffered: 'Offered',
-    PhunkBidEntered: 'Bid Entered',
-    PhunkBidWithdrawn: 'Bid Withdrawn',
-    PhunkBought: 'Bought',
-    PhunkNoLongerForSale: 'Offer Withdrawn',
+    HashOffered: 'Offered',
+    HashBidEntered: 'Bid Entered',
+    HashBidWithdrawn: 'Bid Withdrawn',
+    HashBought: 'Bought',
+    HashNoLongerForSale: 'Offer Withdrawn',
     bridgeOut: 'Lock',
     bridgeIn: 'Unlock',
     AuctionCreated: 'Auction Created',

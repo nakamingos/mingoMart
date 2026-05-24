@@ -1,4 +1,4 @@
-import { Event, Phunk } from './db';
+import { Event, MarketItem } from './db';
 
 export interface Collection {
   id: number;
@@ -33,7 +33,7 @@ export interface Collection {
   ignoredTraitFiltersForCounts: string[];
 
   // Runtime fields
-  previews?: Phunk[];
+  previews?: MarketItem[];
   stats?: {
     sales: number;
     volume: number;
@@ -44,7 +44,7 @@ export interface DataState {
   usd: number | null;
   events: Event[] | null;
   hasMoreEvents: boolean;
-  userOpenBids: Phunk[];
+  userOpenBids: MarketItem[];
 
   txHistory: any[] | null;
   leaderboard: any[] | null;

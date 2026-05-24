@@ -1,12 +1,12 @@
-import { Phunk } from './db';
+import { MarketItem } from './db';
 
-export type TxType = 'sendToEscrow' | 'phunkNoLongerForSale' | 'offerPhunkForSale' | 'withdrawBidForPhunk' | 'acceptBidForPhunk' | 'buyPhunk' | 'enterBidForPhunk' | 'transferPhunk' | 'withdrawPhunk';
+export type TxType = 'sendToEscrow' | 'hashNoLongerForSale' | 'offerHashForSale' | 'withdrawBidForHash' | 'acceptBidForHash' | 'buyHash' | 'enterBidForHash' | 'transferHash' | 'withdrawHash';
 
 export type ModalType = 'transaction' | 'complete' | 'sell' | 'bid' | 'transfer' | 'acceptBid' | 'error' | null;
 
 export interface TX {
   type: TxType;
-  phunk: Phunk;
+  marketItem: MarketItem;
 
   value?: number | null;
   toAddress?: string | null;

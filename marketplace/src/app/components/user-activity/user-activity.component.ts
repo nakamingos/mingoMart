@@ -43,10 +43,10 @@ export class UserActivityComponent {
   )
 
   labels: any = {
-    PhunkBidEntered: 'New bid of',
-    PhunkBidWithdrawn: 'Bid withdrawn',
-    PhunkOffered: 'Offered for',
-    PhunkBought: 'Bought for',
+    HashBidEntered: 'New bid of',
+    HashBidWithdrawn: 'Bid withdrawn',
+    HashOffered: 'Offered for',
+    HashBought: 'Bought for',
     transfer: 'Transferred to',
     created: 'Created by',
     bridgeOut: 'Bridged by',
@@ -54,7 +54,7 @@ export class UserActivityComponent {
     wrapped: 'Wrapped by',
     unwrapped: 'Unwrapped by',
     // escrow: 'Escrowed by',
-    // PhunkNoLongerForSale: 'Offer withdrawn',
+    // HashNoLongerForSale: 'Offer withdrawn',
   };
 
   getVenueLabel = getEventVenueLabel;

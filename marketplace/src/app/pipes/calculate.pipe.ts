@@ -3,7 +3,7 @@ import { Pipe, PipeTransform } from '@angular/core';
 import { formatEther } from 'viem';
 
 import { Calcs } from '@/models/pipes';
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 
 @Pipe({
   standalone: true,
@@ -12,7 +12,7 @@ import { Phunk } from '@/models/db';
 
 export class CalcPipe implements PipeTransform {
 
-  transform(value: Phunk[] | any[], type: Calcs): number {
+  transform(value: MarketItem[] | any[], type: Calcs): number {
 
     // console.log(value, type)
     if (!value?.length) return 0;

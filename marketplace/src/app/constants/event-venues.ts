@@ -2,8 +2,8 @@ import { EventVenue } from '@/models/global-state';
 
 export const eventVenueLabels: Record<EventVenue, string> = {
   'native-ethscriptions': 'Ethscriptions',
-  'etherphunks-market': 'EtherPhunks',
-  'etherphunks-auction': 'EtherPhunks Auctions',
+  'mingomart-market': 'Mingo Mart',
+  'mingomart-auction': 'Mingo Mart Auctions',
   'ethscriptions-market': 'Ethscriptions.com',
   'etch-market': 'Etch',
   'ordex-market': 'Ordex',

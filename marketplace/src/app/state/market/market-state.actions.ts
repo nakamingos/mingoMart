@@ -1,6 +1,6 @@
 import { createAction, props } from '@ngrx/store';
 
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 import { MarketState, MarketType } from '@/models/market.state';
 import { TraitFilter } from '@/models/global-state';
 import { SortOption } from '@/models/sorts.model';
@@ -25,9 +25,9 @@ export const setActiveTraitFilters = createAction(
   props<{ traitFilters: TraitFilter }>()
 );
 
-export const setSelectedPhunks = createAction(
-  '[Market State] Set Selected Phunks',
-  props<{ selectedPhunks: Phunk[] }>()
+export const setSelectedMarketItems = createAction(
+  '[Market State] Set Selected Market Items',
+  props<{ selectedMarketItems: MarketItem[] }>()
 );
 
 export const resetMarketState = createAction(
@@ -36,12 +36,12 @@ export const resetMarketState = createAction(
 
 export const setMarketData = createAction(
   '[Market State] Set Market Data',
-  props<{ marketData: Phunk[] }>()
+  props<{ marketData: MarketItem[] }>()
 );
 
 export const setAuctionData = createAction(
   '[Market State] Set Auction Data',
-  props<{ auctionData: Phunk[] }>()
+  props<{ auctionData: MarketItem[] }>()
 );
 
 export const fetchOwned = createAction(
@@ -50,12 +50,12 @@ export const fetchOwned = createAction(
 
 export const setOwned = createAction(
   '[Market State] Set Owned',
-  props<{ owned: Phunk[] }>()
+  props<{ owned: MarketItem[] }>()
 );
 
 export const setAll = createAction(
   '[Market State] Set All',
-  props<{ all: Phunk[] }>()
+  props<{ all: MarketItem[] }>()
 );
 
 export const setActiveMarketRouteData = createAction(

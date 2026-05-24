@@ -1,5 +1,5 @@
 import { Pipe, PipeTransform } from '@angular/core';
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 import { TraitFilter } from '@/models/global-state';
 import { Collection } from '@/models/data.state';
 
@@ -10,17 +10,17 @@ import { Collection } from '@/models/data.state';
 export class AttributeFilterPipe implements PipeTransform {
 
   /**
-   * Filters an array of Phunks based on trait filters
-   * @param value - Array of Phunks to filter
+   * Filters an array of market items based on trait filters
+   * @param value - Array of market items to filter
    * @param activeTraitFilters - Object containing active trait filters
-   * @returns Filtered array of Phunks that match all trait criteria
+   * @returns Filtered array of market items that match all trait criteria
    */
   transform(
-    value: Phunk[] | null,
+    value: MarketItem[] | null,
     activeTraitFilters: TraitFilter | null,
     slug: string,
     collections: Collection[] | null
-  ): Phunk[] | null {
+  ): MarketItem[] | null {
 
     if (!value) return null;
     if (!activeTraitFilters) return value;
@@ -65,7 +65,7 @@ export class AttributeFilterPipe implements PipeTransform {
 
     // Handle other trait filters
     if (filtersLength > 1 || (filtersLength === 1 && traitCountFilter === undefined)) {
-      filtered = filtered.filter((res: Phunk) => {
+      filtered = filtered.filter((res: MarketItem) => {
         if (!res.attributes) return false;
 
         // Check each filter

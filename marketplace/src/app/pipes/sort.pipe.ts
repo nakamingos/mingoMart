@@ -1,6 +1,6 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 import { SortOption } from '@/models/sorts.model';
 import { MarketType } from '@/models/market.state';
 
@@ -11,15 +11,15 @@ import { MarketType } from '@/models/market.state';
 export class SortPipe implements PipeTransform {
 
   /**
-   * Sort an array of Phunks based on the sort option and market type
-   * @param value - The array of Phunks to sort
+   * Sort an array of market items based on the sort option and market type
+   * @param value - The array of market items to sort
    * @param args - The sort option and market type
-   * @returns The sorted array of Phunks
+   * @returns The sorted array of market items
    */
   transform(
-    value: Phunk[] | null,
+    value: MarketItem[] | null,
     ...args: [SortOption, MarketType]
-  ): Phunk[] | null {
+  ): MarketItem[] | null {
     if (!value?.length) return null;
     if (!args) return value;
 
@@ -93,13 +93,13 @@ export class SortPipe implements PipeTransform {
   };
 
   /**
-   * Compare two Phunks based on their price
-   * @param a - The first Phunk
-   * @param b - The second Phunk
+   * Compare two market items based on their price
+   * @param a - The first MarketItem
+   * @param b - The second MarketItem
    * @param isLowToHigh - Whether to sort in low-to-high order
-   * @returns A number indicating the order of the two Phunks
+   * @returns A number indicating the order of the two market items
    */
-  private priceComparison = (a: Phunk, b: Phunk, isLowToHigh: boolean) => {
+  private priceComparison = (a: MarketItem, b: MarketItem, isLowToHigh: boolean) => {
     const aPrice = Number(a.listing?.minValue || '0');
     const bPrice = Number(b.listing?.minValue || '0');
 

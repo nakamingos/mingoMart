@@ -12,12 +12,12 @@ import { filter, map, tap } from 'rxjs';
 import { MarketSortsComponent } from './components/market-sorts/market-sorts.component';
 import { MarketHeaderComponent } from './components/market-header/market-header.component';
 
-import { PhunkGridComponent } from '@/components/phunk-grid/phunk-grid.component';
+import { MarketItemGridComponent } from '@/components/market-item-grid/market-item-grid.component';
 import { CommentsComponent } from '@/components/comments/comments.component';
 import { MarketFiltersComponent } from '@/routes/market/components/market-filters/market-filters.component';
 import { SlideoutComponent } from '@/components/slideout/slideout.component';
 
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 import { GlobalState, Notification, TraitFilter } from '@/models/global-state';
 
 import { DataService } from '@/services/data.service';
@@ -55,7 +55,7 @@ const defaultActionState = {
     ReactiveFormsModule,
 
     MarketHeaderComponent,
-    PhunkGridComponent,
+    MarketItemGridComponent,
     MarketFiltersComponent,
     SlideoutComponent,
     MarketSortsComponent,
@@ -66,7 +66,7 @@ const defaultActionState = {
     FormatCashPipe,
     AddressPipe,
   ],
-  selector: 'app-phunk-grid-view',
+  selector: 'app-market-item-grid-view',
   templateUrl: './market.component.html',
   styleUrls: ['./market.component.scss']
 })
@@ -82,18 +82,18 @@ export class MarketComponent {
   filtersVisible: boolean = false;
 
   bulkActionsForm = this.fb.group({
-    listingPhunks: this.fb.array([]),
-    transferPhunks: this.fb.array([]),
-    escrowPhunks: this.fb.array([]),
-    withdrawPhunks: this.fb.array([]),
-    buyPhunks: this.fb.array([]),
+    listingItems: this.fb.array([]),
+    transferItems: this.fb.array([]),
+    escrowItems: this.fb.array([]),
+    withdrawItems: this.fb.array([]),
+    buyItems: this.fb.array([]),
   });
 
-  selectedPhunksFormArray: FormArray = this.fb.array([]);
+  selectedMarketItemsFormArray: FormArray = this.fb.array([]);
   transferAddress = new FormControl<string | null>('');
 
-  selected: { [string: Phunk['hashId']]: Phunk } = {};
-  deselected: Phunk[] = [];
+  selected: { [string: MarketItem['hashId']]: MarketItem } = {};
+  deselected: MarketItem[] = [];
   selectedValue: string = '';
 
   selectMultipleActive: boolean = false;
@@ -170,7 +170,7 @@ export class MarketComponent {
   ) {}
 
   /**
-   * Executes a batch action on selected phunks
+   * Executes a batch action on selected items
    * @param type - The type of batch action to perform (transfer, escrow, withdraw, list, or sweep)
    */
   async batchAction(type: 'transfer' | 'escrow' | 'withdraw' | 'list' | 'sweep'): Promise<void> {
@@ -184,8 +184,8 @@ export class MarketComponent {
   }
 
   /**
-   * Prepares the UI for bulk buying of selected phunks
-   * Filters out phunks that are not in escrow or invalid, then sets up the form
+   * Prepares the UI for bulk buying of selected items
+   * Filters out items that are not in escrow or invalid, then sets up the form
    */
   async buySelected(): Promise<void> {
     this.isBuyingBulk = true;
@@ -194,8 +194,8 @@ export class MarketComponent {
     const { inEscrow, notInEscrow, invalid } = await this.checkSelected(true);
     this.deselected = [ ...notInEscrow, ...invalid ];
 
-    const formArray = this.fb.array(inEscrow.map((phunk: Phunk) => this.fb.group({
-      phunkId: [phunk.tokenId],
+    const formArray = this.fb.array(inEscrow.map((phunk: MarketItem) => this.fb.group({
+      tokenId: [phunk.tokenId],
       hashId: [phunk.hashId],
       sha: [phunk.sha],
       listing: {
@@ -203,13 +203,13 @@ export class MarketComponent {
       },
     }))) as FormArray;
 
-    this.bulkActionsForm.setControl('buyPhunks', formArray);
-    this.selectedPhunksFormArray = this.bulkActionsForm.get('buyPhunks') as FormArray;
+    this.bulkActionsForm.setControl('buyItems', formArray);
+    this.selectedMarketItemsFormArray = this.bulkActionsForm.get('buyItems') as FormArray;
   }
 
   /**
-   * Prepares the UI for bulk transfer of selected phunks
-   * Filters out phunks that are in escrow or invalid, then sets up the form and focuses the address input
+   * Prepares the UI for bulk transfer of selected items
+   * Filters out items that are in escrow or invalid, then sets up the form and focuses the address input
    */
   async transferSelected(): Promise<void> {
     this.isTransferingBulk = true;
@@ -218,22 +218,22 @@ export class MarketComponent {
     const { inEscrow, notInEscrow, invalid } = await this.checkSelected();
     this.deselected = [ ...inEscrow, ...invalid ];
 
-    const formArray = this.fb.array(notInEscrow.map((phunk: Phunk) => this.fb.group({
-      phunkId: [phunk.tokenId],
+    const formArray = this.fb.array(notInEscrow.map((phunk: MarketItem) => this.fb.group({
+      tokenId: [phunk.tokenId],
       hashId: [phunk.hashId],
       sha: [phunk.sha],
       listPrice: [''],
     }))) as FormArray;
 
-    this.bulkActionsForm.setControl('transferPhunks', formArray);
-    this.selectedPhunksFormArray = this.bulkActionsForm.get('transferPhunks') as FormArray;
+    this.bulkActionsForm.setControl('transferItems', formArray);
+    this.selectedMarketItemsFormArray = this.bulkActionsForm.get('transferItems') as FormArray;
 
     setTimeout(() => this.transferAddressInput.nativeElement.focus(), 100);
   }
 
   /**
-   * Prepares the UI for bulk listing of selected phunks
-   * Filters out phunks that are not in escrow, then sets up the form
+   * Prepares the UI for bulk listing of selected items
+   * Filters out items that are not in escrow, then sets up the form
    */
   async listSelected(): Promise<void> {
     this.isListingBulk = true;
@@ -242,21 +242,21 @@ export class MarketComponent {
     const { inEscrow, notInEscrow } = await this.checkSelected();
     this.deselected = notInEscrow;
 
-    const formArray = this.fb.array(inEscrow.map((phunk: Phunk) => this.fb.group({
-      phunkId: [phunk.tokenId],
+    const formArray = this.fb.array(inEscrow.map((phunk: MarketItem) => this.fb.group({
+      tokenId: [phunk.tokenId],
       hashId: [phunk.hashId],
       sha: [phunk.sha],
       listing: [phunk.listing],
       listPrice: [''],
     }))) as FormArray;
 
-    this.bulkActionsForm.setControl('listingPhunks', formArray);
-    this.selectedPhunksFormArray = this.bulkActionsForm.get('listingPhunks') as FormArray;
+    this.bulkActionsForm.setControl('listingItems', formArray);
+    this.selectedMarketItemsFormArray = this.bulkActionsForm.get('listingItems') as FormArray;
   }
 
   /**
-   * Prepares the UI for bulk escrow of selected phunks
-   * Filters out phunks that are already in escrow or invalid, then sets up the form
+   * Prepares the UI for bulk escrow of selected items
+   * Filters out items that are already in escrow or invalid, then sets up the form
    */
   async escrowSelected(): Promise<void> {
     this.isEscrowingBulk = true;
@@ -265,21 +265,21 @@ export class MarketComponent {
     const { inEscrow, notInEscrow, invalid } = await this.checkSelected();
     this.deselected = [ ...inEscrow, ...invalid ];
 
-    const formArray = this.fb.array(notInEscrow.map((phunk: Phunk) => this.fb.group({
-      phunkId: [phunk.tokenId],
+    const formArray = this.fb.array(notInEscrow.map((phunk: MarketItem) => this.fb.group({
+      tokenId: [phunk.tokenId],
       hashId: [phunk.hashId],
       slug: [phunk.slug],
       sha: [phunk.sha],
       listPrice: [''],
     }))) as FormArray;
 
-    this.bulkActionsForm.setControl('escrowPhunks', formArray);
-    this.selectedPhunksFormArray = this.bulkActionsForm.get('escrowPhunks') as FormArray;
+    this.bulkActionsForm.setControl('escrowItems', formArray);
+    this.selectedMarketItemsFormArray = this.bulkActionsForm.get('escrowItems') as FormArray;
   }
 
   /**
-   * Prepares the UI for bulk withdrawal of selected phunks
-   * Filters out phunks that are not in escrow, then sets up the form
+   * Prepares the UI for bulk withdrawal of selected items
+   * Filters out items that are not in escrow, then sets up the form
    */
   async withdrawSelected(): Promise<void> {
     this.isWithdrawingBulk = true;
@@ -288,35 +288,35 @@ export class MarketComponent {
     const { inEscrow, notInEscrow } = await this.checkSelected();
     this.deselected = notInEscrow;
 
-    const formArray = this.fb.array(inEscrow.map((phunk: Phunk) => this.fb.group({
-      phunkId: [phunk.tokenId],
+    const formArray = this.fb.array(inEscrow.map((phunk: MarketItem) => this.fb.group({
+      tokenId: [phunk.tokenId],
       hashId: [phunk.hashId],
       sha: [phunk.sha],
       listing: [phunk.listing],
       listPrice: [''],
     }))) as FormArray;
 
-    this.bulkActionsForm.setControl('withdrawPhunks', formArray);
-    this.selectedPhunksFormArray = this.bulkActionsForm.get('withdrawPhunks') as FormArray;
+    this.bulkActionsForm.setControl('withdrawItems', formArray);
+    this.selectedMarketItemsFormArray = this.bulkActionsForm.get('withdrawItems') as FormArray;
   }
 
   /**
-   * Submits a batch transfer transaction for selected phunks
+   * Submits a batch transfer transaction for selected items
    * Validates the transfer address and executes the blockchain transaction
    */
   async submitBatchTransfer(): Promise<void> {
 
-    if (!this.bulkActionsForm.value.transferPhunks) return;
-    const hashIds = this.bulkActionsForm.value.transferPhunks.map((phunk: any) => phunk.hashId);
+    if (!this.bulkActionsForm.value.transferItems) return;
+    const hashIds = this.bulkActionsForm.value.transferItems.map((phunk: any) => phunk.hashId);
 
     if (!hashIds?.length) return;
     if (!this.transferAddress.value) return;
 
     let notification: Notification = {
-      id: this.utilSvc.createIdFromString('transferPhunk' + hashIds.map((hashId: string) => hashId.substring(2)).join('')),
+      id: this.utilSvc.createIdFromString('transferHash' + hashIds.map((hashId: string) => hashId.substring(2)).join('')),
       timestamp: Date.now(),
       type: 'wallet',
-      function: 'transferPhunk',
+      function: 'transferHash',
       hashId: hashIds[0],
       hashIds,
       isBatch: true,
@@ -330,7 +330,7 @@ export class MarketComponent {
       toAddress = await this.web3Svc.verifyAddressOrEns(toAddress);
       if (!toAddress) throw new Error('Invalid address');
 
-      const hash = await this.web3Svc.batchTransferPhunks(hashIds, toAddress);
+      const hash = await this.web3Svc.batchTransferHashes(hashIds, toAddress);
       if (!hash) throw new Error('Transaction failed');
 
       notification = {
@@ -360,13 +360,13 @@ export class MarketComponent {
   }
 
   /**
-   * Submits a batch listing transaction for selected phunks
+   * Submits a batch listing transaction for selected items
    * Validates listing prices and executes the blockchain transaction
    */
   async submitBatchListing(): Promise<void> {
-    if (!this.bulkActionsForm.value.listingPhunks) return;
+    if (!this.bulkActionsForm.value.listingItems) return;
 
-    const newListings = this.bulkActionsForm.value.listingPhunks
+    const newListings = this.bulkActionsForm.value.listingItems
       .filter((phunk: any) => phunk.listPrice);
 
     if (!newListings.length) return;
@@ -377,10 +377,10 @@ export class MarketComponent {
     if (!hashIds?.length) return;
 
     let notification: Notification = {
-      id: this.utilSvc.createIdFromString('offerPhunkForSale' + hashIds.map((hashId: string) => hashId.substring(2)).join('')),
+      id: this.utilSvc.createIdFromString('offerHashForSale' + hashIds.map((hashId: string) => hashId.substring(2)).join('')),
       timestamp: Date.now(),
       type: 'wallet',
-      function: 'offerPhunkForSale',
+      function: 'offerHashForSale',
       hashId: hashIds[0],
       hashIds,
       isBatch: true,
@@ -390,7 +390,7 @@ export class MarketComponent {
     this.closeSlideout();
 
     try {
-      const hash = await this.web3Svc.batchOfferPhunkForSale(
+      const hash = await this.web3Svc.batchOfferHashForSale(
         listings.map(phunk => phunk.hashId),
         listings.map(phunk => phunk.listPrice)
       );
@@ -424,19 +424,19 @@ export class MarketComponent {
   }
 
   /**
-   * Submits a batch escrow transaction for selected phunks
-   * Transfers phunks to the escrow contract address
+   * Submits a batch escrow transaction for selected items
+   * Transfers items to the escrow contract address
    */
   async submitBatchEscrow(): Promise<void> {
-    if (!this.bulkActionsForm.value.escrowPhunks) return;
+    if (!this.bulkActionsForm.value.escrowItems) return;
 
     const { notInEscrow } = await this.checkSelected();
 
-    const selected: { [string: Phunk['hashId']]: Phunk } = {};
-    notInEscrow.forEach((phunk: Phunk) => selected[phunk.hashId] = phunk);
+    const selected: { [string: MarketItem['hashId']]: MarketItem } = {};
+    notInEscrow.forEach((phunk: MarketItem) => selected[phunk.hashId] = phunk);
     this.selected = selected;
 
-    const hashIds = Object.values(selected).map((phunk: Phunk) => phunk.hashId);
+    const hashIds = Object.values(selected).map((phunk: MarketItem) => phunk.hashId);
     const hexString = Object.keys(selected).map(hashId => hashId?.substring(2)).join('');
 
     const hex = `0x${hexString}`;
@@ -457,7 +457,7 @@ export class MarketComponent {
     try {
       if (!hashIds?.length || hex === '0x') throw new Error('Invalid selection');
 
-      const hash = await this.web3Svc.transferPhunk(hex, this.escrowAddress);
+      const hash = await this.web3Svc.transferHash(hex, this.escrowAddress);
       if (!hash) throw new Error('Transaction failed');
 
       notification = {
@@ -487,25 +487,25 @@ export class MarketComponent {
   }
 
   /**
-   * Submits a batch withdrawal transaction for selected phunks
-   * Withdraws phunks from the escrow contract back to the user's wallet
+   * Submits a batch withdrawal transaction for selected items
+   * Withdraws items from the escrow contract back to the user's wallet
    */
   async submitBatchWithdraw(): Promise<void> {
-    if (!this.bulkActionsForm.value.withdrawPhunks) return;
+    if (!this.bulkActionsForm.value.withdrawItems) return;
 
     const { inEscrow } = await this.checkSelected();
 
-    const selected: { [string: Phunk['hashId']]: Phunk } = {};
-    inEscrow.forEach((phunk: Phunk) => selected[phunk.hashId] = phunk);
+    const selected: { [string: MarketItem['hashId']]: MarketItem } = {};
+    inEscrow.forEach((phunk: MarketItem) => selected[phunk.hashId] = phunk);
     this.selected = selected;
 
-    const hashIds = Object.values(selected).map((phunk: Phunk) => phunk.hashId);
+    const hashIds = Object.values(selected).map((phunk: MarketItem) => phunk.hashId);
 
     let notification: Notification = {
-      id: this.utilSvc.createIdFromString('withdrawPhunk' + hashIds.map((hashId: string) => hashId.substring(2)).join('')),
+      id: this.utilSvc.createIdFromString('withdrawHash' + hashIds.map((hashId: string) => hashId.substring(2)).join('')),
       timestamp: Date.now(),
       type: 'wallet',
-      function: 'withdrawPhunk',
+      function: 'withdrawHash',
       hashId: hashIds[0],
       hashIds,
       isBatch: true,
@@ -517,7 +517,7 @@ export class MarketComponent {
     try {
       if (!hashIds?.length) throw new Error('Invalid selection');
 
-      const hash = await this.web3Svc.withdrawBatch(Object.keys(selected));
+      const hash = await this.web3Svc.withdrawBatchHashes(Object.keys(selected));
       if (!hash) throw new Error('Transaction failed');
 
       notification = {
@@ -547,25 +547,25 @@ export class MarketComponent {
   }
 
   /**
-   * Submits a batch buy transaction for selected phunks
-   * Purchases multiple phunks that are currently listed for sale
+   * Submits a batch buy transaction for selected items
+   * Purchases multiple items that are currently listed for sale
    */
   async submitBatchBuy(): Promise<void> {
-    if (!this.bulkActionsForm.value.buyPhunks) return;
+    if (!this.bulkActionsForm.value.buyItems) return;
 
     const { inEscrow } = await this.checkSelected(true);
 
-    const selected: { [string: Phunk['hashId']]: Phunk } = {};
-    inEscrow.forEach((phunk: Phunk) => selected[phunk.hashId] = phunk);
+    const selected: { [string: MarketItem['hashId']]: MarketItem } = {};
+    inEscrow.forEach((phunk: MarketItem) => selected[phunk.hashId] = phunk);
     this.selected = selected;
 
     const hashIds = Object.keys(selected);
 
     let notification: Notification = {
-      id: this.utilSvc.createIdFromString('buyPhunk' + hashIds.map((hashId: string) => hashId.substring(2)).join('')),
+      id: this.utilSvc.createIdFromString('buyHash' + hashIds.map((hashId: string) => hashId.substring(2)).join('')),
       timestamp: Date.now(),
       type: 'wallet',
-      function: 'buyPhunk',
+      function: 'buyHash',
       hashId: hashIds[0],
       hashIds,
       isBatch: true,
@@ -577,7 +577,7 @@ export class MarketComponent {
     try {
       if (!hashIds?.length) throw new Error('One or more items are no longer for sale.');
 
-      const hash = await this.web3Svc.batchBuyPhunks(Object.values(selected));
+      const hash = await this.web3Svc.batchBuyHashes(Object.values(selected));
       if (!hash) throw new Error('Transaction failed');
 
       notification = {
@@ -607,13 +607,13 @@ export class MarketComponent {
   }
 
   /**
-   * Handles changes to the selected phunks collection
+   * Handles changes to the selected items collection
    * Updates the total value and available actions based on the current selection
    * @param $event - The selection change event
    */
   selectedChange($event: any): void {
     this.selectedValue = Object.values(this.selected).reduce(
-      (acc: number, phunk: Phunk) => acc += Number(phunk.listing?.minValue || '0'),
+      (acc: number, phunk: MarketItem) => acc += Number(phunk.listing?.minValue || '0'),
     0).toString();
 
     this.actionsState = {
@@ -623,7 +623,7 @@ export class MarketComponent {
       canEscrow: false,
     };
 
-    Object.values(this.selected).forEach((phunk: Phunk) => {
+    Object.values(this.selected).forEach((phunk: MarketItem) => {
       // console.log({phunk});
       if (phunk.isEscrowed) {
         this.actionsState.canWithdraw = true;
@@ -673,8 +673,8 @@ export class MarketComponent {
    * @param index - The index of the current form control
    */
   copyToNext(index: number) {
-    this.selectedPhunksFormArray.controls[index + 1].get('listPrice')?.setValue(
-      this.selectedPhunksFormArray.controls[index].get('listPrice')?.value
+    this.selectedMarketItemsFormArray.controls[index + 1].get('listPrice')?.setValue(
+      this.selectedMarketItemsFormArray.controls[index].get('listPrice')?.value
     );
   }
 
@@ -688,20 +688,20 @@ export class MarketComponent {
     this.isEscrowingBulk = false;
     this.isWithdrawingBulk = false;
     this.isBuyingBulk = false;
-    this.selectedPhunksFormArray = this.fb.array([]);
+    this.selectedMarketItemsFormArray = this.fb.array([]);
   }
 
   /**
-   * Validates and categorizes selected phunks based on their escrow status and ownership
+   * Validates and categorizes selected items based on their escrow status and ownership
    * @param removeOwnedItems - Whether to filter out items owned by the current user
-   * @returns Object containing arrays of phunks categorized by their status
+   * @returns Object containing arrays of items categorized by their status
    */
   async checkSelected(
     removeOwnedItems = false
-  ): Promise<{ notInEscrow: Phunk[], inEscrow: Phunk[], invalid: Phunk[]}> {
+  ): Promise<{ notInEscrow: MarketItem[], inEscrow: MarketItem[], invalid: MarketItem[]}> {
 
     let selected = Object.values(this.selected);
-    let invalid: Phunk[] = [];
+    let invalid: MarketItem[] = [];
 
     if (removeOwnedItems) {
       [ selected, invalid ] = await this.filterOwnedItems(selected);
@@ -711,15 +711,15 @@ export class MarketComponent {
 
     selected = await this.dataSvc.checkConsensus(Object.values(selected));
 
-    const consensusInvalid = selected.filter((phunk: Phunk) => phunk.consensus === false);
+    const consensusInvalid = selected.filter((phunk: MarketItem) => phunk.consensus === false);
     invalid = [...invalid, ...consensusInvalid];
 
     const inEscrow = selected.filter(
-      (phunk: Phunk) => phunk.owner.toLowerCase() === environment.marketAddress.toLowerCase()
+      (phunk: MarketItem) => phunk.owner.toLowerCase() === environment.marketAddress.toLowerCase()
     );
 
     const notInEscrow = selected.filter(
-      (phunk: Phunk) => phunk.owner.toLowerCase() !== environment.marketAddress.toLowerCase()
+      (phunk: MarketItem) => phunk.owner.toLowerCase() !== environment.marketAddress.toLowerCase()
     );
 
     // console.log({ notInEscrow, inEscrow, invalid });
@@ -727,13 +727,13 @@ export class MarketComponent {
   }
 
   /**
-   * Filters out phunks that are bridged/locked and cannot be traded
-   * @param phunks - Array of phunks to filter
-   * @returns Tuple containing valid and invalid phunks
+   * Filters out items that are bridged/locked and cannot be traded
+   * @param phunks - Array of items to filter
+   * @returns Tuple containing valid and invalid items
    */
-  async filterLockedItems(phunks: Phunk[]): Promise<[Phunk[], Phunk[]]> {
-    let validItems: Phunk[] = [];
-    let invalidItems: Phunk[] = [];
+  async filterLockedItems(phunks: MarketItem[]): Promise<[MarketItem[], MarketItem[]]> {
+    let validItems: MarketItem[] = [];
+    let invalidItems: MarketItem[] = [];
 
     validItems = phunks.filter(phunk => !phunk.isBridged);
     invalidItems = phunks.filter(phunk => phunk.isBridged);
@@ -741,15 +741,15 @@ export class MarketComponent {
   }
 
   /**
-   * Filters out phunks that are owned by the current user
-   * @param phunks - Array of phunks to filter
-   * @returns Tuple containing valid and invalid phunks
+   * Filters out items that are owned by the current user
+   * @param phunks - Array of items to filter
+   * @returns Tuple containing valid and invalid items
    */
-  async filterOwnedItems(phunks: Phunk[]): Promise<[Phunk[], Phunk[]]> {
+  async filterOwnedItems(phunks: MarketItem[]): Promise<[MarketItem[], MarketItem[]]> {
     const walletAddress = (await this.web3Svc.getCurrentAddress())?.toLowerCase();
     const marketAddress = environment.marketAddress.toLowerCase();
-    let validItems: Phunk[] = [];
-    let invalidItems: Phunk[] = [];
+    let validItems: MarketItem[] = [];
+    let invalidItems: MarketItem[] = [];
 
     phunks.forEach(phunk => {
       const owner = phunk.owner.toLowerCase();

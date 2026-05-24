@@ -18,14 +18,14 @@ export class AuctionsService {
     private readonly storageSvc: StorageService,
   ) {}
 
-  async processEtherPhunkAuctionEvents(
+  async processMingoMartAuctionEvents(
     transaction: Transaction,
     receipt: TransactionReceipt,
     createdAt: Date
   ): Promise<Event[]> {
     const events = [];
 
-    // Filter logs for EtherPhunk Marketplace events
+    // Filter logs for Mingo Mart auction events
     const logs = receipt.logs as Log<bigint, number, false, ExtractAbiEvent<typeof auctionHouseL1, ContractEventName<typeof auctionHouseL1>>>[];
     const marketplaceLogs = logs.filter(
       (log) => log.address.toLowerCase() === this.configSvc.contracts.auctionHouse.l1.toLowerCase()
@@ -33,7 +33,7 @@ export class AuctionsService {
 
     if (marketplaceLogs.length) {
       Logger.debug(
-        `Processing EtherPhunk Auction event (L1)`,
+        `Processing Mingo Mart Auction event (L1)`,
         transaction.hash
       );
 
@@ -52,7 +52,7 @@ export class AuctionsService {
           continue;
         }
 
-        const event = await this.processEtherPhunkAuctionEvent(
+        const event = await this.processMingoMartAuctionEvent(
           transaction,
           createdAt,
           decoded,
@@ -66,7 +66,7 @@ export class AuctionsService {
     return events;
   }
 
-  async processEtherPhunkAuctionEvent(
+  async processMingoMartAuctionEvent(
     txn: Transaction,
     createdAt: Date,
     decoded: DecodeEventLogReturnType<typeof auctionHouseL1, ContractEventName<typeof auctionHouseL1>>,
@@ -79,10 +79,10 @@ export class AuctionsService {
 
     if (!('hashId' in args) || !args.hashId) return;
 
-    const phunk = await this.storageSvc.checkEthscriptionExistsByHashId(args.hashId);
-    if (!phunk) return;
+    const marketItem = await this.storageSvc.checkEthscriptionExistsByHashId(args.hashId);
+    if (!marketItem) return;
 
-    console.log({decoded, phunk});
+    console.log({decoded, marketItem});
 
     // AuctionCreated
     // AuctionBid
@@ -101,7 +101,7 @@ export class AuctionsService {
       // We do this here because this event is emitted after
       // transfer of ownership. If the auction was NOT created
       // by the previous owner, we should ignore it.
-      if (phunk.prevOwner && (phunk.prevOwner !== txn.from)) {
+      if (marketItem.prevOwner && (marketItem.prevOwner !== txn.from)) {
         Logger.error('Auction not created by previous owner', hashId);
         return;
       }
@@ -111,7 +111,7 @@ export class AuctionsService {
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
-        venue: 'etherphunks-auction',
+        venue: 'mingomart-auction',
         hashId: hashId.toLowerCase(),
         from: owner.toLowerCase(),
         to: this.configSvc.contracts.auctionHouse.l1.toLowerCase(),
@@ -137,7 +137,7 @@ export class AuctionsService {
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
-        venue: 'etherphunks-auction',
+        venue: 'mingomart-auction',
         hashId: hashId.toLowerCase(),
         from: txn.from?.toLowerCase(),
         to: winner.toLowerCase(),
@@ -165,7 +165,7 @@ export class AuctionsService {
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
-        venue: 'etherphunks-auction',
+        venue: 'mingomart-auction',
         hashId: hashId.toLowerCase(),
         from: txn.from?.toLowerCase(),
         to: auction.prevOwner.toLowerCase(),

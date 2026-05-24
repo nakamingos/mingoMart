@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 import { Collection } from '@/models/data.state';
 
 import { TraitRarityPipe } from '@/pipes/trait-rarity.pipe';
@@ -25,7 +25,7 @@ import { QueryParamsPipe } from '@/pipes/query-params.pipe';
 })
 export class ItemAttributesComponent {
 
-  phunk = input.required<Phunk>();
+  phunk = input.required<MarketItem>();
   collection = input<Collection | null | undefined>(undefined);
   attributes = computed(() => {
     // console.log(this.phunk().attributes);

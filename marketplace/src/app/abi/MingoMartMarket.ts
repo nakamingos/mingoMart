@@ -1,4 +1,4 @@
-export const marketL1 = [
+export const MingoMartMarketABI = [
   {
     "inputs": [],
     "stateMutability": "nonpayable",

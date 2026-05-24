@@ -1,5 +1,5 @@
-<app-phunk-billboard
-  [phunk]="(singlePhunk$ | async)"
+<app-market-item-billboard
+  [marketItem]="(singleMarketItem$ | async)"
   [class.expanded]="billboardExpanded()"
   [style]="{
     'transform': 'translateY(' + ((scrollY$ | async) || 0) + 'px)',
@@ -8,15 +8,15 @@
   <button (click)="expandBillboard()">
     <ng-container *ngTemplateOutlet="expandIcon; context:{ $implicit: billboardExpanded() }" />
   </button>
-</app-phunk-billboard>
+</app-market-item-billboard>
 
 <div
   class="view-item-wrapper"
   [class.expanded]="billboardExpanded()">
 
-  <app-breadcrumbs [phunk]="singlePhunk$ | async" />
+  <app-breadcrumbs [phunk]="singleMarketItem$ | async" />
 
-  @if ((singlePhunk$ | async); as phunk) {
+  @if ((singleMarketItem$ | async); as phunk) {
     <div class="inner">
 
       @if (phunk.isAuctioned) {

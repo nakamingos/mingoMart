@@ -5,12 +5,12 @@ import { RouterModule } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { WaIntersectionObserver } from '@ng-web-apis/intersection-observer';
 
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 import { GlobalState, Notification } from '@/models/global-state';
 
 import { Web3Service } from '@/services/web3.service';
 
-import { PhunkGridComponent } from '@/components/phunk-grid/phunk-grid.component';
+import { MarketItemGridComponent } from '@/components/market-item-grid/market-item-grid.component';
 import { NotificationComponent } from '@/components/notifications/notification/notification.component';
 import { LeaderboardComponent } from '@/components/leaderboard/leaderboard.component';
 import { CollectionsComponent } from '@/components/collections/collections.component';
@@ -40,7 +40,7 @@ import { environment } from '@environments/environment';
     WaIntersectionObserver,
     RouterModule,
 
-    PhunkGridComponent,
+    MarketItemGridComponent,
     NotificationComponent,
     LeaderboardComponent,
     CollectionsComponent,
@@ -71,13 +71,13 @@ export class MenuComponent {
   activeMenuNav$ = this.store.select(appStateSelectors.selectActiveMenuNav);
   activeCollection$ = this.store.select(dataStateSelectors.selectActiveCollection);
 
-  listedPhunks$ = this.store.select(marketStateSelectors.selectOwned).pipe(
-    tap((owned: Phunk[] | null) => this.createOwnedStats(owned)),
-    map((owned) => owned?.filter((phunk: Phunk) => !!phunk.listing)),
+  listedMarketItems$ = this.store.select(marketStateSelectors.selectOwned).pipe(
+    tap((owned: MarketItem[] | null) => this.createOwnedStats(owned)),
+    map((owned) => owned?.filter((phunk: MarketItem) => !!phunk.listing)),
   );
 
   // userOpenBids$ = this.store.select(dataStateSelectors.selectUserOpenBids).pipe(
-  //   tap((bids: Phunk[] | null) => this.createBidStats(bids))
+  //   tap((bids: MarketItem[] | null) => this.createBidStats(bids))
   // );
 
   notifications$ = this.store.select(notificationSelectors.selectNotifications).pipe(
@@ -147,11 +147,11 @@ export class MenuComponent {
     this.store.dispatch(appStateActions.checkHasWithdrawal());
   }
 
-  createOwnedStats(owned: Phunk[] | null) {
+  createOwnedStats(owned: MarketItem[] | null) {
     if (!owned) return;
 
     // Get all the attributes
-    const allTraits = owned?.map((phunk: Phunk) => phunk.attributes);
+    const allTraits = owned?.map((phunk: MarketItem) => phunk.attributes);
     const traits = allTraits?.reduce((acc: any, val: any) => acc.concat(val), []);
 
     // Count the occurrences of each attribute
@@ -177,8 +177,8 @@ export class MenuComponent {
 
     // console.log(top3RarestTraits);
 
-    const escrowed = owned?.filter((phunk: Phunk) => phunk.isEscrowed)?.length;
-    const listed = owned?.filter((phunk: Phunk) => phunk.listing)?.length;
+    const escrowed = owned?.filter((phunk: MarketItem) => phunk.isEscrowed)?.length;
+    const listed = owned?.filter((phunk: MarketItem) => phunk.listing)?.length;
 
     this.stats = {
       ...this.stats,
@@ -188,7 +188,7 @@ export class MenuComponent {
     };
   }
 
-  createBidStats(bids: Phunk[] | null) {
+  createBidStats(bids: MarketItem[] | null) {
     if (!bids) return;
 
     const totalBidValue = bids.reduce((acc, phunk) => {

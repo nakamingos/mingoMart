@@ -1,7 +1,7 @@
 import { Action, ActionReducer, createReducer, on } from '@ngrx/store';
 
 import { MarketState } from '@/models/market.state';
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 
 import * as actions from '../market/market-state.actions';
 import { SortOption } from '@/models/sorts.model';
@@ -21,7 +21,7 @@ export const initialState: MarketState = {
     total: 0
   },
 
-  selectedPhunks: [],
+  selectedMarketItems: [],
 
   activeSort: SortOption.ID,
   activeTraitFilters: {},
@@ -56,7 +56,7 @@ export const marketStateReducer: ActionReducer<MarketState, Action> = createRedu
       all: initialState.all,
       auctions: initialState.auctions,
       activeMarketRouteData: initialState.activeMarketRouteData,
-      selectedPhunks: initialState.selectedPhunks,
+      selectedMarketItems: initialState.selectedMarketItems,
       pagination: initialState.pagination,
     };
     return setMarketSlug;
@@ -72,17 +72,17 @@ export const marketStateReducer: ActionReducer<MarketState, Action> = createRedu
     const setMarketData = {
       ...state,
       marketData,
-      listings: marketData?.filter((item: Phunk) => item.listing && item.listing.minValue !== '0'),
-      bids: marketData?.filter((item: Phunk) => item.bid && item.bid.value !== '0'),
+      listings: marketData?.filter((item: MarketItem) => item.listing && item.listing.minValue !== '0'),
+      bids: marketData?.filter((item: MarketItem) => item.bid && item.bid.value !== '0'),
     };
     return setMarketData
   }),
   on(actions.setAll, (state, { all }) => {
-    const setAllPhunks = {
+    const setAll = {
       ...state,
       all,
     };
-    return setAllPhunks
+    return setAll
   }),
   on(actions.setActiveMarketRouteData, (state, { activeMarketRouteData }) => {
     const setActiveMarketRouteData = {
@@ -105,12 +105,12 @@ export const marketStateReducer: ActionReducer<MarketState, Action> = createRedu
     };
     return setActiveTraitFilters
   }),
-  on(actions.setSelectedPhunks, (state, { selectedPhunks }) => {
-    const setSelectedPhunks = {
+  on(actions.setSelectedMarketItems, (state, { selectedMarketItems }) => {
+    const setSelectedMarketItems = {
       ...state,
-      selectedPhunks,
+      selectedMarketItems,
     };
-    return setSelectedPhunks
+    return setSelectedMarketItems
   }),
   on(actions.setActiveSort, (state, { activeSort }) => {
     const setActiveSort = {

@@ -20,14 +20,14 @@ export class MarketplaceService {
   ) {}
 
   /**
-   * Processes the EtherPhunk marketplace contract events.
+   * Processes the Mingo Mart marketplace contract events.
    *
-   * @param marketplaceLogs - The array of marketplace logs.
    * @param transaction - The transaction object.
+   * @param receipt - The transaction receipt.
    * @param createdAt - The creation date of the events.
    * @returns A promise that resolves to an array of events.
    */
-  async processEtherPhunkMarketplaceEvents(
+  async processMingoMartMarketplaceEvents(
     transaction: Transaction,
     receipt: TransactionReceipt,
     createdAt: Date
@@ -35,7 +35,7 @@ export class MarketplaceService {
 
     const events = [];
 
-    // Filter logs for EtherPhunk Marketplace events
+    // Filter logs for Mingo Mart Marketplace events
     const logs = receipt.logs as Log<bigint, number, false, ExtractAbiEvent<typeof marketL1, ContractEventName<typeof marketL1>>>[];
     const marketplaceLogs = logs.filter(
       (log) => log.address.toLowerCase() === this.configSvc.contracts.market.l1.toLowerCase()
@@ -43,7 +43,7 @@ export class MarketplaceService {
 
     if (marketplaceLogs.length) {
       Logger.debug(
-        `Processing EtherPhunk Marketplace event (L1)`,
+        `Processing Mingo Mart Marketplace event (L1)`,
         transaction.hash
       );
 
@@ -62,7 +62,7 @@ export class MarketplaceService {
           continue;
         }
 
-        const event = await this.processEtherPhunkMarketplaceEvent(
+        const event = await this.processMingoMartMarketplaceEvent(
           transaction,
           createdAt,
           decoded,
@@ -77,7 +77,7 @@ export class MarketplaceService {
   }
 
   /**
-   * Processes an individual EtherPhunk marketplace event.
+   * Processes an individual Mingo Mart marketplace event.
    *
    * @param txn - The transaction object.
    * @param createdAt - The timestamp when the event was created.
@@ -85,7 +85,7 @@ export class MarketplaceService {
    * @param log - The log object.
    * @returns A promise that resolves to an Event object.
    */
-  async processEtherPhunkMarketplaceEvent(
+  async processMingoMartMarketplaceEvent(
     txn: Transaction,
     createdAt: Date,
     decoded: DecodeEventLogReturnType<typeof marketL1, ContractEventName<typeof marketL1>>,
@@ -97,17 +97,18 @@ export class MarketplaceService {
     if (!eventName || !args) return;
 
     const hashId =
+      args.hashId ||
       args.id ||
       args.phunkId ||
       args.potentialEthscriptionId;
 
     if (!hashId) return;
 
-    const phunk = await this.storageSvc.checkEthscriptionExistsByHashId(hashId);
-    if (!phunk) return;
+    const marketItem = await this.storageSvc.checkEthscriptionExistsByHashId(hashId);
+    if (!marketItem) return;
 
-    if (eventName === 'PhunkBought') {
-      const { phunkId: hashId, fromAddress, toAddress, value } = args;
+    if (eventName === 'HashBought') {
+      const { hashId, fromAddress, toAddress, value } = args;
 
       const removedListing = await this.storageSvc.removeListing(hashId);
       if (!removedListing) return;
@@ -115,7 +116,7 @@ export class MarketplaceService {
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
-        venue: 'etherphunks-market',
+        venue: 'mingomart-market',
         hashId: hashId.toLowerCase(),
         from: fromAddress.toLowerCase(),
         to: toAddress.toLowerCase(),
@@ -128,19 +129,19 @@ export class MarketplaceService {
       };
     }
 
-    if (eventName === 'PhunkNoLongerForSale') {
-      const { phunkId: hashId } = args;
+    if (eventName === 'HashNoLongerForSale') {
+      const { hashId, seller } = args;
 
       const removedListing = await this.storageSvc.removeListing(hashId);
       if (!removedListing) return;
 
-      if (txn.from === phunk.prevOwner) {
+      if (seller?.toLowerCase() === marketItem.prevOwner?.toLowerCase()) {
         return {
           txId: txn.hash + log.logIndex,
           type: eventName,
-          venue: 'etherphunks-market',
+          venue: 'mingomart-market',
           hashId: hashId.toLowerCase(),
-          from: txn.from?.toLowerCase(),
+          from: seller.toLowerCase(),
           to: zeroAddress,
           blockHash: txn.blockHash,
           txIndex: txn.transactionIndex,
@@ -152,21 +153,21 @@ export class MarketplaceService {
       }
     }
 
-    if (eventName === 'PhunkOffered') {
-      const { phunkId: hashId, toAddress, minValue } = args;
+    if (eventName === 'HashOffered') {
+      const { hashId, seller, toAddress, minValue } = args;
 
       // We do this here because this event is emitted after
       // transfer of ownership. If the listing was NOT created
       // by the previous owner, we should ignore it.
       // When listing, the owner should always be the marketplace contract.
       if (
-        (phunk.prevOwner && (phunk.prevOwner !== txn.from)) ||
-        phunk.owner !== this.configSvc.contracts.market.l1.toLowerCase()
+        (marketItem.prevOwner && (marketItem.prevOwner.toLowerCase() !== seller.toLowerCase())) ||
+        marketItem.owner !== this.configSvc.contracts.market.l1.toLowerCase()
       ) {
 
         // Write the failed listing to a file
         try { await mkdir('./failed'); } catch (error) {}
-        await writeFile(`./failed/${hashId}.json`, JSON.stringify({ txn: txn.hash, phunk }));
+        await writeFile(`./failed/${hashId}.json`, JSON.stringify({ txn: txn.hash, marketItem }));
         Logger.error(
           'Listing not created by previous owner or owner is not the marketplace contract',
           hashId
@@ -185,9 +186,9 @@ export class MarketplaceService {
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
-        venue: 'etherphunks-market',
+        venue: 'mingomart-market',
         hashId: hashId.toLowerCase(),
-        from: txn.from?.toLowerCase(),
+        from: seller?.toLowerCase(),
         to: toAddress?.toLowerCase(),
         blockHash: txn.blockHash,
         txIndex: txn.transactionIndex,

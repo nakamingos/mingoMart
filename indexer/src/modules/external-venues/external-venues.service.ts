@@ -340,7 +340,7 @@ export class ExternalVenuesService {
 
         events.push({
           txId: transaction.hash + log.logIndex,
-          type: 'PhunkBought',
+          type: 'HashBought',
           venue: 'opensea',
           hashId: wrapperTransfer.hashId,
           from: wrapperTransfer.from,
@@ -393,7 +393,7 @@ export class ExternalVenuesService {
 
         events.push({
           txId: transaction.hash + log.logIndex,
-          type: 'PhunkBought',
+          type: 'HashBought',
           venue: 'blur',
           hashId: wrapperTransfer.hashId,
           from: wrapperTransfer.from,
@@ -489,7 +489,7 @@ export class ExternalVenuesService {
 
       events.push({
         txId: transaction.hash + log.logIndex,
-        type: 'PhunkBought',
+        type: 'HashBought',
         venue: 'ethscriptions-market',
         hashId,
         from: seller.toLowerCase(),
@@ -539,7 +539,7 @@ export class ExternalVenuesService {
 
       events.push({
         txId: transaction.hash + log.logIndex,
-        type: 'PhunkBought',
+        type: 'HashBought',
         venue: 'etch-market',
         hashId,
         from: seller.toLowerCase(),
@@ -590,7 +590,7 @@ export class ExternalVenuesService {
 
       events.push({
         txId: transaction.hash + log.logIndex,
-        type: 'PhunkBought',
+        type: 'HashBought',
         venue: 'ordex-market',
         hashId,
         from: from.toLowerCase(),

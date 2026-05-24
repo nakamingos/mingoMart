@@ -1,17 +1,17 @@
 @if (marketType) {
 
-  @let data = phunkData |
+  @let data = marketItemData |
   attributeFilter : traitFilters : slug : (collections$ | async) |
   sort: activeSort : marketType;
 
   @if (data) {
     @for (
-      phunk of data;
-      track phunk.event?.txId || phunk.sha;
+      marketItem of data;
+      track marketItem.event?.txId || marketItem.sha;
       let i = $index;
     ) {
       @if (i < limit) {
-        <ng-container *ngTemplateOutlet="phunkItem; context:{ $implicit: phunk, index: i }" />
+        <ng-container *ngTemplateOutlet="marketItemTemplate; context:{ $implicit: marketItem, index: i }" />
       }
     } @empty {
       @for (i of limitArr; track i) {
@@ -33,7 +33,7 @@
     }
   }
 
-  @if (phunkData && phunkData.length && observe && showLoadMore && marketType === 'all') {
+  @if (marketItemData && marketItemData.length && observe && showLoadMore && marketType === 'all') {
     <div class="item more">
       <!-- <button>Load More</button> -->
       <div class="image-wrapper">
@@ -42,61 +42,61 @@
     </div>
   }
 
-  <ng-template #phunkItem let-phunk let-i="index">
+  <ng-template #marketItemTemplate let-marketItem let-i="index">
     <div
       class="item"
       (waIntersectionObservee)="onIntersection($event)"
-      [class.selected]="selected[phunk.hashId]"
+      [class.selected]="selected[marketItem.hashId]"
       [attr.data-index]="i"
       [class.bridged]="
         (marketType === 'owned' && viewType === 'market') &&
-        phunk.isBridged
+        marketItem.isBridged
       "
       [class.in-escrow]="
         (marketType === 'owned' && viewType === 'market') &&
-        phunk.owner === escrowAddress && !phunk.listing
+        marketItem.owner === escrowAddress && !marketItem.listing
       "
       [class.wrapped]="
         (marketType === 'owned' && viewType === 'market') &&
-        phunk.event?.type === 'wrapped'
+        marketItem.event?.type === 'wrapped'
       "
       [class.listing]="
         (
           marketType === 'listings' ||
           ((marketType === 'owned' || marketType === 'all') && viewType === 'market')
-        ) && phunk.listing
+        ) && marketItem.listing
       "
       [class.auction]="
         (
           marketType === 'auctions' ||
           ((marketType === 'owned' || marketType === 'all') && viewType === 'market')
-        ) && phunk.auction
+        ) && marketItem.auction
       ">
 
       @if (selectable) {
         <div class="selector">
           <input
-            #phunkCheck
+            #marketItemCheck
             type="checkbox"
-            [id]="'checkbox-' + phunk.tokenId"
-            [checked]="selected[phunk.hashId]"
-            [attr.data-hash-id]="phunk.hashId"
-            (change)="selectPhunk(phunk)"
+            [id]="'checkbox-' + marketItem.tokenId"
+            [checked]="selected[marketItem.hashId]"
+            [attr.data-hash-id]="marketItem.hashId"
+            (change)="selectMarketItem(marketItem)"
           />
 
-          <label [for]="'checkbox-' + phunk.tokenId"></label>
+          <label [for]="'checkbox-' + marketItem.tokenId"></label>
         </div>
       }
 
       <a
         class="item-link"
-        [routerLink]="['/', 'details', phunk.hashId]">
+        [routerLink]="['/', 'details', marketItem.hashId]">
 
-        <div class="image-wrapper" [class.transparent-background]="hasTransparentBackground(phunk)">
+        <div class="image-wrapper" [class.transparent-background]="hasTransparentBackground(marketItem)">
           <img
-            [lazyLoad]="phunk | imageUrlPipe"
+            [lazyLoad]="marketItem | imageUrlPipe"
             [defaultImage]="'/loadingmingo.gif'"
-            [style.--item-base-background]="baseImageBackgroundColor(phunk)"
+            [style.--item-base-background]="baseImageBackgroundColor(marketItem)"
             width="50"
             height="50"
           />
@@ -105,7 +105,7 @@
         @if (showLabels && viewType === 'market') {
 
           @if (activeSort === 'rank-high' || activeSort === 'rank-low') {
-            @if (phunk | rank; as rankData) {
+            @if (marketItem | rank; as rankData) {
               @if (rankData.value || rankData.value === 0) {
                 <div class="rank-wrapper" [style.background-color]="rankData.color">
                   <div class="rank">{{ rankData.value }}</div>
@@ -115,14 +115,14 @@
           }
 
           <div class="labels-wrapper">
-            <div class="label">#{{ phunk.tokenId }}</div>
+            <div class="label">#{{ marketItem.tokenId }}</div>
 
             @if (
               marketType === 'listings' ||
               marketType === 'owned' ||
               marketType === 'all'
             ) {
-              @if (phunk.listing; as listing) {
+              @if (marketItem.listing; as listing) {
                 <p i18n>
                   {{ (listing.minValue | weiToEth) | number : '1.0-5' }}Ξ<br />
                   ${{ ((listing.minValue | weiToEth) * ((usd$ | async) || 0)) | formatCash }}
@@ -134,7 +134,7 @@
               marketType === 'auctions' ||
               marketType === 'all'
             ) {
-              @if (phunk.auction; as auction) {
+              @if (marketItem.auction; as auction) {
                 <p i18n>
                   {{ (auction.amount | weiToEth) }}Ξ<br />
                   ${{ ((auction.amount | weiToEth) * ((usd$ | async) || 0)) | formatCash }}

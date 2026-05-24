@@ -18,7 +18,7 @@ import * as appStateSelectors from '../app/app-state.selectors';
 import { DataService } from '@/services/data.service';
 import { MarketState, MarketType } from '@/models/market.state';
 
-import { Phunk, Event } from '@/models/db';
+import { MarketItem, Event } from '@/models/db';
 import { defaultSort, marketSorts } from '@/constants/sorts';
 
 const EVENT_PAGE_SIZE = 24;
@@ -102,7 +102,7 @@ export class MarketStateEffects {
               tokenId: event.tokenId,
               sha: event.sha,
               event: event,
-            } as Phunk;
+            } as MarketItem;
           }) || [];
         })
       );
@@ -217,7 +217,7 @@ export class MarketStateEffects {
         map((data: MarketState['activeMarketRouteData']) => data.data)
       );
     }),
-    map((all: Phunk[]) => marketStateActions.setAll({ all })),
+    map((all: MarketItem[]) => marketStateActions.setAll({ all })),
   ));
 
   paginateAll$ = createEffect(() => this.actions$.pipe(

@@ -53,27 +53,27 @@ export class RecentActivityComponent {
 
   txFilters: TxFilterItem[] = [
     { label: 'All', value: 'All' },
-    { label: 'Offered', value: 'PhunkOffered' },
-    { label: 'Sold', value: 'PhunkBought' },
+    { label: 'Offered', value: 'HashOffered' },
+    { label: 'Sold', value: 'HashBought' },
     { label: 'Transferred', value: 'transfer' },
     { label: 'Created', value: 'created' },
     { label: 'Auction Created', value: 'AuctionCreated' },
     { label: 'Auction Bid', value: 'AuctionBid' },
     { label: 'Auction Settled', value: 'AuctionSettled' },
-    // { label: 'Bid Entered', value: 'PhunkBidEntered' },
-    // { label: 'Bid Withdrawn', value: 'PhunkBidWithdrawn' },
+    // { label: 'Bid Entered', value: 'HashBidEntered' },
+    // { label: 'Bid Withdrawn', value: 'HashBidWithdrawn' },
     // { label: 'Bridged', value: 'bridgeOut' },
     // { label: 'Bridged', value: 'bridgeIn' },
 
     // { label: 'Escrowed', value: 'escrow' },
-    // { label: 'Offer Withdrawn', value: 'PhunkOfferWithdrawn' },
+    // { label: 'Offer Withdrawn', value: 'HashOfferWithdrawn' },
   ];
 
   _activeTxFilter: EventType = this.txFilters[0].value;
 
   labels: any = {
-    PhunkOffered: 'Offered',
-    PhunkBought: 'Bought',
+    HashOffered: 'Offered',
+    HashBought: 'Bought',
     transfer: 'Transferred to',
     created: 'Created by',
     bridgeOut: 'Bridged (Locked) by',
@@ -84,7 +84,9 @@ export class RecentActivityComponent {
     wrapped: 'Wrapped by',
     unwrapped: 'Unwrapped by',
     // escrow: 'Escrowed by',
-    // PhunkNoLongerForSale: 'Offer withdrawn',
+    // HashBidEntered: 'Bid entered',
+    // HashBidWithdrawn: 'Bid withdrawn',
+    // HashNoLongerForSale: 'Offer withdrawn',
   };
 
   getVenueLabel = getEventVenueLabel;

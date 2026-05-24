@@ -67,8 +67,8 @@
               [routerLink]="['/', 'curated', activeCollection.slug, 'market', 'bids']"
               [queryParams]="{ address }">
 
-              <app-phunk-grid
-                [phunkData]="bids || []"
+              <app-market-item-grid
+                [marketItemData]="bids || []"
                 [viewType]="'compact'"
                 [showLabels]="false"
                 [limit]="5"
@@ -95,15 +95,15 @@
           <span class="value">{{ stats.escrowed }}</span>
         </div> -->
 
-        @if ((listedPhunks$ | async); as listed) {
+        @if ((listedMarketItems$ | async); as listed) {
           @if (listed.length) {
             <a
               class="stat-item listings"
               [routerLink]="['/', 'curated', activeCollection.slug, 'market', 'owned']"
               [queryParams]="{ address }">
 
-              <app-phunk-grid
-                [phunkData]="listed || []"
+              <app-market-item-grid
+                [marketItemData]="listed || []"
                 [viewType]="'compact'"
                 [showLabels]="false"
                 [limit]="5"

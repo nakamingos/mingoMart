@@ -10,7 +10,7 @@ import { combineLatest, from, of, shareReplay, startWith, switchMap, tap } from 
 import { Collection } from '@/models/data.state';
 import { SplashImage } from '@/models/image.model';
 import { GlobalState } from '@/models/global-state';
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 
 import { PixelArtService } from '@/services/pixel-art.service';
 import { ImageService } from '@/services/image.service';
@@ -146,7 +146,7 @@ export class SplashComponent {
    * @param previews - Collection preview items identifying the images to fetch and process
    * @returns Promise that resolves when image processing is complete
    */
-  private async createDefaultImageArray(previews: Phunk[], slug: string): Promise<SplashImage[]> {
+  private async createDefaultImageArray(previews: MarketItem[], slug: string): Promise<SplashImage[]> {
     if (!previews?.length) return [];
 
     const imageArray = [...this.defaultImages];

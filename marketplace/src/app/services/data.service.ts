@@ -11,7 +11,7 @@ import { Web3Service } from '@/services/web3.service';
 import { AttributesService } from '@/services/attributes.service';
 
 import { EventType, GlobalConfig, GlobalState } from '@/models/global-state';
-import { Auction, Event, Listing, Phunk } from '@/models/db';
+import { Auction, Event, Listing, MarketItem } from '@/models/db';
 import { MarketState } from '@/models/market.state';
 import { CommentWithReplies } from '@/models/comment';
 import { Collection } from '@/models/data.state';
@@ -150,14 +150,14 @@ export class DataService {
   ////////////////////////////////////////////////////////
 
   /**
-   * Fetches Phunks owned by an address
+   * Fetches market items owned by an address
    * @param address Owner address
    * @param slug Collection slug
    */
   fetchOwned(
     address: string,
     slug: string,
-  ): Observable<Phunk[]> {
+  ): Observable<MarketItem[]> {
     if (!address) return of([]);
     address = address.toLowerCase();
 
@@ -184,7 +184,7 @@ export class DataService {
         };
       })),
       switchMap((res: any) => this.attributesSvc.addAttributes(slug, res)),
-    ) as Observable<Phunk[]>;
+    ) as Observable<MarketItem[]>;
 
     return merge(
       fetch$,
@@ -210,7 +210,7 @@ export class DataService {
       `)
       .gte('blockNumber', fromBlock)
       .or(`from.eq.${address},to.eq.${address}`)
-      .eq('type', 'PhunkBought');
+      .eq('type', 'HashBought');
 
     return from(request).pipe(
       map(res => res.data as any[]),
@@ -233,7 +233,7 @@ export class DataService {
    * Fetches market data for a collection
    * @param slug Collection slug
    */
-  fetchMarketData(slug: string): Observable<Phunk[]> {
+  fetchMarketData(slug: string): Observable<MarketItem[]> {
     if (!slug) return of([]);
 
     const rpcFetch$ = from(
@@ -520,13 +520,13 @@ export class DataService {
   }
 
   /**
-   * Fetches data for a single Phunk
+   * Fetches data for a single market item
    * @param hashId Token hash ID
    */
-  fetchSinglePhunk(hashId: string): Observable<Phunk> {
-    if (!hashId) return of({} as Phunk);
+  fetchSingleMarketItem(hashId: string): Observable<MarketItem> {
+    if (!hashId) return of({} as MarketItem);
 
-    function formatPhunkFromResponse(data: any, prefix: string) {
+    function formatMarketItemFromResponse(data: any, prefix: string) {
       const collection = data[`collections${prefix}`];
       const collectionName = collection?.name;
 
@@ -536,13 +536,13 @@ export class DataService {
       delete data[`nfts${prefix}`];
       delete data[`collections${prefix}`];
 
-      const newPhunk = { ...data, collection, collectionName, nft } as Phunk;
-      newPhunk.isEscrowed = data?.owner === environment.marketAddress;
-      newPhunk.isBridged = data?.owner === environment.bridgeAddress;
-      newPhunk.isAuctioned = data?.owner === environment.auctionHouseAddress;
-      newPhunk.isSupported = !!collection;
-      newPhunk.attributes = [];
-      return newPhunk;
+      const marketItem = { ...data, collection, collectionName, nft } as MarketItem;
+      marketItem.isEscrowed = data?.owner === environment.marketAddress;
+      marketItem.isBridged = data?.owner === environment.bridgeAddress;
+      marketItem.isAuctioned = data?.owner === environment.auctionHouseAddress;
+      marketItem.isSupported = !!collection;
+      marketItem.attributes = [];
+      return marketItem;
     }
 
     let query = supabase
@@ -557,33 +557,33 @@ export class DataService {
 
     const fetch$ = from(query).pipe(
       switchMap(({ data }: any) => {
-        const phunk = data[0];
-        if (!phunk) return this.fetchUnsupportedItem(hashId);
-        return of(formatPhunkFromResponse(phunk, this.suffix));
+        const item = data[0];
+        if (!item) return this.fetchUnsupportedItem(hashId);
+        return of(formatMarketItemFromResponse(item, this.suffix));
       }),
-      switchMap((phunk: Phunk) => forkJoin([
-        this.attributesSvc.addAttributes(phunk.slug, [phunk]),
-        from(this.getListingFromHashId(phunk.hashId)),
-        this.checkConsensus([phunk]),
+      switchMap((marketItem: MarketItem) => forkJoin([
+        this.attributesSvc.addAttributes(marketItem.slug, [marketItem]),
+        from(this.getListingFromHashId(marketItem.hashId, marketItem.prevOwner)),
+        this.checkConsensus([marketItem]),
       ])),
-      map(([[phunk], listing, [consensus]]) => ({
+      map(([[marketItem], listing, [consensus]]) => ({
         ...consensus,
-        ...phunk,
+        ...marketItem,
         // Make sure the listing is from the previous owner and the item is escrowed.
-        listing: (listing?.listedBy.toLowerCase() === phunk.prevOwner?.toLowerCase() && phunk.owner === environment.marketAddress) ? listing : null,
+        listing: (listing?.listedBy.toLowerCase() === marketItem.prevOwner?.toLowerCase() && marketItem.owner === environment.marketAddress) ? listing : null,
       })),
     );
 
         // Create a reactive polling system that starts/stops based on consensus
     const initialFetch$ = fetch$;
 
-    // Create the polling observable that emits the latest phunk data
+    // Create the polling observable that emits the latest item data
     const pollingWithConsensusControl$ = initialFetch$.pipe(
-      switchMap((initialPhunk) => {
-        // console.log('Initial fetch - consensus:', initialPhunk?.consensus);
+      switchMap((initialItem) => {
+        // console.log('Initial fetch - consensus:', initialItem?.consensus);
 
         // Create a subject to track consensus state
-        const consensusSubject = new BehaviorSubject(initialPhunk?.consensus);
+        const consensusSubject = new BehaviorSubject(initialItem?.consensus);
 
         // Main data stream that includes both polling and real-time updates
         const dataStream$ = merge(
@@ -610,13 +610,13 @@ export class DataService {
           )
         ).pipe(
           // Update consensus subject whenever we get new data
-          tap((phunk) => {
-            if (phunk?.consensus !== consensusSubject.value) {
-              // console.log('Consensus changed from', consensusSubject.value, 'to', phunk?.consensus);
-              consensusSubject.next(phunk?.consensus);
+          tap((item) => {
+            if (item?.consensus !== consensusSubject.value) {
+              // console.log('Consensus changed from', consensusSubject.value, 'to', item?.consensus);
+              consensusSubject.next(item?.consensus);
             }
           }),
-          distinctUntilChanged((prev: Phunk, curr: Phunk) =>
+          distinctUntilChanged((prev: MarketItem, curr: MarketItem) =>
             prev?.hashId === curr?.hashId &&
             prev?.consensus === curr?.consensus &&
             prev?.owner === curr?.owner &&
@@ -625,7 +625,7 @@ export class DataService {
         );
 
         // Start with initial data, then continue with controlled stream
-        return merge(of(initialPhunk), dataStream$);
+        return merge(of(initialItem), dataStream$);
       }),
       share()
     );
@@ -665,7 +665,7 @@ export class DataService {
    * Fetches data for an unsupported item
    * @param hashId Token hash ID
    */
-  fetchUnsupportedItem(hashId: string): Observable<Phunk> {
+  fetchUnsupportedItem(hashId: string): Observable<MarketItem> {
     const prefix = this.suffix.replace('_', '');
 
     const baseUrl = `https://ethscriptions-api${prefix ? ('-' + prefix) : ''}.flooredape.io`;
@@ -673,7 +673,7 @@ export class DataService {
     return this.http.get<any>(`${baseUrl}/ethscriptions/${hashId}`).pipe(
       map((res: any) => {
         const { result } = res;
-        const item: Phunk = {
+        const item: MarketItem = {
           slug: '',
           hashId: result.transaction_hash,
           tokenId: result.ethscription_number,
@@ -708,7 +708,7 @@ export class DataService {
             singleName: 'Ethscription',
             name: 'Ethscriptions',
           }
-        } as Phunk);
+        } as MarketItem);
       }),
     );
   }
@@ -717,15 +717,15 @@ export class DataService {
    * Gets listing data for a token
    * @param hashId Token hash ID
    */
-  async getListingFromHashId(hashId: string | undefined): Promise<Listing | null> {
-    if (!hashId) return null;
+  async getListingFromHashId(hashId: string | undefined, prevOwner: string | null | undefined): Promise<Listing | null> {
+    if (!hashId || !prevOwner) return null;
 
     try {
       const [
         callL1,
         // callL2,
       ] = await Promise.all([
-        this.web3Svc.readMarketContract('phunksOfferedForSale', [hashId]),
+        this.web3Svc.readMarketContract('hashesOfferedForSale', [prevOwner, hashId]),
         // this.web3Svc.phunksOfferedForSaleL2(hashId),
       ]);
 
@@ -748,11 +748,11 @@ export class DataService {
   }
 
   /**
-   * Checks consensus status for Phunks
-   * @param phunks Array of Phunks to check
+   * Checks consensus status for market items
+   * @param marketItems Array of market items to check
    */
-  async checkConsensus(phunks: Phunk[]): Promise<Phunk[]> {
-    if (!phunks.length) return [];
+  async checkConsensus(marketItems: MarketItem[]): Promise<MarketItem[]> {
+    if (!marketItems.length) return [];
 
     // Determine API base URL based on chain
     const isSepolia = environment.chainId === 11155111;
@@ -762,8 +762,8 @@ export class DataService {
 
     // Build query params with multiple transaction_hash parameters
     let params = new HttpParams().set('max_results', '100');
-    phunks.forEach((phunk: Phunk) => {
-      params = params.append('transaction_hash', phunk.hashId);
+    marketItems.forEach((marketItem: MarketItem) => {
+      params = params.append('transaction_hash', marketItem.hashId);
     });
 
     const fetchPage = (pageKey?: string): Observable<any> => {
@@ -779,36 +779,36 @@ export class DataService {
         expand((res: any) => res.pagination?.has_more ? fetchPage(res.pagination.page_key) : EMPTY),
         reduce((acc: any[], res) => res?.result ? [...acc, ...res.result] : acc, []),
         map((apiResults: any[]) => {
-          // Map each phunk to check consensus against API results
-          return phunks.map((phunk: Phunk) => {
+          // Map each item to check consensus against API results
+          return marketItems.map((marketItem: MarketItem) => {
             const apiItem = apiResults.find((item: any) => 
-              item.transaction_hash?.toLowerCase() === phunk.hashId?.toLowerCase()
+              item.transaction_hash?.toLowerCase() === marketItem.hashId?.toLowerCase()
             );
             
             if (!apiItem) {
-              console.log('checkConsensus: ethscription not found in API', phunk.hashId);
-              return { ...phunk, consensus: false };
+              console.log('checkConsensus: ethscription not found in API', marketItem.hashId);
+              return { ...marketItem, consensus: false };
             }
 
             const consensus = 
-              phunk.owner?.toLowerCase() === apiItem.current_owner?.toLowerCase() && 
-              (phunk.prevOwner?.toLowerCase() === apiItem.previous_owner?.toLowerCase() || !phunk.prevOwner);
+              marketItem.owner?.toLowerCase() === apiItem.current_owner?.toLowerCase() && 
+              (marketItem.prevOwner?.toLowerCase() === apiItem.previous_owner?.toLowerCase() || !marketItem.prevOwner);
             
             console.log('Consensus check:', {
-              hashId: phunk.hashId,
-              localOwner: phunk.owner,
+              hashId: marketItem.hashId,
+              localOwner: marketItem.owner,
               apiOwner: apiItem.current_owner,
-              localPrevOwner: phunk.prevOwner,
+              localPrevOwner: marketItem.prevOwner,
               apiPrevOwner: apiItem.previous_owner,
               consensus
             });
 
-            return { ...phunk, consensus };
+            return { ...marketItem, consensus };
           });
         }),
         catchError((err) => {
           console.log('checkConsensus error', err);
-          return of(phunks.map(p => ({ ...p, consensus: false })));
+          return of(marketItems.map(p => ({ ...p, consensus: false })));
         })
       )
     );
@@ -991,10 +991,10 @@ export class DataService {
           map((attributes) => {
             const data = res.data;
             return {
-              data: data.data.map((item: Phunk) => ({
+              data: data.data.map((item: MarketItem) => ({
                 ...item,
                 attributes: attributes?.[item.sha] || [],
-              } as Phunk)),
+              } as MarketItem)),
               total: data.total_count
             }
           }),

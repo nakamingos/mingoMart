@@ -353,7 +353,7 @@ export class StorageService implements OnModuleInit {
   ): Promise<Ethscription[]> {
     const pageSize = 1000; // Max rows per request
 
-    let allPhunks: any[] = [];
+    let allEthscriptions: any[] = [];
     let hasMore = true;
     let page = 0;
 
@@ -374,7 +374,7 @@ export class StorageService implements OnModuleInit {
       }
 
       if (data) {
-        allPhunks = allPhunks.concat(data);
+        allEthscriptions = allEthscriptions.concat(data);
         hasMore = data.length === pageSize;
         page++;
       } else {
@@ -382,7 +382,7 @@ export class StorageService implements OnModuleInit {
       }
     }
 
-    return allPhunks;
+    return allEthscriptions;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1400,8 +1400,8 @@ export class StorageService implements OnModuleInit {
   }
 
   /**
-   * Listens for Phunk sale events from Supabase
-   * @returns An Observable that emits Phunk sale events
+   * Listens for item sale events from Supabase
+   * @returns An Observable that emits item sale events
    */
   listenSales(): Observable<db.Event> {
     return new Observable(subscriber => {
@@ -1411,7 +1411,7 @@ export class StorageService implements OnModuleInit {
           event: 'INSERT',
           schema: 'public',
           table: `events${this.suffix}`,
-          filter: 'type=eq.PhunkBought'
+          filter: 'type=eq.HashBought'
         }, payload => {
           // console.log(payload.new);
           subscriber.next(payload.new as db.Event);
@@ -1426,15 +1426,15 @@ export class StorageService implements OnModuleInit {
   }
 
   /**
-   * Retrieves the latest Phunk bought event by hash ID
-   * @param hashId The hash ID of the Phunk
-   * @returns The latest Phunk bought event
+   * Retrieves the latest item bought event by hash ID
+   * @param hashId The hash ID of the item
+   * @returns The latest item bought event
    */
   async getLatestBoughtEventByHashId(hashId: string): Promise<db.Event> {
     const response = this.supabase
       .from(`events${this.suffix}`)
       .select('*')
-      .eq('type', 'PhunkBought')
+      .eq('type', 'HashBought')
       .eq('hashId', hashId)
       .order('blockTimestamp', { ascending: false })
       .limit(1)

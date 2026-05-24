@@ -1,4 +1,4 @@
-import { Phunk } from './db';
+import { MarketItem } from './db';
 import { TraitFilter } from './global-state';
 import { SortOption } from './sorts.model';
 
@@ -6,19 +6,19 @@ export interface MarketState {
   marketType: MarketType | null;
   marketSlug: string;
 
-  marketData: Phunk[];
-  owned: Phunk[];
-  listings: Phunk[];
-  bids: Phunk[];
-  all: Phunk[];
-  auctions: Phunk[];
+  marketData: MarketItem[];
+  owned: MarketItem[];
+  listings: MarketItem[];
+  bids: MarketItem[];
+  all: MarketItem[];
+  auctions: MarketItem[];
   activeMarketRouteData: {
-    data: Phunk[];
+    data: MarketItem[];
     total: number;
   };
   pagination: PaginationState;
 
-  selectedPhunks: Phunk[];
+  selectedMarketItems: MarketItem[];
 
   activeSort: SortOption;
   activeTraitFilters: TraitFilter | null;

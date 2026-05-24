@@ -3,7 +3,7 @@ import { Injectable, NgZone } from '@angular/core';
 import { Store } from '@ngrx/store';
 
 import { GlobalState } from '@/models/global-state';
-import { Auction, Phunk } from '@/models/db';
+import { Auction, MarketItem } from '@/models/db';
 import { AuctionRequest, formatAuction, isValidAuction } from '@/models/auctions';
 
 import { Observable, catchError, firstValueFrom, interval, from, of, tap, switchMap, merge, BehaviorSubject, shareReplay } from 'rxjs';
@@ -18,7 +18,7 @@ import { Client, TransactionReceipt, WatchBlockNumberReturnType, WatchContractEv
 import { reconnect, Config, watchAccount, getPublicClient, getAccount, disconnect, getChainId, getWalletClient, GetWalletClientReturnType, GetAccountReturnType, signTypedData } from '@wagmi/core';
 
 // L1
-import { EtherPhunksMarketABI } from '@/abi/EtherPhunksMarket';
+import { MingoMartMarketABI } from '@/abi/MingoMartMarket';
 import { PointsABI } from '@/abi/Points';
 import { auctionHouseL1 } from '@/abi/AuctionHouseL1';
 
@@ -278,13 +278,13 @@ export class Web3Service {
    */
   async sendEthscriptionToContract(tokenId: string): Promise<string | undefined> {
     const escrowed = await this.isInEscrow(tokenId);
-    if (escrowed) throw new Error('Phunk already in escrow');
-    return await this.transferPhunk(tokenId, marketAddress as `0x${string}`);
+    if (escrowed) throw new Error('Item already in escrow');
+    return await this.transferHash(tokenId, marketAddress as `0x${string}`);
   }
 
   /**
-   * Sends a phunk to the auction contract
-   * @param hashId The hash ID of the phunk to send
+   * Sends an item to the auction contract
+   * @param hashId The hash ID of the item to send
    * @param duration The duration of the auction
    * @param minBidIncrementPercentage The minimum bid increment percentage
    * @param timeBuffer The time buffer
@@ -302,14 +302,14 @@ export class Web3Service {
     const minBidIncrementPercentageHex = bytesToHex(numberToBytes(minBidIncrementPercentage, { size: 32 }));
     const timeBufferHex = bytesToHex(numberToBytes(timeBuffer, { size: 32 }));
 
-    return await this.batchTransferPhunks([hashId, sig, durationHex, minBidIncrementPercentageHex, timeBufferHex], auctionHouseAddress);
+    return await this.batchTransferHashes([hashId, sig, durationHex, minBidIncrementPercentageHex, timeBufferHex], auctionHouseAddress);
   }
 
   /**
    * Creates a bid on an auction
    * @param bidValue The bid value in ETH
-   * @param hashId The hash ID of the phunk to bid on
-   * @param prevOwner The previous owner of the phunk
+   * @param hashId The hash ID of the item to bid on
+   * @param prevOwner The previous owner of the item
    * @returns Promise resolving to the transaction hash if successful
    */
   async createBid(
@@ -323,8 +323,8 @@ export class Web3Service {
 
   /**
    * Settles an auction
-   * @param hashId The hash ID of the phunk to settle
-   * @param prevOwner The previous owner of the phunk
+   * @param hashId The hash ID of the item to settle
+   * @param prevOwner The previous owner of the item
    * @returns Promise resolving to the transaction hash if successful
    */
   async settleAuction(
@@ -336,8 +336,8 @@ export class Web3Service {
 
   /**
    * Watches an auction by previous owner and hash ID
-   * @param prevOwner The previous owner of the phunk
-   * @param hashId The hash ID of the phunk to watch
+   * @param prevOwner The previous owner of the item
+   * @param hashId The hash ID of the item to watch
    * @returns Observable resolving to the auction result
    */
   watchAuctionByPrevOwnerAndHashId({
@@ -356,8 +356,8 @@ export class Web3Service {
 
   /**
    * Gets an auction by previous owner and hash ID
-   * @param prevOwner The previous owner of the phunk
-   * @param hashId The hash ID of the phunk to get
+   * @param prevOwner The previous owner of the item
+   * @param hashId The hash ID of the item to get
    * @returns Promise resolving to the auction result or null if not found
    */
   async getAuctionByPrevOwnerAndHashId({
@@ -375,26 +375,26 @@ export class Web3Service {
   }
 
   /**
-   * Withdraws a phunk from escrow
-   * @param hashId The hash ID of the phunk to withdraw
+   * Withdraws an item from escrow
+   * @param hashId The hash ID of the item to withdraw
    * @returns Promise resolving to the transaction hash if successful
-   * @throws Error if phunk is not in escrow
+   * @throws Error if item is not in escrow
    */
-  async withdrawPhunk(hashId: string): Promise<string | undefined> {
+  async withdrawHash(hashId: string): Promise<string | undefined> {
     const escrowed = await this.isInEscrow(hashId);
-    if (!escrowed) throw new Error('Phunk not in escrow');
-    return await this.writeMarketContract('withdrawPhunk', [hashId]);
+    if (!escrowed) throw new Error('Item not in escrow');
+    return await this.writeMarketContract('withdrawHash', [hashId]);
   }
 
   /**
-   * Withdraws multiple phunks from escrow in a single transaction
+   * Withdraws multiple items from escrow in a single transaction
    * @param hashIds Array of hash IDs to withdraw
    * @returns Promise resolving to the transaction hash if successful
-   * @throws Error if no phunks are selected
+   * @throws Error if no items are selected
    */
-  async withdrawBatch(hashIds: string[]): Promise<string | undefined> {
-    if (!hashIds.length) throw new Error('No phunks selected');
-    return await this.writeMarketContract('withdrawBatchPhunks', [hashIds]);
+  async withdrawBatchHashes(hashIds: string[]): Promise<string | undefined> {
+    if (!hashIds.length) throw new Error('No items selected');
+    return await this.writeMarketContract('withdrawBatchHashes', [hashIds]);
   }
 
   /**
@@ -404,7 +404,7 @@ export class Web3Service {
    */
   async decodeInputData(data: string): Promise<any> {
     const decoded = decodeFunctionData({
-      abi: EtherPhunksMarketABI,
+      abi: MingoMartMarketABI,
       data: data as `0x${string}`,
     });
     return decoded;
@@ -437,7 +437,7 @@ export class Web3Service {
 
     const tx: any = {
       address: marketAddress as `0x${string}`,
-      abi: EtherPhunksMarketABI,
+      abi: MingoMartMarketABI,
       functionName,
       args,
       account: walletClient?.account?.address as `0x${string}`,
@@ -458,7 +458,7 @@ export class Web3Service {
     try {
       const call: any = await readContract(this.l1Client, {
         address: marketAddress as `0x${string}`,
-        abi: EtherPhunksMarketABI,
+        abi: MingoMartMarketABI,
         functionName,
         args: args as any,
       });
@@ -529,14 +529,14 @@ export class Web3Service {
   }
 
   /**
-   * Lists a phunk for sale
-   * @param hashId The hash ID of the phunk to list
+   * Lists an item for sale
+   * @param hashId The hash ID of the item to list
    * @param value The price in ETH
-   * @param toAddress Optional specific address that can buy the phunk
+   * @param toAddress Optional specific address that can buy the item
    * @returns Promise resolving to the transaction hash if successful
    * @throws Error if toAddress is invalid
    */
-  async offerPhunkForSale(
+  async offerHashForSale(
     hashId: string,
     value: number,
     toAddress?: string | null,
@@ -546,25 +546,25 @@ export class Web3Service {
     if (toAddress) {
       if (!isAddress(toAddress)) throw new Error('Invalid address');
       return this.writeMarketContract(
-        'offerPhunkForSaleToAddress',
+        'offerHashForSaleToAddress',
         [hashId, weiValue, toAddress]
       );
     }
 
     return this.writeMarketContract(
-      'offerPhunkForSale',
+      'offerHashForSale',
       [hashId, weiValue]
     );
   }
 
   /**
-   * Escrows and lists a phunk for sale in one transaction
-   * @param hashId The hash ID of the phunk
+   * Escrows and lists an item for sale in one transaction
+   * @param hashId The hash ID of the item
    * @param value The price in ETH
-   * @param toAddress The address that can buy the phunk (defaults to zero address)
+   * @param toAddress The address that can buy the item (defaults to zero address)
    * @returns Promise resolving to the transaction hash if successful
    */
-  async escrowAndOfferPhunkForSale(
+  async escrowAndOfferHashForSale(
     hashId: string,
     value: number,
     toAddress: string = zeroAddress,
@@ -577,32 +577,33 @@ export class Web3Service {
     toAddress = toAddress.toLowerCase().replace('0x', '').padStart(64, '0');
     // const revShareHex = numberToHex(revShare).replace('0x', '').padStart(64, '0');
 
-    return await this.batchTransferPhunks([hashId, sig, bytes32Value, toAddress], marketAddress);
+    return await this.batchTransferHashes([hashId, sig, bytes32Value, toAddress], marketAddress);
   }
 
   /**
-   * Lists multiple phunks for sale in one transaction
+   * Lists multiple items for sale in one transaction
    * @param hashIds Array of hash IDs to list
    * @param listPrices Array of prices in ETH corresponding to each hash ID
    * @returns Promise resolving to the transaction hash if successful
    */
-  async batchOfferPhunkForSale(hashIds: string[], listPrices: number[]): Promise<string | undefined> {
+  async batchOfferHashForSale(hashIds: string[], listPrices: number[]): Promise<string | undefined> {
     const weiValues = listPrices.map((price) => this.ethToWei(price));
-    return this.writeMarketContract('batchOfferPhunkForSale', [hashIds, weiValues]);
+    return this.writeMarketContract('batchOfferHashForSale', [hashIds, weiValues]);
   }
 
   /**
-   * Buys multiple phunks in one transaction
-   * @param phunks Array of Phunk objects to buy
+   * Buys multiple items in one transaction
+   * @param marketItems Array of market item objects to buy
    * @returns Promise resolving to the transaction hash if successful
-   * @throws Error if user is banned or no phunks are selected
+   * @throws Error if user is banned or no items are selected
    */
-  async batchBuyPhunks(
-    phunks: Phunk[]
+  async batchBuyHashes(
+    marketItems: MarketItem[]
   ): Promise<string | undefined> {
     const address = getAccount(this.config).address;
-    const escrowAndListing = await this.fetchMultipleEscrowAndListing(phunks);
+    const escrowAndListing = await this.fetchMultipleEscrowAndListing(marketItems);
 
+    const previousOwners = [];
     const hashIds = [];
     const minSalePricesInWei = [];
 
@@ -613,52 +614,53 @@ export class Web3Service {
       if (isBanned) throw new Error('User is banned from buying');
     }
 
-    for (const [i, phunk] of phunks.entries()) {
-      const hashId = phunk.hashId;
+    for (const marketItem of marketItems) {
+      const hashId = marketItem.hashId;
       const stored = escrowAndListing[hashId].stored;
       const listed = escrowAndListing[hashId][0];
       const listedBy = escrowAndListing[hashId][2];
 
       if (
-        !phunk.listing ||
+        !marketItem.listing ||
         !listed ||
         !stored ||
-        listedBy.toLowerCase() !== phunk.prevOwner?.toLowerCase() ||
-        phunk.prevOwner?.toLowerCase() === address?.toLowerCase()
+        listedBy.toLowerCase() !== marketItem.prevOwner?.toLowerCase() ||
+        marketItem.prevOwner?.toLowerCase() === address?.toLowerCase()
       ) continue;
 
-      hashIds.push(phunk.hashId);
-      minSalePricesInWei.push(BigInt(phunk.listing.minValue));
-      total += BigInt(phunk.listing.minValue);
+      previousOwners.push(marketItem.prevOwner);
+      hashIds.push(marketItem.hashId);
+      minSalePricesInWei.push(BigInt(marketItem.listing.minValue));
+      total += BigInt(marketItem.listing.minValue);
     }
 
-    if (!hashIds.length || !minSalePricesInWei.length) throw new Error('No phunks selected');
+    if (!previousOwners.length || !hashIds.length || !minSalePricesInWei.length) throw new Error('No items selected');
 
     return this.writeMarketContract(
-      'batchBuyPhunk',
-      [hashIds, minSalePricesInWei],
+      'batchBuyHash',
+      [previousOwners, hashIds, minSalePricesInWei],
       total as any
     );
   }
 
   /**
-   * Cancels a phunk listing
-   * @param hashId The hash ID of the phunk to delist
+   * Cancels an item listing
+   * @param hashId The hash ID of the item to delist
    * @returns Promise resolving to the transaction hash if successful
    */
-  async phunkNoLongerForSale(hashId: string): Promise<string | undefined> {
-    return this.writeMarketContract('phunkNoLongerForSale', [hashId]);
+  async hashNoLongerForSale(hashId: string): Promise<string | undefined> {
+    return this.writeMarketContract('hashNoLongerForSale', [hashId]);
   }
 
   /**
-   * Transfers a phunk to another address
-   * @param hashId The hash ID of the phunk to transfer
+   * Transfers an ethscription to another address
+   * @param hashId The hash ID of the ethscription to transfer
    * @param toAddress The recipient address
    * @returns Promise resolving to the transaction hash if successful
-   * @throws Error if no phunk selected or no address provided
+   * @throws Error if no item selected or no address provided
    */
-  async transferPhunk(hashId: string, toAddress: string): Promise<string | undefined> {
-    if (!hashId) throw new Error('No phunk selected');
+  async transferHash(hashId: string, toAddress: string): Promise<string | undefined> {
+    if (!hashId) throw new Error('No item selected');
     if (!toAddress) throw new Error('No address provided');
 
     await this.switchNetwork();
@@ -676,27 +678,27 @@ export class Web3Service {
   }
 
   /**
-   * Transfers multiple phunks in one transaction
+   * Transfers multiple ethscription hashes in one transaction
    * @param hashIds Array of hash IDs to transfer
    * @param toAddress The recipient address
    * @returns Promise resolving to the transaction hash if successful
-   * @throws Error if no phunks selected or no address provided
+   * @throws Error if no items selected or no address provided
    */
-  async batchTransferPhunks(hashIds: string[], toAddress: string | null): Promise<string | undefined> {
-    if (!hashIds.length) throw new Error('No phunks selected');
+  async batchTransferHashes(hashIds: string[], toAddress: string | null): Promise<string | undefined> {
+    if (!hashIds.length) throw new Error('No items selected');
     if (!toAddress) throw new Error('No address provided');
     const hash = hashIds.map((res) => res.replace('0x', '')).join('');
-    return await this.transferPhunk(`0x${hash}`, toAddress);
+    return await this.transferHash(`0x${hash}`, toAddress);
   }
 
   /**
-   * Locks a phunk in the bridge contract
+   * Locks an item in the bridge contract
    * @param hexArr Array of hex values for the lock transaction
    * @returns Promise resolving to the transaction hash if successful
-   * @throws Error if no phunk selected
+   * @throws Error if no item selected
    */
-  async lockPhunk(hexArr: string[]): Promise<string | undefined> {
-    if (!hexArr.length) throw new Error('No phunk selected');
+  async lockHash(hexArr: string[]): Promise<string | undefined> {
+    if (!hexArr.length) throw new Error('No item selected');
     await this.switchNetwork();
 
     const data = hexArr.map((res) => res.replace('0x', '')).join('');
@@ -764,7 +766,7 @@ export class Web3Service {
   async fetchEscrowAndListing(prevOwner: string, hashId: string): Promise<any> {
     const contract = {
       address: marketAddress as `0x${string}`,
-      abi: EtherPhunksMarketABI as any
+      abi: MingoMartMarketABI as any
     };
 
     const call = await multicall(this.l1Client, {
@@ -775,35 +777,35 @@ export class Web3Service {
       },
       {
         ...contract,
-        functionName: 'phunksOfferedForSale',
-        args: [hashId as `0x${string}`],
+        functionName: 'hashesOfferedForSale',
+        args: [prevOwner as `0x${string}`, hashId as `0x${string}`],
       }]
     });
     return call;
   }
 
   /**
-   * Fetches multiple on-chain escrow and listing information for an array of Phunks.
-   * @param phunks - An array of Phunks for which to fetch the information.
+   * Fetches multiple on-chain escrow and listing information for an array of market items.
+   * @param marketItems - An array of market items for which to fetch the information.
    * @returns Promise resolving to an object containing the combined escrow and listing information.
    */
-  async fetchMultipleEscrowAndListing(phunks: Phunk[]): Promise<any> {
+  async fetchMultipleEscrowAndListing(marketItems: MarketItem[]): Promise<any> {
     const contract = {
       address: marketAddress as `0x${string}`,
-      abi: EtherPhunksMarketABI
+      abi: MingoMartMarketABI
     };
 
     const calls: any[] = [];
-    for (const phunk of phunks) {
+    for (const marketItem of marketItems) {
       calls.push({
         ...contract,
         functionName: 'userEthscriptionPossiblyStored',
-        args: [phunk.prevOwner as `0x${string}`, phunk.hashId as `0x${string}`],
+        args: [marketItem.prevOwner as `0x${string}`, marketItem.hashId as `0x${string}`],
       });
       calls.push({
         ...contract,
-        functionName: 'phunksOfferedForSale',
-        args: [phunk.hashId as `0x${string}`],
+        functionName: 'hashesOfferedForSale',
+        args: [marketItem.prevOwner as `0x${string}`, marketItem.hashId as `0x${string}`],
       });
     }
 
@@ -851,7 +853,7 @@ export class Web3Service {
    * @returns Promise resolving to the transaction hash if successful
    * @throws Error if address is invalid
    */
-  async offerPhunkForSaleL2(
+  async offerHashForSaleL2(
     hashId: string,
     value: number,
     address?: string,
@@ -883,12 +885,12 @@ export class Web3Service {
    * @returns Promise resolving to the transaction hash if successful
    * @throws Error if phunk is not for sale
    */
-  async buyPhunkL2(hashId: string): Promise<string | undefined> {
+  async buyHashL2(hashId: string): Promise<string | undefined> {
     const tokenId = await this.readTokenContractL2('hashToToken', [hashId]);
     const offer = await this.readMarketContractL2('phunksOfferedForSale', [tokenId]);
 
     // console.log({tokenId, offer});
-    if (!offer[0]) throw new Error('Phunk not for sale');
+    if (!offer[0]) throw new Error('Item not for sale');
 
     const value = offer[3];
     await this.switchNetwork('l2');
@@ -900,7 +902,7 @@ export class Web3Service {
    * @param hashId The hash ID of the phunk listing to cancel
    * @returns Promise resolving to the transaction hash if successful
    */
-  async phunkNoLongerForSaleL2(hashId: string): Promise<string | undefined> {
+  async hashNoLongerForSaleL2(hashId: string): Promise<string | undefined> {
     const tokenId = await this.readTokenContractL2('hashToToken', [hashId]);
     return this.writeMarketContractL2('phunkNoLongerForSale', [tokenId]);
   }

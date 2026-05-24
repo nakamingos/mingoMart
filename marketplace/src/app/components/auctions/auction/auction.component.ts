@@ -9,7 +9,7 @@ import { combineLatest, delay, distinctUntilChanged, filter, map, of, switchMap,
 import { zeroAddress } from 'viem';
 
 import { Collection } from '@/models/data.state';
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 import { GlobalState, Notification } from '@/models/global-state';
 
 import { Web3Service } from '@/services/web3.service';
@@ -48,7 +48,7 @@ export class AuctionComponent {
 
   zeroAddr = zeroAddress;
 
-  phunk = input.required<Phunk>();
+  phunk = input.required<MarketItem>();
   phunk$ = toObservable(this.phunk);
 
   collection = input<Collection | undefined>();
@@ -69,7 +69,7 @@ export class AuctionComponent {
       prevOwner: phunk!.prevOwner!,
       hashId: phunk!.hashId
     }).pipe(
-      map((auction): Phunk | null => ({ ...phunk, auction })),
+      map((auction): MarketItem | null => ({ ...phunk, auction })),
     )),
   );
 
@@ -82,7 +82,7 @@ export class AuctionComponent {
   );
 
   name$ = this.phunk$.pipe(
-    map((phunk: Phunk) => phunk.attributes?.filter(item => item.k === 'Name')[0]?.v),
+    map((phunk: MarketItem) => phunk.attributes?.filter(item => item.k === 'Name')[0]?.v),
   );
 
   bidValue = new FormControl<number | null>(null);
@@ -100,7 +100,7 @@ export class AuctionComponent {
   async submitBid(): Promise<void> {
     // Get the phunk
     const phunk = this.phunk();
-    if (!phunk) throw new Error('Phunk not found');
+    if (!phunk) throw new Error('MarketItem not found');
 
     // Get the bid value
     const bidValue: number | null = this.bidValue.value;
@@ -172,7 +172,7 @@ export class AuctionComponent {
 
   async settleAuction(): Promise<void> {
     const phunk = this.phunk();
-    if (!phunk) throw new Error('Phunk not found');
+    if (!phunk) throw new Error('MarketItem not found');
 
     // Create the notification
     let notification: Notification = {

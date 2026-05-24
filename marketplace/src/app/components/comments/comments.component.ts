@@ -230,7 +230,7 @@ export class CommentsComponent {
     this.store.dispatch(upsertNotification({ notification }));
 
     try {
-      const hash = await this.web3Svc.transferPhunk(commentId, zeroAddress);
+      const hash = await this.web3Svc.transferHash(commentId, zeroAddress);
       if (!hash) return;
 
       notification = {

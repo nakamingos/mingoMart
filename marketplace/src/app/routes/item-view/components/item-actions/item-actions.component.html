@@ -35,9 +35,9 @@
           phunk.nft.owner !== address
         ))
       ) {
-        <button class="buy" (click)="buyPhunk()">
+        <button class="buy" (click)="buyHash()">
           <span>Buy</span>
-          <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'buyPhunk' }" />
+          <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'buyHash' }" />
         </button>
       }
 
@@ -50,7 +50,7 @@
       ) {
         <button class="sell" (click)="sellAction()" [class.active]="actionsState().sell">
           <span>Sell</span>
-          <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'offerPhunkForSale' }" />
+          <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'offerHashForSale' }" />
         </button>
 
         <!-- Sell Actions -->
@@ -73,9 +73,9 @@
 
       <!-- Escrow actions (Withdraw) -->
       @if (phunk.isEscrowed && (phunk.prevOwner | lowercase) === (address | lowercase)) {
-        <button class="withdraw" (click)="withdrawPhunk()">
+        <button class="withdraw" (click)="withdrawHash()">
           <span>Withdraw from escrow</span>
-          <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'withdrawPhunk' }" />
+          <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'withdrawHash' }" />
         </button>
       }
 
@@ -91,9 +91,9 @@
           phunk.nft.owner === address
         ))
       ) {
-        <button class="sell" (click)="phunkNoLongerForSale()">
+        <button class="sell" (click)="hashNoLongerForSale()">
           <span>Delist</span>
-          <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'phunkNoLongerForSale' }" />
+          <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'hashNoLongerForSale' }" />
         </button>
       }
 
@@ -101,7 +101,7 @@
       @if ((phunk.owner | lowercase) === (address | lowercase)) {
         <button class="transfer" [class.active]="actionsState().transfer" (click)="transferAction()">
           <span>Transfer</span>
-          <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'transferPhunk' }" />
+          <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'transferHash' }" />
         </button>
 
         <!-- Transfer actions -->
@@ -284,7 +284,7 @@
 
     <div class="form-actions">
       <button i18n type="reset" class="cancel" (click)="closeTransfer()">Cancel</button>
-      <button i18n type="submit" class="submit" (click)="transferPhunk()">Submit</button>
+      <button i18n type="submit" class="submit" (click)="transferHash()">Submit</button>
     </div>
   </form>
 </ng-template>
@@ -294,7 +294,7 @@
   <div class="form-wrapper">
     <ng-container *ngTemplateOutlet="cooldown; context:{ $implicit: phunk }" />
 
-    <p i18n>Your {{ phunk.singleName }} must be held in escrow in order to be listed. <span class="small">While held in escrow, your Phunk will not show in your wallet on other apps/marketplaces.</span></p>
+    <p i18n>Your {{ phunk.singleName }} must be held in escrow in order to be listed. <span class="small">While held in escrow, your item will not show in your wallet on other apps/marketplaces.</span></p>
 
     <div class="form-actions">
       <button i18n type="reset" class="cancel" (click)="closeEscrow()">Cancel</button>

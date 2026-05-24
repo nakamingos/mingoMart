@@ -58,14 +58,14 @@ export class NotifsService implements OnModuleInit {
   }
 
   /**
-   * Processes notifications for Phunk sale events
-   * @param phunkBoughtEvent The sale event data
+   * Processes notifications for item sale events
+   * @param boughtEvent The sale event data
    */
-  async handleNotification(phunkBoughtEvent: Event): Promise<void> {
-    const ethscriptionData = await this.getEthscriptionWithCollectionAndAttributes(phunkBoughtEvent.hashId);
+  async handleNotification(boughtEvent: Event): Promise<void> {
+    const ethscriptionData = await this.getEthscriptionWithCollectionAndAttributes(boughtEvent.hashId);
     if (!ethscriptionData) return;
 
-    const message = await this.createMessage(phunkBoughtEvent, ethscriptionData);
+    const message = await this.createMessage(boughtEvent, ethscriptionData);
     if (!message) return;
 
     await this.twitterSvc.sendTweet(message);
@@ -73,7 +73,7 @@ export class NotifsService implements OnModuleInit {
   }
 
   /**
-   * Creates a notification message for a Phunk sale event
+   * Creates a notification message for an item sale event
    * @param event The sale event data
    * @returns Formatted notification message object
    */

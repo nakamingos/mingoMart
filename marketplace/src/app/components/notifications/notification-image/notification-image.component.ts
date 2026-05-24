@@ -34,18 +34,18 @@ export class NotificationImageComponent {
       if (!hashId) return;
 
       untracked(async () => {
-        const data = await this.getPhunkByHashId(hashId);
+        const data = await this.getItemImageByHashId(hashId);
         this.imageData.set(data);
       });
     });
   }
 
   /**
-   * Fetches and processes a phunk by its transaction hash ID
+   * Fetches and processes an item by its transaction hash ID
    * @param hashId Transaction hash ID
    * @returns Promise resolving when image is processed
    */
-  async getPhunkByHashId(hashId: string): Promise<string> {
+  async getItemImageByHashId(hashId: string): Promise<string> {
     const sha = await this.dataSvc.fetchShaFromHashId(hashId);
     if (sha) return environment.staticUrl + '/static/images/' + sha;
 

@@ -6,7 +6,7 @@ import { RouterModule } from '@angular/router';
 import { DataService } from '@/services/data.service';
 import { EthscriptionService } from '@/services/ethscription.service';
 
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 
 import { filter, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -24,7 +24,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 })
 export class BreadcrumbsComponent {
 
-  phunk = input<Phunk | null>();
+  phunk = input<MarketItem | null>();
 
   @ViewChild('pfp') pfp!: ElementRef;
 
@@ -60,7 +60,7 @@ export class BreadcrumbsComponent {
   }
 
   async paintCanvas(
-    phunk: Phunk,
+    phunk: MarketItem,
   ): Promise<void> {
     if (!phunk) return;
 
@@ -121,7 +121,7 @@ export class BreadcrumbsComponent {
     }
   }
 
-  async getPunkImage(phunk: Phunk, transparentVersion: boolean): Promise<string | undefined> {
+  async getPunkImage(phunk: MarketItem, transparentVersion: boolean): Promise<string | undefined> {
     const decodedData = await this.ethscriptionSvc.fetchImage(phunk, transparentVersion);
     if (decodedData?.mimeType === 'image/gif') {
       this.customizeEnabled.set(false);

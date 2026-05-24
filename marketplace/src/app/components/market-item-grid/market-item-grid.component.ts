@@ -10,7 +10,7 @@ import { WaIntersectionObserver } from '@ng-web-apis/intersection-observer';
 import { GlobalState, TraitFilter } from '@/models/global-state';
 import { MarketType } from '@/models/market.state';
 import { ViewType } from '@/models/view-types';
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 
 import { DataService } from '@/services/data.service';
 import { normalizeDefaultBackground } from '@/constants/background-color';
@@ -29,7 +29,7 @@ import * as dataStateSelectors from '@/state/data/data-state.selectors';
 import * as marketStateActions from '@/state/market/market-state.actions';
 
 @Component({
-  selector: 'app-phunk-grid',
+  selector: 'app-market-item-grid',
   standalone: true,
   imports: [
     CommonModule,
@@ -50,13 +50,13 @@ import * as marketStateActions from '@/state/market/market-state.actions';
     '[class]': 'viewType',
     '[class.narrow]': 'narrow',
   },
-  templateUrl: './phunk-grid.component.html',
-  styleUrls: ['./phunk-grid.component.scss']
+  templateUrl: './market-item-grid.component.html',
+  styleUrls: ['./market-item-grid.component.scss']
 })
 
-export class PhunkGridComponent implements OnChanges {
+export class MarketItemGridComponent implements OnChanges {
 
-  @ViewChildren('phunkCheck') phunkCheck!: QueryList<ElementRef<HTMLInputElement>>;
+  @ViewChildren('marketItemCheck') marketItemCheck!: QueryList<ElementRef<HTMLInputElement>>;
 
   escrowAddress = environment.marketAddress;
 
@@ -66,7 +66,7 @@ export class PhunkGridComponent implements OnChanges {
 
   @Input() viewType: ViewType = 'market';
   @Input() slug!: string;
-  @Input() phunkData!: Phunk[] | null;
+  @Input() marketItemData!: MarketItem[] | null;
   @Input() total: number = 0;
   @Input() limit: number = 0;
   @Input() defaultBackground?: string | null;
@@ -80,8 +80,8 @@ export class PhunkGridComponent implements OnChanges {
 
   @Input() walletAddress!: string | null | undefined;
 
-  @Output() selectedChange = new EventEmitter<{ [string: Phunk['hashId']]: Phunk }>();
-  @Input() selected: { [string: Phunk['hashId']]: Phunk } = {};
+  @Output() selectedChange = new EventEmitter<{ [string: MarketItem['hashId']]: MarketItem }>();
+  @Input() selected: { [string: MarketItem['hashId']]: MarketItem } = {};
 
   limitArr: number[] = [];
 
@@ -103,7 +103,7 @@ export class PhunkGridComponent implements OnChanges {
     }
 
     if (changes.selected && !changes.selected.firstChange) {
-      this.phunkCheck?.forEach((checkbox) => {
+      this.marketItemCheck?.forEach((checkbox) => {
         const hashId = checkbox.nativeElement.dataset.hashId;
         if (!hashId) return;
         checkbox.nativeElement.checked = !!this.selected[hashId];
@@ -111,16 +111,16 @@ export class PhunkGridComponent implements OnChanges {
     }
 
     if (changes.selectAll) {
-      this.phunkCheck?.forEach((checkbox) => {
-        if (!this.phunkData) return;
+      this.marketItemCheck?.forEach((checkbox) => {
+        if (!this.marketItemData) return;
         checkbox.nativeElement.checked = this.selectAll;
 
         const hashId = checkbox.nativeElement.dataset.hashId;
         if (!hashId) return;
 
-        const phunk = this.phunkData.find((phunk) => phunk.hashId === hashId);
-        if (!phunk) return;
-        this.selectPhunk(phunk, true, !this.selectAll);
+        const marketItem = this.marketItemData.find((marketItem) => marketItem.hashId === hashId);
+        if (!marketItem) return;
+        this.selectMarketItem(marketItem, true, !this.selectAll);
       });
     }
 
@@ -133,28 +133,28 @@ export class PhunkGridComponent implements OnChanges {
     }
   }
 
-  selectPhunk(
-    phunk: Phunk,
+  selectMarketItem(
+    marketItem: MarketItem,
     upsert: boolean = false,
     remove: boolean = false
   ) {
     if (remove) {
       const selected = { ...this.selected };
-      delete selected[phunk.hashId];
+      delete selected[marketItem.hashId];
       this.selected = selected;
       this.selectedChange.emit(this.selected);
       return;
     }
 
     if (upsert) {
-      if (!this.selected[phunk.hashId]) this.selected[phunk.hashId] = phunk;
+      if (!this.selected[marketItem.hashId]) this.selected[marketItem.hashId] = marketItem;
     } else {
-      if (this.selected[phunk.hashId]) {
+      if (this.selected[marketItem.hashId]) {
         const selected = { ...this.selected };
-        delete selected[phunk.hashId];
+        delete selected[marketItem.hashId];
         this.selected = selected;
       } else {
-        this.selected[phunk.hashId] = phunk;
+        this.selected[marketItem.hashId] = marketItem;
       }
     }
 
@@ -162,7 +162,7 @@ export class PhunkGridComponent implements OnChanges {
   }
 
   onIntersection($event: IntersectionObserverEntry[]): void {
-    if (!this.observe || !this.phunkData) return;
+    if (!this.observe || !this.marketItemData) return;
 
     $event.forEach((entry) => {
       if (entry.isIntersecting) {
@@ -204,17 +204,17 @@ export class PhunkGridComponent implements OnChanges {
     return [...this.el.nativeElement.children].filter((child: HTMLElement) => !child.classList.contains('more')).length;
   }
 
-  private getDefaultBackground(phunk?: Phunk): string | null | undefined {
-    return phunk?.collection && 'defaultBackground' in phunk.collection
-      ? phunk.collection.defaultBackground
+  private getDefaultBackground(marketItem?: MarketItem): string | null | undefined {
+    return marketItem?.collection && 'defaultBackground' in marketItem.collection
+      ? marketItem.collection.defaultBackground
       : this.defaultBackground;
   }
 
-  baseImageBackgroundColor(phunk?: Phunk): string | null {
-    return normalizeDefaultBackground(this.getDefaultBackground(phunk));
+  baseImageBackgroundColor(marketItem?: MarketItem): string | null {
+    return normalizeDefaultBackground(this.getDefaultBackground(marketItem));
   }
 
-  hasTransparentBackground(phunk?: Phunk): boolean {
-    return this.getDefaultBackground(phunk) === null;
+  hasTransparentBackground(marketItem?: MarketItem): boolean {
+    return this.getDefaultBackground(marketItem) === null;
   }
 }

@@ -6,7 +6,7 @@ import { LazyLoadImageModule } from 'ng-lazyload-image';
 import { DataService } from '@/services/data.service';
 import { ImageService } from '@/services/image.service';
 
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 
 import { AuctionComponent } from './auction/auction.component';
 import { Collection } from '@/models/data.state';
@@ -24,12 +24,12 @@ import { Collection } from '@/models/data.state';
 })
 export class AuctionsComponent {
 
-  auctions = input<Phunk[] | null | undefined>();
+  auctions = input<MarketItem[] | null | undefined>();
   auctionImage = output<string | null>();
 
   collection = input<Collection | null | undefined>();
 
-  activeAuction = signal<Phunk | null>(null);
+  activeAuction = signal<MarketItem | null>(null);
   activeAuctionIndex = signal(0);
 
   constructor(

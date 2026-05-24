@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 
 import { Store } from '@ngrx/store';
 
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 import { GlobalState } from '@/models/global-state';
 
 import { WalletAddressDirective } from '@/directives/wallet-address.directive';
@@ -35,7 +35,7 @@ export class ItemStatusComponent {
   escrowAddress = environment.marketAddress;
   bridgeAddress = environment.bridgeAddress;
 
-  phunk = input.required<Phunk>();
+  phunk = input.required<MarketItem>();
 
   usd$ = this.store.select(selectUsd);
 

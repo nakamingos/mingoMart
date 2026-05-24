@@ -114,7 +114,7 @@ section {
 
         cursor: pointer;
 
-        app-phunk-grid {
+        app-market-item-grid {
           pointer-events: none;
           grid-template-columns: repeat(5, 1fr);
           width: 22rem;
@@ -458,7 +458,7 @@ section {
         .stat-item {
           grid-template-columns: 18rem auto 2rem;
 
-          app-phunk-grid {
+          app-market-item-grid {
             grid-template-columns: repeat(5, 1fr);
             width: 18rem;
             max-width: 18rem;

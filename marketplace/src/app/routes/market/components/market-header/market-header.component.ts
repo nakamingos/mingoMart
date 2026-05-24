@@ -11,7 +11,7 @@ import { setCreateConversationWithAddress } from '@/state/chat/chat.actions';
 import { GlobalState } from '@/models/global-state';
 import { MarketType } from '@/models/market.state';
 import { Collection } from '@/models/data.state';
-import { Phunk } from '@/models/db';
+import { MarketItem } from '@/models/db';
 
 import { WalletAddressDirective } from '@/directives/wallet-address.directive';
 
@@ -49,7 +49,7 @@ export class MarketHeaderComponent {
 
   marketType = input.required<MarketType>();
   collection = input.required<Collection>();
-  phunkData = input.required<{ data: Phunk[]; total: number; }>();
+  marketItemData = input.required<{ data: MarketItem[]; total: number; }>();
 
   config$ = this.store.select(selectConfig);
   walletAddress$ = this.store.select(selectWalletAddress).pipe(

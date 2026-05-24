@@ -9,7 +9,7 @@ import { DataService } from '@/services/data.service';
 import { SortOption } from '@/models/sorts.model';
 import { normalizeDefaultBackground } from '@/constants/background-color';
 
-import { PhunkGridComponent } from '../phunk-grid/phunk-grid.component';
+import { MarketItemGridComponent } from '../market-item-grid/market-item-grid.component';
 import { selectCollections } from '@/state/data/data-state.selectors';
 import { filter, map } from 'rxjs';
 
@@ -20,7 +20,7 @@ import { filter, map } from 'rxjs';
     NgTemplateOutlet,
     RouterLink,
 
-    PhunkGridComponent
+    MarketItemGridComponent
   ],
   selector: 'app-collections',
   templateUrl: './collections.component.html',

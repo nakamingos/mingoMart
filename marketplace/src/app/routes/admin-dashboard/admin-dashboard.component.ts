@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { Store } from '@ngrx/store';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 
-import { PhunkGridComponent } from "@/components/phunk-grid/phunk-grid.component";
+import { MarketItemGridComponent } from "@/components/market-item-grid/market-item-grid.component";
 
 import { GlobalState } from '@/models/global-state';
 import * as adminAuthSelectors from '@/state/admin-auth/admin-auth-state.selectors';
@@ -36,7 +36,7 @@ const initialSlotState: SlotState = {
   standalone: true,
   imports: [
     CommonModule,
-    PhunkGridComponent,
+    MarketItemGridComponent,
   ],
   selector: 'app-admin-dashboard',
   templateUrl: './admin-dashboard.component.html',
@@ -60,7 +60,7 @@ export class AdminDashboardComponent {
   sessionTimeRemaining = toSignal(this.store.select(adminAuthSelectors.selectSessionTimeRemaining));
   sessionExpired = toSignal(this.store.select(adminAuthSelectors.selectSessionExpired));
 
-  phunkData$ = toObservable(this.selectedCollectionSlug).pipe(
+  marketItemData$ = toObservable(this.selectedCollectionSlug).pipe(
     filter((collectionSlug) => !!collectionSlug),
     switchMap((collectionSlug) => this.dataSvc.fetchAllWithPagination(collectionSlug!, 0, 44, {}, this.sortOption.ID)),
     map((data) => data.data),

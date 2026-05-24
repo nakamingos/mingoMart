@@ -61,8 +61,8 @@
                       </p>
                     </div>
 
-                    <app-phunk-grid
-                      [phunkData]="ownedData || []"
+                    <app-market-item-grid
+                      [marketItemData]="ownedData || []"
                       [viewType]="'compact'"
                       [limit]="(isMobile$ | async) ? 100 : 110"
                       [marketType]="'owned'"
@@ -88,8 +88,8 @@
                   <p i18n>Showing lowest price offers, <a class="highlight" [routerLink]="['market', 'listings']" [relativeTo]="route">({{ listings.length | number }}) view all.</a></p>
                 </div>
 
-                <app-phunk-grid
-                  [phunkData]="listings"
+                <app-market-item-grid
+                  [marketItemData]="listings"
                   [viewType]="'compact'"
                   [limit]="(isMobile$ | async) ? 100 : 110"
                   [marketType]="'listings'"
@@ -109,8 +109,8 @@
                     <p i18n>Showing auctions ending soon, <a class="highlight" [routerLink]="['market', 'auctions']">({{ auctions.length | number }}) view all.</a></p>
                   </div>
 
-                  <app-phunk-grid
-                    [phunkData]="auctions"
+                  <app-market-item-grid
+                    [marketItemData]="auctions"
                     [viewType]="'compact'"
                     [limit]="(isMobile$ | async) ? 100 : 110"
                     [marketType]="'auctions'"
@@ -125,7 +125,7 @@
             <div class="inner">
               <h3 i18n>All</h3>
 
-              @if ((all$ | async); as allPhunks) {
+              @if ((all$ | async); as allMarketItems) {
                 @if (activeCollection) {
                   <div class="section-stats-wrapper">
                     <p i18n>
@@ -139,8 +139,8 @@
                     </p>
                   </div>
 
-                  <app-phunk-grid
-                    [phunkData]="allPhunks"
+                  <app-market-item-grid
+                    [marketItemData]="allMarketItems"
                     [viewType]="'compact'"
                     [limit]="(isMobile$ | async) ? 100 : 110"
                     [marketType]="'all'"

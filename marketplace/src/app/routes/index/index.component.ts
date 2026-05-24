@@ -7,7 +7,7 @@ import { Store } from '@ngrx/store';
 import { TimeagoModule } from 'ngx-timeago';
 import { LazyLoadImageModule } from 'ng-lazyload-image';
 
-import { PhunkGridComponent } from '@/components/phunk-grid/phunk-grid.component';
+import { MarketItemGridComponent } from '@/components/market-item-grid/market-item-grid.component';
 import { RecentActivityComponent } from '@/components/recent-activity/recent-activity.component';
 import { SplashComponent } from '@/routes/index/splash/splash.component';
 import { BrbComponent } from '@/components/brb/brb.component';
@@ -35,7 +35,7 @@ import * as marketStateSelectors from '@/state/market/market-state.selectors';
     WaIntersectionObserver,
 
     SplashComponent,
-    PhunkGridComponent,
+    MarketItemGridComponent,
     RecentActivityComponent,
     BrbComponent,
     MintComponent,
