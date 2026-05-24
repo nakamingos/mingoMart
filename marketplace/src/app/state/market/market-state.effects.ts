@@ -134,8 +134,8 @@ export class MarketStateEffects {
         switchMap((slug) => this.dataSvc.fetchOwned(walletAddress, slug)),
       );
     }),
-    // tap((phunks) => console.log('fetchOwned$', phunks)),
-    map((phunks) => marketStateActions.setOwned({ owned: phunks })),
+    // tap((items) => console.log('fetchOwned$', items)),
+    map((items) => marketStateActions.setOwned({ owned: items })),
   ));
 
   fetchEvents$ = createEffect(() => this.actions$.pipe(

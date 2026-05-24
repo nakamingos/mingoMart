@@ -21,17 +21,17 @@ export class EthscriptionService {
   ) {}
 
   /**
-   * Processes a phunk's image data from the blockchain
-   * @param phunk The phunk object containing the hash ID
+   * Processes an item's image data from the blockchain
+   * @param item The item object containing the hash ID
    */
-  async fetchImage(phunk: MarketItem | null, transparentVersion: boolean): Promise<DecodedData | null> {
-    if (!phunk) return null;
+  async fetchImage(item: MarketItem | null, transparentVersion: boolean): Promise<DecodedData | null> {
+    if (!item) return null;
 
     let imageData;
-    if (phunk?.isSupported) {
-      imageData = await this.fetchHostedImage(phunk, transparentVersion);
+    if (item?.isSupported) {
+      imageData = await this.fetchHostedImage(item, transparentVersion);
     } else {
-      const inscriptionTx = await this.web3Svc.getTransactionL1(phunk?.hashId as string);
+      const inscriptionTx = await this.web3Svc.getTransactionL1(item?.hashId as string);
       const txData = fromHex(inscriptionTx.input || inscriptionTx.data, 'string');
       imageData = txData.replace(/\x00/g, '').replace(/^0x/, '');
     }
@@ -40,8 +40,8 @@ export class EthscriptionService {
     return this.decodeDataURI(imageData);
   }
 
-  async fetchHostedImage(phunk: MarketItem | null, transparentVersion: boolean): Promise<string | null> {
-    const image = await this.imageSvc.fetchSupportedImageBySha((`${phunk?.sha}${transparentVersion ? '_transparent' : ''}`) as string);
+  async fetchHostedImage(item: MarketItem | null, transparentVersion: boolean): Promise<string | null> {
+    const image = await this.imageSvc.fetchSupportedImageBySha((`${item?.sha}${transparentVersion ? '_transparent' : ''}`) as string);
 
     // Convert ArrayBuffer to base64 string
     const uint8Array = new Uint8Array(image);

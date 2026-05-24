@@ -24,7 +24,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 })
 export class BreadcrumbsComponent {
 
-  phunk = input<MarketItem | null>();
+  item = input<MarketItem | null>();
 
   @ViewChild('pfp') pfp!: ElementRef;
 
@@ -44,25 +44,25 @@ export class BreadcrumbsComponent {
     public dataSvc: DataService
   ) {
     effect(() => {
-      if (!this.phunk()) return;
-      const phunk = this.phunk()!;
+      if (!this.item()) return;
+      const item = this.item()!;
 
       untracked(() => {
-        this.paintCanvas(phunk);
+        this.paintCanvas(item);
       });
     });
 
     this.transparentCheck.valueChanges.pipe(
-      filter(() => !!this.phunk()),
-      tap(() => this.paintCanvas(this.phunk()!)),
+      filter(() => !!this.item()),
+      tap(() => this.paintCanvas(this.item()!)),
       takeUntilDestroyed()
     ).subscribe();
   }
 
   async paintCanvas(
-    phunk: MarketItem,
+    item: MarketItem,
   ): Promise<void> {
-    if (!phunk) return;
+    if (!item) return;
 
     // Disable download while painting
     this.downloadEnabled.set(false);
@@ -91,15 +91,15 @@ export class BreadcrumbsComponent {
       this.ctx.scale(this.scale, this.scale);
 
       // If not transparent, fill with background color first
-      if (!transparent && phunk.isSupported) {
+      if (!transparent && item.isSupported) {
         this.ctx.fillStyle = '#FF008C';
         this.ctx.fillRect(0, 0, this.width / this.scale, this.height / this.scale);
       }
 
-      const hasBackgrounds = phunk?.collection?.hasBackgrounds;
+      const hasBackgrounds = item?.collection?.hasBackgrounds;
 
-      // Draw the phunk image
-      const dataUrl = await this.getPunkImage(phunk, !!(transparent && hasBackgrounds));
+      // Draw the item image
+      const dataUrl = await this.getItemImage(item, !!(transparent && hasBackgrounds));
       const image = await this.createImage(dataUrl);
 
       if (!image) return;
@@ -121,8 +121,8 @@ export class BreadcrumbsComponent {
     }
   }
 
-  async getPunkImage(phunk: MarketItem, transparentVersion: boolean): Promise<string | undefined> {
-    const decodedData = await this.ethscriptionSvc.fetchImage(phunk, transparentVersion);
+  async getItemImage(item: MarketItem, transparentVersion: boolean): Promise<string | undefined> {
+    const decodedData = await this.ethscriptionSvc.fetchImage(item, transparentVersion);
     if (decodedData?.mimeType === 'image/gif') {
       this.customizeEnabled.set(false);
     }
@@ -144,9 +144,9 @@ export class BreadcrumbsComponent {
   }
 
   downloadCanvas(): void {
-    if (!this.phunk()) return;
+    if (!this.item()) return;
 
-    const name = this.phunk()!.collection?.singleName?.replace(' ', '-') + '#' + this.phunk()!.tokenId + (this.transparentCheck.value ? '_transparent' : '');
+    const name = this.item()!.collection?.singleName?.replace(' ', '-') + '#' + this.item()!.tokenId + (this.transparentCheck.value ? '_transparent' : '');
     const link = document.createElement('a');
     if (window.innerWidth > 800) link.download = name + '.png';
 

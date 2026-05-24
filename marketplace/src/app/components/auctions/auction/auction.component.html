@@ -1,13 +1,13 @@
-@if (phunkWithAuction$ | async; as phunk) {
+@if (itemWithAuction$ | async; as item) {
 
   <div class="auction-header" [class.has-next]="navButtons()">
     <div class="left">
       <h2>
-        @if ((phunk.collection); as collection) {
+        @if ((item.collection); as collection) {
           @if (name$ | async; as name) {
             {{ name }}
           } @else {
-            <a [routerLink]="['/', 'details', phunk.hashId]">{{ collection.singleName }} {{ phunk.tokenId }}</a>
+            <a [routerLink]="['/', 'details', item.hashId]">{{ collection.singleName }} {{ item.tokenId }}</a>
           }
         } @else {
           Loading...
@@ -35,7 +35,7 @@
     </div>
   </div>
 
-  @if (phunk.auction; as auction) {
+  @if (item.auction; as auction) {
     <div class="bid-info">
       <div class="bid-info-item">
         <div class="label">Bids</div>

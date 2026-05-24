@@ -49,8 +49,8 @@ interface ActionsState {
 })
 export class ItemActionsComponent {
 
-  phunk = input.required<MarketItem>();
-  phunk$ = toObservable(this.phunk);
+  item = input.required<MarketItem>();
+  item$ = toObservable(this.item);
 
   disabled = input.required<boolean>();
   disabled$ = toObservable(this.disabled);
@@ -86,9 +86,9 @@ export class ItemActionsComponent {
 
   pendingTx$ = this.store.select(selectNotifications).pipe(
     filter((transactions) => !!transactions),
-    switchMap((transactions) => this.phunk$.pipe(
-      filter((phunk) => !!phunk),
-      map((phunk) => transactions.filter((tx) => tx?.hashId === phunk?.hashId && (tx.type === 'pending' || tx.type === 'wallet'))[0]),
+    switchMap((transactions) => this.item$.pipe(
+      filter((item) => !!item),
+      map((item) => transactions.filter((tx) => tx?.hashId === item?.hashId && (tx.type === 'pending' || tx.type === 'wallet'))[0]),
     )),
   );
 
@@ -96,8 +96,8 @@ export class ItemActionsComponent {
   isCooling$ = this.store.select(selectCooldowns).pipe(
     // tap((cooldowns) => console.log('isCooling$', cooldowns)),
     filter((cooldowns) => !!cooldowns),
-    switchMap((cooldowns) => this.phunk$.pipe(
-      map((phunk) => cooldowns[phunk?.hashId || ''] > 0),
+    switchMap((cooldowns) => this.item$.pipe(
+      map((item) => cooldowns[item?.hashId || ''] > 0),
     )),
   );
 
@@ -130,7 +130,7 @@ export class ItemActionsComponent {
   ) {}
 
   /**
-   * Opens the sell form for listing a phunk for sale
+   * Opens the sell form for listing an item for sale
    * Closes all other action forms and focuses the price input
    */
   sellAction(): void {
@@ -140,7 +140,7 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Opens the escrow form for sending a phunk to the escrow contract
+   * Opens the escrow form for sending an item to the escrow contract
    * Closes all other action forms
    */
   escrowAction(): void {
@@ -149,7 +149,7 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Opens the transfer form for transferring a phunk to another address
+   * Opens the transfer form for transferring an item to another address
    * Closes all other action forms and focuses the address input
    */
   transferAction(): void {
@@ -159,7 +159,7 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Opens the bridge form for bridging a phunk to another chain
+   * Opens the bridge form for bridging an item to another chain
    * Closes all other action forms
    */
   bridgeAction(): void {
@@ -168,7 +168,7 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Opens the private sale form for selling a phunk to a specific address
+   * Opens the private sale form for selling an item to a specific address
    * Does not close other forms as it's typically used in conjunction with sell form
    */
   privateSaleAction(): void {
@@ -176,7 +176,7 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Opens the auction form for creating an auction for a phunk
+   * Opens the auction form for creating an auction for an item
    * Closes all other action forms
    */
   auctionAction(): void {
@@ -275,15 +275,15 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Submits a listing for a phunk to be sold on the marketplace
-   * Handles both escrowed and non-escrowed phunks, as well as L1 and L2 variants
+   * Submits a listing for an item to be sold on the marketplace
+   * Handles both escrowed and non-escrowed items, as well as L1 and L2 variants
    * Supports private sales to specific addresses and ENS name resolution
    *
    * @throws {Error} If hashId is invalid or consensus is not reached
    */
   async submitListing(): Promise<void> {
-    const phunk = this.phunk();
-    const hashId = phunk.hashId;
+    const item = this.item();
+    const hashId = item.hashId;
 
     if (!hashId) throw new Error('Invalid hashId');
     if (!this.listPrice.value) return;
@@ -297,18 +297,18 @@ export class ItemActionsComponent {
     let notification: Notification = {
       id: this.utilSvc.createIdFromString('offerHashForSale' + hashId),
       timestamp: Date.now(),
-      slug: phunk.slug,
+      slug: item.slug,
       type: 'wallet',
       function: 'offerHashForSale',
       hashId,
-      tokenId: phunk.tokenId,
+      tokenId: item.tokenId,
       value,
     };
 
     this.store.dispatch(upsertNotification({ notification }));
 
     try {
-      await this.checkConsenus(phunk);
+      await this.checkConsenus(item);
 
       if (address) {
         if (address?.endsWith('.eth')) {
@@ -321,9 +321,9 @@ export class ItemActionsComponent {
       }
 
       let hash;
-      if (phunk.isEscrowed) {
+      if (item.isEscrowed) {
         hash = await this.web3Svc.offerHashForSale(hashId, value, address);
-      } else if (phunk.nft) {
+      } else if (item.nft) {
         hash = await this.web3Svc.offerHashForSaleL2(hashId, value, address);
       } else {
         hash = await this.web3Svc.escrowAndOfferHashForSale(hashId, value, address);
@@ -361,33 +361,33 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Sends a phunk to the escrow contract
-   * Required before listing phunks for sale on the marketplace
+   * Sends an item to the escrow contract
+   * Required before listing items for sale on the marketplace
    *
    * @throws {Error} If hashId is invalid or consensus is not reached
    */
   async sendToEscrow(): Promise<void> {
-    const phunk = this.phunk();
-    const hashId = phunk.hashId;
+    const item = this.item();
+    const hashId = item.hashId;
 
     if (!hashId) throw new Error('Invalid hashId');
 
     let notification: Notification = {
       id: this.utilSvc.createIdFromString('sendToEscrow' + hashId),
       timestamp: Date.now(),
-      slug: phunk.slug,
+      slug: item.slug,
       type: 'wallet',
       function: 'sendToEscrow',
       hashId,
-      tokenId: phunk.tokenId,
+      tokenId: item.tokenId,
     };
 
     this.store.dispatch(upsertNotification({ notification }));
 
     try {
-      await this.checkConsenus(phunk);
+      await this.checkConsenus(item);
 
-      const tokenId = phunk.hashId;
+      const tokenId = item.hashId;
       const hash = await this.web3Svc.sendEthscriptionToContract(tokenId);
 
       notification = {
@@ -420,24 +420,24 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Removes a phunk from sale on the marketplace
-   * Handles both L1 and L2 variants of phunks
+   * Removes an item from sale on the marketplace
+   * Handles both L1 and L2 variants of items
    *
    * @throws {Error} If hashId is invalid or transaction cannot be processed
    */
   async hashNoLongerForSale(): Promise<void> {
-    const phunk = this.phunk();
-    const hashId = phunk.hashId;
+    const item = this.item();
+    const hashId = item.hashId;
     if (!hashId) throw new Error('Invalid hashId');
 
     let notification: Notification = {
       id: this.utilSvc.createIdFromString('hashNoLongerForSale' + hashId),
       timestamp: Date.now(),
-      slug: phunk.slug,
+      slug: item.slug,
       type: 'wallet',
       function: 'hashNoLongerForSale',
       hashId,
-      tokenId: phunk.tokenId,
+      tokenId: item.tokenId,
     };
 
     this.store.dispatch(upsertNotification({ notification }));
@@ -445,7 +445,7 @@ export class ItemActionsComponent {
     try {
 
       let hash;
-      if (phunk.nft) {
+      if (item.nft) {
         hash = await this.web3Svc.hashNoLongerForSaleL2(hashId);
       } else {
         hash = await this.web3Svc.hashNoLongerForSale(hashId);
@@ -482,40 +482,40 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Purchases a phunk that is currently listed for sale
-   * Handles both L1 and L2 variants, using batch purchase for L1 phunks
+   * Purchases an item that is currently listed for sale
+   * Handles both L1 and L2 variants, using batch purchase for L1 items
    *
    * @throws {Error} If hashId is invalid, consensus is not reached, or prevOwner is invalid
    */
   async buyHash(): Promise<void> {
-    const phunk = this.phunk();
-    const hashId = phunk.hashId;
+    const item = this.item();
+    const hashId = item.hashId;
     if (!hashId) throw new Error('Invalid hashId');
 
-    const value = phunk.listing?.minValue;
+    const value = item.listing?.minValue;
 
     let notification: Notification = {
       id: this.utilSvc.createIdFromString('buyHash' + hashId),
       timestamp: Date.now(),
-      slug: phunk.slug,
+      slug: item.slug,
       type: 'wallet',
       function: 'buyHash',
       hashId,
-      tokenId: phunk.tokenId,
+      tokenId: item.tokenId,
       value: Number(this.web3Svc.weiToEth(value)),
     };
 
     this.store.dispatch(upsertNotification({ notification }));
 
     try {
-      await this.checkConsenus(phunk);
-      if (!phunk.prevOwner) throw new Error('Invalid prevOwner');
+      await this.checkConsenus(item);
+      if (!item.prevOwner) throw new Error('Invalid prevOwner');
 
       let hash: string | undefined = undefined;
-      if (phunk.nft) {
+      if (item.nft) {
         hash = await this.web3Svc.buyHashL2(hashId);
       } else {
-        hash = await this.web3Svc.batchBuyHashes([phunk]);
+        hash = await this.web3Svc.batchBuyHashes([item]);
       }
 
       if (!hash) throw new Error('Could not process transaction');
@@ -549,24 +549,24 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Transfers a phunk to another address
+   * Transfers an item to another address
    * Supports ENS name resolution for the destination address
    *
    * @throws {Error} If hashId is invalid, address is invalid, or consensus is not reached
    */
   async transferHash(): Promise<void> {
-    const phunk = this.phunk();
-    const hashId = phunk.hashId;
+    const item = this.item();
+    const hashId = item.hashId;
     if (!hashId) throw new Error('Invalid hashId');
 
     let notification: Notification = {
       id: this.utilSvc.createIdFromString('transferHash' + hashId),
       timestamp: Date.now(),
-      slug: phunk.slug,
+      slug: item.slug,
       type: 'wallet',
       function: 'transferHash',
       hashId,
-      tokenId: phunk.tokenId,
+      tokenId: item.tokenId,
     };
 
     try {
@@ -579,7 +579,7 @@ export class ItemActionsComponent {
       this.closeTransfer();
       this.store.dispatch(upsertNotification({ notification }));
 
-      await this.checkConsenus(phunk);
+      await this.checkConsenus(item);
 
       const hash = await this.web3Svc.transferHash(hashId, toAddress);
       notification = {
@@ -611,23 +611,23 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Withdraws a phunk from the escrow contract back to the owner's wallet
+   * Withdraws an item from the escrow contract back to the owner's wallet
    *
    * @throws {Error} If hashId is invalid or transaction cannot be processed
    */
   async withdrawHash(): Promise<void> {
-    const phunk = this.phunk();
-    const hashId = phunk.hashId;
+    const item = this.item();
+    const hashId = item.hashId;
     if (!hashId) throw new Error('Invalid hashId');
 
     let notification: Notification = {
       id: this.utilSvc.createIdFromString('withdrawHash' + hashId),
       timestamp: Date.now(),
-      slug: phunk.slug,
+      slug: item.slug,
       type: 'wallet',
       function: 'withdrawHash',
       hashId,
-      tokenId: phunk.tokenId,
+      tokenId: item.tokenId,
     };
 
     try {
@@ -663,14 +663,14 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Bridges a phunk to another chain using the relay service
-   * Generates a nonce, creates a typed data signature, and locks the phunk on the current chain
+   * Bridges an item to another chain using the relay service
+   * Generates a nonce, creates a typed data signature, and locks the item on the current chain
    *
    * @throws {Error} If user address is invalid or bridge process fails
    */
   async bridge(): Promise<void> {
-    const phunk = this.phunk();
-    const hashId = phunk.hashId;
+    const item = this.item();
+    const hashId = item.hashId;
 
     const config = this.web3Svc.config;
     const chainId = config.getClient().chain.id;
@@ -681,11 +681,11 @@ export class ItemActionsComponent {
     let notification: Notification = {
       id: this.utilSvc.createIdFromString('bridgeOut' + hashId),
       timestamp: Date.now(),
-      slug: phunk.slug,
+      slug: item.slug,
       type: 'wallet',
       function: 'bridgeOut',
       hashId,
-      tokenId: phunk.tokenId,
+      tokenId: item.tokenId,
     };
 
     try {
@@ -698,7 +698,7 @@ export class ItemActionsComponent {
       );
 
       // const signature = await signMessage(config, {
-      //   message: `Sign this message to verify ownership of the asset.\n\nAddress: ${address.toLowerCase()}\nEthscription ID: ${phunk.hashId}\nSHA: ${phunk.sha}\nNonce: ${nonceResult}\nChain ID: ${chainId}`,
+      //   message: `Sign this message to verify ownership of the asset.\n\nAddress: ${address.toLowerCase()}\nEthscription ID: ${item.hashId}\nSHA: ${item.sha}\nNonce: ${nonceResult}\nChain ID: ${chainId}`,
       // });
 
       const typedData: any = {
@@ -709,8 +709,8 @@ export class ItemActionsComponent {
         },
         message: {
           address: address as `0x${string}`,
-          hashId: phunk.hashId,
-          sha: phunk.sha,
+          hashId: item.hashId,
+          sha: item.sha,
           nonce: nonceResult,
           chainId: BigInt(chainId),
         },
@@ -737,8 +737,8 @@ export class ItemActionsComponent {
       const relayResponse: any = await firstValueFrom(
         this.http.post(relayUrl, {
           address,
-          hashId: phunk.hashId,
-          sha: phunk.sha,
+          hashId: item.hashId,
+          sha: item.sha,
           signature,
           chainId,
         }, {
@@ -787,14 +787,14 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Creates an auction for a phunk with specified duration and parameters
+   * Creates an auction for an item with specified duration and parameters
    * Calculates total duration from days, hours, and minutes input
    *
    * @throws {Error} If hashId is invalid or auction parameters are invalid
    */
   async sendToAuction() {
-    const phunk = this.phunk();
-    const hashId = phunk.hashId;
+    const item = this.item();
+    const hashId = item.hashId;
     if (!hashId) throw new Error('Invalid hashId');
 
     const daysToSeconds = (this.auctionDuration.get('days')?.value || 0) * 24 * 60 * 60;
@@ -806,7 +806,7 @@ export class ItemActionsComponent {
     const timeBufferSeconds = (this.auctionTimeBufferMinutes.value || 5) * 60;
     const minBidIncrementPercentage = (this.auctionMinBidIncrementPercentage.value || 5);
 
-    console.log('sendToAuction', {phunk: phunk.hashId, duration, minBidIncrementPercentage, timeBufferSeconds});
+    console.log('sendToAuction', {item: item.hashId, duration, minBidIncrementPercentage, timeBufferSeconds});
 
     if (!duration || !minBidIncrementPercentage) throw new Error('Invalid auction parameters');
 
@@ -821,13 +821,13 @@ export class ItemActionsComponent {
   }
 
   /**
-   * Checks if consensus has been reached for a phunk before allowing transactions
+   * Checks if consensus has been reached for an item before allowing transactions
    *
-   * @param phunk - The phunk to check consensus for
+   * @param item - The item to check consensus for
    * @throws {Error} If consensus is not reached
    */
-  async checkConsenus(phunk: MarketItem): Promise<void> {
-    const res = await this.dataSvc.checkConsensus([phunk]);
+  async checkConsenus(item: MarketItem): Promise<void> {
+    const res = await this.dataSvc.checkConsensus([item]);
     if (!res[0]?.consensus) throw new Error('Consensus not reached. Contact Support @NoMoreLabs');
   }
 
@@ -848,11 +848,11 @@ export class ItemActionsComponent {
   async remintItem() {
     if (environment.chainId !== 11155111) throw new Error('Reminting is only supported on Sepolia');
 
-    const phunk = this.phunk();
-    const hashId = phunk.hashId;
+    const item = this.item();
+    const hashId = item.hashId;
     if (!hashId) throw new Error('Invalid hashId');
 
-    const sha = phunk.sha;
+    const sha = item.sha;
     if (!sha) throw new Error('Invalid sha');
 
     const hash = await this.web3Svc.remintItem(hashId, sha);

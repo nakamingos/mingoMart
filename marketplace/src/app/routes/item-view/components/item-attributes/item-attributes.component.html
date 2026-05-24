@@ -1,6 +1,6 @@
 <h2 i18n>Attributes</h2>
 <div class="accessories">
-  @if (phunk(); as phunk) {
+  @if (item(); as item) {
     @for (item of attributes(); track item; let i = $index) {
       @if (i > 0) {
         <!-- {{ item | json }} -->
@@ -15,20 +15,20 @@
             <!-- <span class="trait-name">{{ item.k }}</span> -->
             <a
               class="value"
-              [routerLink]="['/', 'curated', phunk.slug, 'market', 'all']"
+              [routerLink]="['/', 'curated', item.slug, 'market', 'all']"
               [queryParams]="item | queryParams">
 
               <span>{{ item.v }}</span>
-              @if ((item.v | traitRarity : phunk.slug) | async; as rarity) {
+              @if ((item.v | traitRarity : item.slug) | async; as rarity) {
                 <span class="percent">
-                  ({{ (+(rarity) / (phunk.collection?.supply || 0)) | percent : '1.1-1' }})
+                  ({{ (+(rarity) / (item.collection?.supply || 0)) | percent : '1.1-1' }})
                 </span>
               }
             </a>
 
             <span class="trait-count">
-              @if ((item.v | traitRarity : phunk.slug) | async; as rarity) {
-                <span>{{ (rarity) + ' ' + phunk.collection?.name + ' have this.' }}</span>
+              @if ((item.v | traitRarity : item.slug) | async; as rarity) {
+                <span>{{ (rarity) + ' ' + item.collection?.name + ' have this.' }}</span>
               }
             </span>
           }

@@ -1,15 +1,15 @@
 <div class="breadcrumb">
   <div class="inner">
-    @if (phunk(); as phunk) {
+    @if (item(); as item) {
 
-      @if (phunk.tokenId > -1) {
+      @if (item.tokenId > -1) {
         <div class="crumbs-wrapper">
           <div class="crumbs">
-            <button [routerLink]="['/', 'curated', phunk.slug]">
-              {{ phunk.collection?.name }}
+            <button [routerLink]="['/', 'curated', item.slug]">
+              {{ item.collection?.name }}
             </button>
             <span class="divider">/</span>
-            <span class="number">{{ phunk.tokenId }}</span>
+            <span class="number">{{ item.tokenId }}</span>
           </div>
 
           <div class="save-pfp">

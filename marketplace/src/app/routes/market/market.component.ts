@@ -194,12 +194,12 @@ export class MarketComponent {
     const { inEscrow, notInEscrow, invalid } = await this.checkSelected(true);
     this.deselected = [ ...notInEscrow, ...invalid ];
 
-    const formArray = this.fb.array(inEscrow.map((phunk: MarketItem) => this.fb.group({
-      tokenId: [phunk.tokenId],
-      hashId: [phunk.hashId],
-      sha: [phunk.sha],
+    const formArray = this.fb.array(inEscrow.map((item: MarketItem) => this.fb.group({
+      tokenId: [item.tokenId],
+      hashId: [item.hashId],
+      sha: [item.sha],
       listing: {
-        minValue: [phunk.listing?.minValue]
+        minValue: [item.listing?.minValue]
       },
     }))) as FormArray;
 
@@ -218,10 +218,10 @@ export class MarketComponent {
     const { inEscrow, notInEscrow, invalid } = await this.checkSelected();
     this.deselected = [ ...inEscrow, ...invalid ];
 
-    const formArray = this.fb.array(notInEscrow.map((phunk: MarketItem) => this.fb.group({
-      tokenId: [phunk.tokenId],
-      hashId: [phunk.hashId],
-      sha: [phunk.sha],
+    const formArray = this.fb.array(notInEscrow.map((item: MarketItem) => this.fb.group({
+      tokenId: [item.tokenId],
+      hashId: [item.hashId],
+      sha: [item.sha],
       listPrice: [''],
     }))) as FormArray;
 
@@ -242,11 +242,11 @@ export class MarketComponent {
     const { inEscrow, notInEscrow } = await this.checkSelected();
     this.deselected = notInEscrow;
 
-    const formArray = this.fb.array(inEscrow.map((phunk: MarketItem) => this.fb.group({
-      tokenId: [phunk.tokenId],
-      hashId: [phunk.hashId],
-      sha: [phunk.sha],
-      listing: [phunk.listing],
+    const formArray = this.fb.array(inEscrow.map((item: MarketItem) => this.fb.group({
+      tokenId: [item.tokenId],
+      hashId: [item.hashId],
+      sha: [item.sha],
+      listing: [item.listing],
       listPrice: [''],
     }))) as FormArray;
 
@@ -265,11 +265,11 @@ export class MarketComponent {
     const { inEscrow, notInEscrow, invalid } = await this.checkSelected();
     this.deselected = [ ...inEscrow, ...invalid ];
 
-    const formArray = this.fb.array(notInEscrow.map((phunk: MarketItem) => this.fb.group({
-      tokenId: [phunk.tokenId],
-      hashId: [phunk.hashId],
-      slug: [phunk.slug],
-      sha: [phunk.sha],
+    const formArray = this.fb.array(notInEscrow.map((item: MarketItem) => this.fb.group({
+      tokenId: [item.tokenId],
+      hashId: [item.hashId],
+      slug: [item.slug],
+      sha: [item.sha],
       listPrice: [''],
     }))) as FormArray;
 
@@ -288,11 +288,11 @@ export class MarketComponent {
     const { inEscrow, notInEscrow } = await this.checkSelected();
     this.deselected = notInEscrow;
 
-    const formArray = this.fb.array(inEscrow.map((phunk: MarketItem) => this.fb.group({
-      tokenId: [phunk.tokenId],
-      hashId: [phunk.hashId],
-      sha: [phunk.sha],
-      listing: [phunk.listing],
+    const formArray = this.fb.array(inEscrow.map((item: MarketItem) => this.fb.group({
+      tokenId: [item.tokenId],
+      hashId: [item.hashId],
+      sha: [item.sha],
+      listing: [item.listing],
       listPrice: [''],
     }))) as FormArray;
 
@@ -307,7 +307,7 @@ export class MarketComponent {
   async submitBatchTransfer(): Promise<void> {
 
     if (!this.bulkActionsForm.value.transferItems) return;
-    const hashIds = this.bulkActionsForm.value.transferItems.map((phunk: any) => phunk.hashId);
+    const hashIds = this.bulkActionsForm.value.transferItems.map((item: any) => item.hashId);
 
     if (!hashIds?.length) return;
     if (!this.transferAddress.value) return;
@@ -367,12 +367,12 @@ export class MarketComponent {
     if (!this.bulkActionsForm.value.listingItems) return;
 
     const newListings = this.bulkActionsForm.value.listingItems
-      .filter((phunk: any) => phunk.listPrice);
+      .filter((item: any) => item.listPrice);
 
     if (!newListings.length) return;
 
-    const listings = newListings.map((phunk: any) => ({ hashId: phunk.hashId, listPrice: phunk.listPrice }))|| [];
-    const hashIds = newListings.map((phunk: any) => phunk.hashId) || [];
+    const listings = newListings.map((item: any) => ({ hashId: item.hashId, listPrice: item.listPrice }))|| [];
+    const hashIds = newListings.map((item: any) => item.hashId) || [];
 
     if (!hashIds?.length) return;
 
@@ -391,8 +391,8 @@ export class MarketComponent {
 
     try {
       const hash = await this.web3Svc.batchOfferHashForSale(
-        listings.map(phunk => phunk.hashId),
-        listings.map(phunk => phunk.listPrice)
+        listings.map(item => item.hashId),
+        listings.map(item => item.listPrice)
       );
       if (!hash) throw new Error('Transaction failed');
 
@@ -433,10 +433,10 @@ export class MarketComponent {
     const { notInEscrow } = await this.checkSelected();
 
     const selected: { [string: MarketItem['hashId']]: MarketItem } = {};
-    notInEscrow.forEach((phunk: MarketItem) => selected[phunk.hashId] = phunk);
+    notInEscrow.forEach((item: MarketItem) => selected[item.hashId] = item);
     this.selected = selected;
 
-    const hashIds = Object.values(selected).map((phunk: MarketItem) => phunk.hashId);
+    const hashIds = Object.values(selected).map((item: MarketItem) => item.hashId);
     const hexString = Object.keys(selected).map(hashId => hashId?.substring(2)).join('');
 
     const hex = `0x${hexString}`;
@@ -496,10 +496,10 @@ export class MarketComponent {
     const { inEscrow } = await this.checkSelected();
 
     const selected: { [string: MarketItem['hashId']]: MarketItem } = {};
-    inEscrow.forEach((phunk: MarketItem) => selected[phunk.hashId] = phunk);
+    inEscrow.forEach((item: MarketItem) => selected[item.hashId] = item);
     this.selected = selected;
 
-    const hashIds = Object.values(selected).map((phunk: MarketItem) => phunk.hashId);
+    const hashIds = Object.values(selected).map((item: MarketItem) => item.hashId);
 
     let notification: Notification = {
       id: this.utilSvc.createIdFromString('withdrawHash' + hashIds.map((hashId: string) => hashId.substring(2)).join('')),
@@ -556,7 +556,7 @@ export class MarketComponent {
     const { inEscrow } = await this.checkSelected(true);
 
     const selected: { [string: MarketItem['hashId']]: MarketItem } = {};
-    inEscrow.forEach((phunk: MarketItem) => selected[phunk.hashId] = phunk);
+    inEscrow.forEach((item: MarketItem) => selected[item.hashId] = item);
     this.selected = selected;
 
     const hashIds = Object.keys(selected);
@@ -613,7 +613,7 @@ export class MarketComponent {
    */
   selectedChange($event: any): void {
     this.selectedValue = Object.values(this.selected).reduce(
-      (acc: number, phunk: MarketItem) => acc += Number(phunk.listing?.minValue || '0'),
+      (acc: number, item: MarketItem) => acc += Number(item.listing?.minValue || '0'),
     0).toString();
 
     this.actionsState = {
@@ -623,9 +623,9 @@ export class MarketComponent {
       canEscrow: false,
     };
 
-    Object.values(this.selected).forEach((phunk: MarketItem) => {
-      // console.log({phunk});
-      if (phunk.isEscrowed) {
+    Object.values(this.selected).forEach((item: MarketItem) => {
+      // console.log({item});
+      if (item.isEscrowed) {
         this.actionsState.canWithdraw = true;
         this.actionsState.canList = true;
       } else {
@@ -711,15 +711,15 @@ export class MarketComponent {
 
     selected = await this.dataSvc.checkConsensus(Object.values(selected));
 
-    const consensusInvalid = selected.filter((phunk: MarketItem) => phunk.consensus === false);
+    const consensusInvalid = selected.filter((item: MarketItem) => item.consensus === false);
     invalid = [...invalid, ...consensusInvalid];
 
     const inEscrow = selected.filter(
-      (phunk: MarketItem) => phunk.owner.toLowerCase() === environment.marketAddress.toLowerCase()
+      (item: MarketItem) => item.owner.toLowerCase() === environment.marketAddress.toLowerCase()
     );
 
     const notInEscrow = selected.filter(
-      (phunk: MarketItem) => phunk.owner.toLowerCase() !== environment.marketAddress.toLowerCase()
+      (item: MarketItem) => item.owner.toLowerCase() !== environment.marketAddress.toLowerCase()
     );
 
     // console.log({ notInEscrow, inEscrow, invalid });
@@ -728,38 +728,38 @@ export class MarketComponent {
 
   /**
    * Filters out items that are bridged/locked and cannot be traded
-   * @param phunks - Array of items to filter
+   * @param items - Array of items to filter
    * @returns Tuple containing valid and invalid items
    */
-  async filterLockedItems(phunks: MarketItem[]): Promise<[MarketItem[], MarketItem[]]> {
+  async filterLockedItems(items: MarketItem[]): Promise<[MarketItem[], MarketItem[]]> {
     let validItems: MarketItem[] = [];
     let invalidItems: MarketItem[] = [];
 
-    validItems = phunks.filter(phunk => !phunk.isBridged);
-    invalidItems = phunks.filter(phunk => phunk.isBridged);
+    validItems = items.filter(item => !item.isBridged);
+    invalidItems = items.filter(item => item.isBridged);
     return [validItems, invalidItems];
   }
 
   /**
    * Filters out items that are owned by the current user
-   * @param phunks - Array of items to filter
+   * @param items - Array of items to filter
    * @returns Tuple containing valid and invalid items
    */
-  async filterOwnedItems(phunks: MarketItem[]): Promise<[MarketItem[], MarketItem[]]> {
+  async filterOwnedItems(items: MarketItem[]): Promise<[MarketItem[], MarketItem[]]> {
     const walletAddress = (await this.web3Svc.getCurrentAddress())?.toLowerCase();
     const marketAddress = environment.marketAddress.toLowerCase();
     let validItems: MarketItem[] = [];
     let invalidItems: MarketItem[] = [];
 
-    phunks.forEach(phunk => {
-      const owner = phunk.owner.toLowerCase();
+    items.forEach(item => {
+      const owner = item.owner.toLowerCase();
       if (
-        (owner === marketAddress && phunk.prevOwner === walletAddress) ||
+        (owner === marketAddress && item.prevOwner === walletAddress) ||
         owner === walletAddress
       ) {
-        invalidItems.push(phunk);
+        invalidItems.push(item);
       } else {
-        validItems.push(phunk);
+        validItems.push(item);
       }
     });
 

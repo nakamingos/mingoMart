@@ -48,8 +48,8 @@ export class AuctionComponent {
 
   zeroAddr = zeroAddress;
 
-  phunk = input.required<MarketItem>();
-  phunk$ = toObservable(this.phunk);
+  item = input.required<MarketItem>();
+  item$ = toObservable(this.item);
 
   collection = input<Collection | undefined>();
   collection$ = toObservable(this.collection);
@@ -58,31 +58,31 @@ export class AuctionComponent {
   nextClicked = output<void>();
   prevClicked = output<void>();
 
-  phunkWithAuction$ = combineLatest([this.phunk$, this.collection$]).pipe(
-    filter(([phunk]) => !!phunk?.auction || !!phunk?.isAuctioned),
-    map(([phunk, collection]) => {
-      const hasCollection = !!phunk.collection;
-      if (hasCollection) return phunk;
-      return { ...phunk, collection };
+  itemWithAuction$ = combineLatest([this.item$, this.collection$]).pipe(
+    filter(([item]) => !!item?.auction || !!item?.isAuctioned),
+    map(([item, collection]) => {
+      const hasCollection = !!item.collection;
+      if (hasCollection) return item;
+      return { ...item, collection };
     }),
-    switchMap((phunk) => this.web3Svc.watchAuctionByPrevOwnerAndHashId({
-      prevOwner: phunk!.prevOwner!,
-      hashId: phunk!.hashId
+    switchMap((item) => this.web3Svc.watchAuctionByPrevOwnerAndHashId({
+      prevOwner: item!.prevOwner!,
+      hashId: item!.hashId
     }).pipe(
-      map((auction): MarketItem | null => ({ ...phunk, auction })),
+      map((auction): MarketItem | null => ({ ...item, auction })),
     )),
   );
 
-  auctionBids$ = this.phunk$.pipe(
+  auctionBids$ = this.item$.pipe(
     distinctUntilChanged((a, b) => a?.auction?.auctionId === b?.auction?.auctionId),
-    switchMap((phunk) => {
-      if (!phunk?.auction) return of([]);
-      return this.dataSvc.watchAuctionBids(phunk.auction.auctionId);
+    switchMap((item) => {
+      if (!item?.auction) return of([]);
+      return this.dataSvc.watchAuctionBids(item.auction.auctionId);
     }),
   );
 
-  name$ = this.phunk$.pipe(
-    map((phunk: MarketItem) => phunk.attributes?.filter(item => item.k === 'Name')[0]?.v),
+  name$ = this.item$.pipe(
+    map((item: MarketItem) => item.attributes?.filter(attribute => attribute.k === 'Name')[0]?.v),
   );
 
   bidValue = new FormControl<number | null>(null);
@@ -98,9 +98,9 @@ export class AuctionComponent {
   ) {}
 
   async submitBid(): Promise<void> {
-    // Get the phunk
-    const phunk = this.phunk();
-    if (!phunk) throw new Error('MarketItem not found');
+    // Get the item
+    const item = this.item();
+    if (!item) throw new Error('MarketItem not found');
 
     // Get the bid value
     const bidValue: number | null = this.bidValue.value;
@@ -108,13 +108,13 @@ export class AuctionComponent {
 
     // Create the notification
     let notification: Notification = {
-      id: this.utilSvc.createIdFromString('createBid' + phunk.hashId),
+      id: this.utilSvc.createIdFromString('createBid' + item.hashId),
       timestamp: Date.now(),
-      slug: phunk.slug,
+      slug: item.slug,
       type: 'wallet',
       function: 'createBid',
-      hashId: phunk.hashId,
-      tokenId: phunk.tokenId,
+      hashId: item.hashId,
+      tokenId: item.tokenId,
       value: bidValue,
     };
 
@@ -124,12 +124,12 @@ export class AuctionComponent {
     try {
       // Get the current active auction
       // const currentAuction = await this.web3Svc.getAuctionByPrevOwnerAndHashId({
-      //   prevOwner: phunk.prevOwner!,
-      //   hashId: phunk.hashId
+      //   prevOwner: item.prevOwner!,
+      //   hashId: item.hashId
       // });
 
       // Send the tx
-      const hash = await this.web3Svc.createBid(bidValue, phunk.hashId, phunk.prevOwner!);
+      const hash = await this.web3Svc.createBid(bidValue, item.hashId, item.prevOwner!);
       if (!hash) throw new Error('Transaction failed');
 
       // Reset the bid value
@@ -171,18 +171,18 @@ export class AuctionComponent {
   }
 
   async settleAuction(): Promise<void> {
-    const phunk = this.phunk();
-    if (!phunk) throw new Error('MarketItem not found');
+    const item = this.item();
+    if (!item) throw new Error('MarketItem not found');
 
     // Create the notification
     let notification: Notification = {
-      id: this.utilSvc.createIdFromString('settleAuction' + phunk.hashId),
+      id: this.utilSvc.createIdFromString('settleAuction' + item.hashId),
       timestamp: Date.now(),
-      slug: phunk.slug,
+      slug: item.slug,
       type: 'wallet',
       function: 'settleAuction',
-      hashId: phunk.hashId,
-      tokenId: phunk.tokenId,
+      hashId: item.hashId,
+      tokenId: item.tokenId,
     };
 
     // Dispatch the notification
@@ -191,12 +191,12 @@ export class AuctionComponent {
     try {
       // Get the current active auction
       // const currentAuction = await this.web3Svc.getAuctionByPrevOwnerAndHashId({
-      //   prevOwner: phunk.prevOwner!,
-      //   hashId: phunk.hashId
+      //   prevOwner: item.prevOwner!,
+      //   hashId: item.hashId
       // });
 
       // Send the tx
-      const hash = await this.web3Svc.settleAuction(phunk.hashId, phunk.prevOwner!);
+      const hash = await this.web3Svc.settleAuction(item.hashId, item.prevOwner!);
       if (!hash) throw new Error('Transaction failed');
 
       // Reset the bid value

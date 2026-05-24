@@ -35,7 +35,7 @@ export class ItemStatusComponent {
   escrowAddress = environment.marketAddress;
   bridgeAddress = environment.bridgeAddress;
 
-  phunk = input.required<MarketItem>();
+  item = input.required<MarketItem>();
 
   usd$ = this.store.select(selectUsd);
 

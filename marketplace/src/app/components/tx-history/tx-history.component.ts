@@ -47,7 +47,7 @@ export class TxHistoryComponent implements OnChanges {
   ZERO_ADDRESS = zeroAddress;
   explorerUrl = environment.explorerUrl;
 
-  @Input() phunk!: MarketItem;
+  @Input() item!: MarketItem;
 
   private fetchTxHistory = new BehaviorSubject<string | null>(null);
   fetchTxHistory$ = this.fetchTxHistory.asObservable();
@@ -88,8 +88,8 @@ export class TxHistoryComponent implements OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes.phunk && changes.phunk.currentValue) {
-      this.fetchTxHistory.next(this.phunk.hashId);
+    if (changes.item && changes.item.currentValue) {
+      this.fetchTxHistory.next(this.item.hashId);
     }
   }
 }

@@ -14,28 +14,28 @@
   class="view-item-wrapper"
   [class.expanded]="billboardExpanded()">
 
-  <app-breadcrumbs [phunk]="singleMarketItem$ | async" />
+  <app-breadcrumbs [item]="singleMarketItem$ | async" />
 
-  @if ((singleMarketItem$ | async); as phunk) {
+  @if ((singleMarketItem$ | async); as item) {
     <div class="inner">
 
-      @if (phunk.isAuctioned) {
-        <app-auction [phunk]="phunk" />
+      @if (item.isAuctioned) {
+        <app-auction [item]="item" />
       }
 
       <div class="details-wrapper">
-        @if (phunk.owner) {
+        @if (item.owner) {
           <div class="title-wrapper">
             @if (name$ | async; as name) {
               <h1 i18n>{{ name }}</h1>
             } @else {
-              <h1 i18n>{{ phunk.collection?.singleName }} {{ phunk.tokenId }}</h1>
+              <h1 i18n>{{ item.collection?.singleName }} {{ item.tokenId }}</h1>
             }
 
             <div class="hash-id">
               <span>Provenance Hash: </span>
-              <a [href]="explorerUrl + '/tx/' + phunk.hashId" target="_blank">
-                <app-address [address]="phunk.hashId" />
+              <a [href]="explorerUrl + '/tx/' + item.hashId" target="_blank">
+                <app-address [address]="item.hashId" />
               </a>
             </div>
 
@@ -55,14 +55,14 @@
                 @if (featuredTrait.filterable) {
                   <a
                     class="highlight"
-                    [routerLink]="['/', 'curated', phunk.slug, 'market', 'all']"
+                    [routerLink]="['/', 'curated', item.slug, 'market', 'all']"
                     [queryParams]="featuredTrait.attribute | queryParams">
                     {{ featuredTrait.value }}
                   </a>
                 } @else {
                   <span class="highlight">{{ featuredTrait.value }}</span>
                 }
-                {{ phunk.collection?.name }}.
+                {{ item.collection?.name }}.
               </h2>
             }
           </div>
@@ -74,27 +74,27 @@
               <div class="market-status">
                 <h2 i18n>Market Status</h2>
 
-                <app-item-status [phunk]="phunk" />
+                <app-item-status [item]="item" />
               </div>
 
               <!-- Actions -->
               <app-item-actions
-                [phunk]="phunk"
-                [disabled]="(indexerIsBehind$ | async) || !phunk.consensus"
+                [item]="item"
+                [disabled]="(indexerIsBehind$ | async) || !item.consensus"
               />
 
               @if (!(isMobile$ | async) && (config$ | async)?.comments) {
                 @defer {
-                  <app-comments [mainTopic]="phunk.hashId" />
+                  <app-comments [mainTopic]="item.hashId" />
                 }
               }
             </div>
 
             <div class="right">
               <div class="accessories-wrapper">
-                @if (phunk.attributes?.length) {
+                @if (item.attributes?.length) {
                   <app-item-attributes
-                    [phunk]="phunk"
+                    [item]="item"
                     [collection]="(collection$ | async)"
                   />
                 }
@@ -103,11 +103,11 @@
           </div>
         } @else {
           <div class="title-wrapper">
-            <h1 i18n>{{ phunk.collection?.singleName }} doesn't exist. 👎</h1>
+            <h1 i18n>{{ item.collection?.singleName }} doesn't exist. 👎</h1>
             <div class="hash-id">
               <span>Provenance Hash: </span>
-              <a [href]="explorerUrl + '/tx/' + phunk.hashId" target="_blank">
-                <app-address [address]="phunk.hashId" />
+              <a [href]="explorerUrl + '/tx/' + item.hashId" target="_blank">
+                <app-address [address]="item.hashId" />
               </a>
             </div>
           </div>
@@ -115,12 +115,12 @@
 
         @if ((isMobile$ | async) && (config$ | async)?.comments) {
           @defer {
-            <app-comments [mainTopic]="phunk.hashId" />
+            <app-comments [mainTopic]="item.hashId" />
           }
         }
 
         @defer {
-          <app-tx-history [phunk]="phunk" />
+          <app-tx-history [item]="item" />
         }
       </div>
     </div>

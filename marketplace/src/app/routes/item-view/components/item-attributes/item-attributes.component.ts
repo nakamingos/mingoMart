@@ -25,13 +25,13 @@ import { QueryParamsPipe } from '@/pipes/query-params.pipe';
 })
 export class ItemAttributesComponent {
 
-  phunk = input.required<MarketItem>();
+  item = input.required<MarketItem>();
   collection = input<Collection | null | undefined>(undefined);
   attributes = computed(() => {
-    // console.log(this.phunk().attributes);
+    // console.log(this.item().attributes);
     // filter out attributes that are in ignoredTraitFilters
-    return this.phunk().attributes?.filter(item => !this.collection()?.ignoredTraitFilters?.includes(item.k));
-    // return this.phunk().attributes;
+    return this.item().attributes?.filter(item => !this.collection()?.ignoredTraitFilters?.includes(item.k));
+    // return this.item().attributes;
   });
 
 }

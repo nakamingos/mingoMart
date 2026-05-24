@@ -172,10 +172,10 @@ export class ImageService {
     // Load and draw each ethscription image
     const baseImageUrl = `https://kcbuycbhynlmsrvoegzp.supabase.co/storage/v1/object/public/images`;
     for (let i = 0; i < items.length; i++) {
-      const phunk = items[i];
+      const item = items[i];
 
       const image = await firstValueFrom(
-        this.http.get(`${baseImageUrl}/${phunk.sha}.png`, { responseType: 'arraybuffer' }).pipe(
+        this.http.get(`${baseImageUrl}/${item.sha}.png`, { responseType: 'arraybuffer' }).pipe(
           catchError(err => {
             Logger.error(err);
             return of(null);

@@ -73,7 +73,7 @@ export class MenuComponent {
 
   listedMarketItems$ = this.store.select(marketStateSelectors.selectOwned).pipe(
     tap((owned: MarketItem[] | null) => this.createOwnedStats(owned)),
-    map((owned) => owned?.filter((phunk: MarketItem) => !!phunk.listing)),
+    map((owned) => owned?.filter((item: MarketItem) => !!item.listing)),
   );
 
   // userOpenBids$ = this.store.select(dataStateSelectors.selectUserOpenBids).pipe(
@@ -151,7 +151,7 @@ export class MenuComponent {
     if (!owned) return;
 
     // Get all the attributes
-    const allTraits = owned?.map((phunk: MarketItem) => phunk.attributes);
+    const allTraits = owned?.map((item: MarketItem) => item.attributes);
     const traits = allTraits?.reduce((acc: any, val: any) => acc.concat(val), []);
 
     // Count the occurrences of each attribute
@@ -177,8 +177,8 @@ export class MenuComponent {
 
     // console.log(top3RarestTraits);
 
-    const escrowed = owned?.filter((phunk: MarketItem) => phunk.isEscrowed)?.length;
-    const listed = owned?.filter((phunk: MarketItem) => phunk.listing)?.length;
+    const escrowed = owned?.filter((item: MarketItem) => item.isEscrowed)?.length;
+    const listed = owned?.filter((item: MarketItem) => item.listing)?.length;
 
     this.stats = {
       ...this.stats,
@@ -191,8 +191,8 @@ export class MenuComponent {
   createBidStats(bids: MarketItem[] | null) {
     if (!bids) return;
 
-    const totalBidValue = bids.reduce((acc, phunk) => {
-      const val = this.web3Svc.weiToEth(phunk.bid?.value) || '0';
+    const totalBidValue = bids.reduce((acc, item) => {
+      const val = this.web3Svc.weiToEth(item.bid?.value) || '0';
       return acc + Number(val);
     }, 0);
 
