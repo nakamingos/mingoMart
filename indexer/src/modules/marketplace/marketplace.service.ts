@@ -99,7 +99,6 @@ export class MarketplaceService {
     const hashId =
       args.hashId ||
       args.id ||
-      args.phunkId ||
       args.potentialEthscriptionId;
 
     if (!hashId) return;

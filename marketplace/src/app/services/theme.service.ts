@@ -75,7 +75,7 @@ export class ThemeService {
       );
     });
     this.document.body.dataset['theme'] = theme;
-    localStorage.setItem('EtherPhunks_theme', theme);
+    localStorage.setItem('MingoMart_theme', theme);
   }
 
   /**
@@ -83,7 +83,7 @@ export class ThemeService {
    * @returns Theme to use initially ('dark' or 'light')
    */
   getInitialTheme(): Theme {
-    let mode = localStorage.getItem('EtherPhunks_theme') as Theme | undefined;
+    let mode = localStorage.getItem('MingoMart_theme') as Theme | undefined;
     if (mode) return mode;
 
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {

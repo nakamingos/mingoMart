@@ -134,28 +134,28 @@ section {
     }
 
     &.sale,
-    &.phunkbought {
+    &.hashbought {
       .image-wrapper {
         background-color: rgba(var(--base-color), 1);
       }
     }
 
     &.offered,
-    &.phunkoffered {
+    &.hashoffered {
       .image-wrapper {
         background-color: rgba(var(--listed-color), 1);
       }
     }
 
-    &.phunkofferwithdrawn,
-    &.phunknolongerforsale {
+    &.hashofferwithdrawn,
+    &.hashnolongerforsale {
       .image-wrapper {
         background-color: rgba(var(--listed-color), 1);
       }
     }
 
-    &.phunkbidentered,
-    &.phunkbidwithdrawn {
+    &.hashbidentered,
+    &.hashbidwithdrawn {
       .image-wrapper {
         background-color: rgba(var(--bid-color), 1);
       }

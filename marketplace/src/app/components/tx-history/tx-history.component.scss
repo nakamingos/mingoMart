@@ -120,8 +120,8 @@
           }
         }
 
-        &.phunkbidwithdrawn,
-        &.phunkbidentered,
+        &.hashbidwithdrawn,
+        &.hashbidentered,
         &.auctionbid,
         &.auctionextended,
         &.auctioncreated,
@@ -149,7 +149,7 @@
           }
         }
 
-        &.phunkbought {
+        &.hashbought {
           td {
             background-color: rgba(var(--sale-color), .5);
 
@@ -161,8 +161,8 @@
           }
         }
 
-        &.phunkoffered,
-        &.phunknolongerforsale {
+        &.hashoffered,
+        &.hashnolongerforsale {
           td {
             background-color: rgba(var(--listed-color), .5);
 

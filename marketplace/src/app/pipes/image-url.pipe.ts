@@ -9,8 +9,8 @@ import { environment } from '@environments/environment';
 })
 export class ImageUrlPipe implements PipeTransform {
 
-  transform(phunk: MarketItem): string {
-    if (!phunk) return '';
-    return environment.staticUrl + '/static/images/' + phunk.sha;
+  transform(item: MarketItem): string {
+    if (!item) return '';
+    return environment.staticUrl + '/static/images/' + item.sha;
   }
 }

@@ -240,7 +240,7 @@ export class AppStateEffects {
     ),
     withLatestFrom(this.store.select(appStateSelectors.selectSearchHistory)),
     map(([action, searchHistory]) => {
-      localStorage.setItem(`EtherPhunks_searchHistory_${environment.chainId}`, JSON.stringify(searchHistory));
+      localStorage.setItem(`MingoMart_searchHistory_${environment.chainId}`, JSON.stringify(searchHistory));
       return appStateActions.setSearchHistory({ searchHistory });
     })
   ));

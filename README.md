@@ -1,8 +1,8 @@
-# Ethereum Phunks Monorepo
+# Mingo Mart Monorepo
 
-![Static Badge](https://img.shields.io/badge/100%25-PHUNKY-green) [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/etherphunks?style=social)](https://twitter.com/etherphunks)
+![Static Badge](https://img.shields.io/badge/100%25-MINGO-green) [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/nomorelabs?style=social)](https://twitter.com/nomorelabs)
 
-Ethereum Phunks Market is an open source platform for trading ethscriptions on the Ethereum blockchain. The project consists of three main components: a marketplace frontend, smart contracts, and an indexer service.
+Mingo Mart is an open source platform for trading ethscriptions on the Ethereum blockchain. The project consists of three main components: a marketplace frontend, smart contracts, and an indexer service.
 
 ## ⚠️ Disclaimer
 
@@ -35,7 +35,7 @@ An Angular-based frontend application that provides an interface for:
   - Custom pipes and directives
 
 ### 2. Contracts (`/contracts`)
-Smart contracts written in Solidity that power the Ethereum Phunks ecosystem:
+Smart contracts written in Solidity that power the Mingo Mart ecosystem:
 - Core marketplace functionality
 - Bridge contracts for cross-chain operations
 - Utility contracts for points and rewards
@@ -164,4 +164,4 @@ This project is licensed under the [CC0-1.0](https://creativecommons.org/publicd
 ## Resources
 
 - [Ethscriptions Protocol](https://ethscriptions.com)
-- [Twitter](https://twitter.com/etherphunks)
+- [Twitter](https://twitter.com/nomorelabs)

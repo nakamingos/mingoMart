@@ -171,15 +171,15 @@ export class DataService {
       map((res: any[]) => res.map((item: any) => {
         const ethscription = item.ethscription;
         return {
-          ...ethscription.phunk,
+          ...ethscription.ethscription,
           listing: ethscription.listing ? ethscription.listing[0] : null,
           bid: ethscription.bid ? ethscription.bid[0] : null,
           isEscrowed:
-            ethscription.phunk.owner === environment.marketAddress
-            && ethscription.phunk.prevOwner === address,
+            ethscription.ethscription.owner === environment.marketAddress
+            && ethscription.ethscription.prevOwner === address,
           isBridged:
-            ethscription.phunk.owner === environment.bridgeAddress
-            && ethscription.phunk.prevOwner === address,
+            ethscription.ethscription.owner === environment.bridgeAddress
+            && ethscription.ethscription.prevOwner === address,
           attributes: [],
         };
       })),
@@ -485,7 +485,7 @@ export class DataService {
   }
 
   ////////////////////////////////////////////////////////
-  // PHUNK ///////////////////////////////////////////////
+  // MARKET ITEMS ////////////////////////////////////////
   ////////////////////////////////////////////////////////
 
   /**
@@ -536,13 +536,13 @@ export class DataService {
       delete data[`nfts${prefix}`];
       delete data[`collections${prefix}`];
 
-      const marketItem = { ...data, collection, collectionName, nft } as MarketItem;
-      marketItem.isEscrowed = data?.owner === environment.marketAddress;
-      marketItem.isBridged = data?.owner === environment.bridgeAddress;
-      marketItem.isAuctioned = data?.owner === environment.auctionHouseAddress;
-      marketItem.isSupported = !!collection;
-      marketItem.attributes = [];
-      return marketItem;
+      const item = { ...data, collection, collectionName, nft } as MarketItem;
+      item.isEscrowed = data?.owner === environment.marketAddress;
+      item.isBridged = data?.owner === environment.bridgeAddress;
+      item.isAuctioned = data?.owner === environment.auctionHouseAddress;
+      item.isSupported = !!collection;
+      item.attributes = [];
+      return item;
     }
 
     let query = supabase

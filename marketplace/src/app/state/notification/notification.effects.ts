@@ -29,27 +29,8 @@ export class NotificationEffects {
     ofType(setWalletAddress),
     switchMap((action) => {
       const address = action.walletAddress?.toLowerCase();
-      const key = `EtherPhunks_notifs__${environment.chainId}__${address}`;
-      const migratedKey = `EtherPhunks_notifs__${environment.chainId}__${address}:migrated`;
-
-      const isMigrated = localStorage.getItem(migratedKey);
-      // console.log({isMigrated: !!isMigrated});
-      if (isMigrated) return from(this.storageSvc.getItem(key, true)).pipe(map(res => res || []));
-
-      const stored = localStorage.getItem(key);
-      if (!stored) return of([]);
-
-      const notifications = JSON.parse(stored);
-      // console.log({notifications});
-      if (!notifications) return of([]);
-
-      return from(this.storageSvc.setItem(key, notifications, true)).pipe(
-        tap(() => {
-          localStorage.removeItem(key);
-          localStorage.setItem(migratedKey, '1');
-        }),
-        map(() => notifications)
-      );
+      const key = `MingoMart_notifs__${environment.chainId}__${address}`;
+      return from(this.storageSvc.getItem<Notification[]>(key, true)).pipe(map(res => res || []));
     }),
     map((notifications) => setNotifications({ notifications })),
   ));
@@ -61,7 +42,7 @@ export class NotificationEffects {
       this.store.select(selectWalletAddress),
     ),
     switchMap(([_, notifications, address]) => {
-      const key = `EtherPhunks_notifs__${environment.chainId}__${address}`;
+      const key = `MingoMart_notifs__${environment.chainId}__${address}`;
       return from(this.storageSvc.setItem(
         key,
         notifications.filter((txn: Notification) => txn.type === 'complete' || txn.type === 'event'),
@@ -77,7 +58,7 @@ export class NotificationEffects {
       this.store.select(selectWalletAddress),
     ),
     switchMap(([action, notifications, address]) => {
-      const key = `EtherPhunks_notifs__${environment.chainId}__${address}`;
+      const key = `MingoMart_notifs__${environment.chainId}__${address}`;
       return from(this.storageSvc.setItem(
         key,
         notifications.filter((txn: Notification) => txn.type === 'complete' || txn.type === 'event'),
@@ -107,7 +88,7 @@ export class NotificationEffects {
     withLatestFrom(this.store.select(selectWalletAddress)),
     switchMap(([action, address]) => {
       const currentBlock = action.currentBlock;
-      const storedBlock = localStorage.getItem(`EtherPhunks_currentBlock_${environment.chainId}`);
+      const storedBlock = localStorage.getItem(`MingoMart_currentBlock_${environment.chainId}`);
       // console.log({currentBlock, storedBlock}, currentBlock - Number(storedBlock));
       if (address && storedBlock && (currentBlock - Number(storedBlock)) > 0) {
         return this.dataSvc.fetchMissedEvents(address, Number(storedBlock)).pipe(
@@ -121,7 +102,7 @@ export class NotificationEffects {
       return of([]);
     }),
     withLatestFrom(this.store.select(selectCurrentBlock)),
-    tap(([_, blockNumber]) => localStorage.setItem(`EtherPhunks_currentBlock_${environment.chainId}`, JSON.stringify(blockNumber))),
+    tap(([_, blockNumber]) => localStorage.setItem(`MingoMart_currentBlock_${environment.chainId}`, JSON.stringify(blockNumber))),
   ), { dispatch: false });
 
   constructor(
@@ -136,7 +117,7 @@ export class NotificationEffects {
   checkEventForPurchaseFromUser(event: Event, userAddress: string) {
     if (!userAddress) return;
     if (event.type === 'HashBought' && event.from.toLowerCase() === userAddress?.toLowerCase()) {
-      // This phunk was bought FROM the active user.
+      // This item was bought FROM the active user.
       // We can notify them of this purchase
       this.store.dispatch(upsertNotification({
         notification: {

@@ -258,7 +258,7 @@ export class ImageService implements OnModuleInit {
 
     ctx.fillStyle = colors.base;
     ctx.font = '400 39px Pizzascript';
-    const urlText = cardText(`etherphunks.eth.limo/${collection.slug}`);
+    const urlText = cardText(`mingomart.com/${collection.slug}`);
     ctx.fillText(urlText, collectionNameX, bottomBarPos + 105);
 
     const baseImageUrl = `${PUBLIC_SUPABASE_URL}/storage/v1/object/public/static/images`;

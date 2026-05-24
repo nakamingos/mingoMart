@@ -83,15 +83,15 @@ export class CardsService implements OnModuleInit {
 
       // Extract description from attributes or use default
       const descAttr = attributes?.values?.['Description'] || attributes?.values?.['description'];
-      const description = 'Ethereum Phunks Market 👍';
+      const description = 'Mingo Mart 🦩 by NoMoreLabs';
 
       return this.generateSocialHtml({
         title: name,
         description,
         image: imageUrl,
         url: `/details/${hashId}`,
-        siteName: 'EtherPhunks',
-        redirectUrl: `https://etherphunks.eth.limo/details/${hashId}`
+        siteName: 'Mingo Mart',
+        redirectUrl: `https://mingomart.com/details/${hashId}`
       });
 
     } catch (error) {
@@ -102,7 +102,7 @@ export class CardsService implements OnModuleInit {
 
   async generateEthscriptionCardImageUrl(hashId: string): Promise<string> {
     const data = await this.storageSvc.getEthscriptionWithCollectionAndAttributes(hashId);
-    if (!data) return 'https://etherphunks.eth.limo/poster.png';
+    if (!data) return 'https://mingomart.com/poster.png';
 
     return this.generateEthscriptionCardImageUrlFromData(hashId, data);
   }
@@ -111,7 +111,7 @@ export class CardsService implements OnModuleInit {
     hashId: string,
     data: Awaited<ReturnType<StorageService['getEthscriptionWithCollectionAndAttributes']>>
   ): Promise<string> {
-    let imageUrl = 'https://etherphunks.eth.limo/poster.png';
+    let imageUrl = 'https://mingomart.com/poster.png';
     const cacheKey = `details-${hashId}`;
     const cachedUrl = this.getCachedCard(cacheKey);
 
@@ -175,7 +175,7 @@ export class CardsService implements OnModuleInit {
       }
 
       // Generate custom collection social share image
-      let imageUrl = 'https://etherphunks.eth.limo/poster.png';
+      let imageUrl = 'https://mingomart.com/poster.png';
 
       // Check cache first
       const cacheKey = `collection-${slug}`;
@@ -205,17 +205,17 @@ export class CardsService implements OnModuleInit {
         } catch (error) {
           console.error('Failed to generate collection social share image:', error);
           // Fallback to poster image or default
-          imageUrl = 'https://etherphunks.eth.limo/poster.png';
+          imageUrl = 'https://mingomart.com/poster.png';
         }
       }
 
       return this.generateSocialHtml({
         title: collection.name,
-        description: 'Ethereum Phunks Market 👍',
+        description: 'Mingo Mart 🦩 by NoMoreLabs',
         image: imageUrl,
         url: `/${slug}`,
-        siteName: 'EtherPhunks',
-        redirectUrl: `https://etherphunks.eth.limo/${slug}`
+        siteName: 'Mingo Mart',
+        redirectUrl: `https://mingomart.com/${slug}`
       });
 
     } catch (error) {
@@ -245,7 +245,7 @@ export class CardsService implements OnModuleInit {
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://etherphunks.eth.limo${data.url}">
+  <meta property="og:url" content="https://mingomart.com${data.url}">
   <meta property="og:title" content="${data.title}">
   <meta property="og:description" content="${data.description}">
   <meta property="og:image" content="${data.image}">
@@ -255,11 +255,11 @@ export class CardsService implements OnModuleInit {
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="https://etherphunks.eth.limo${data.url}">
+  <meta property="twitter:url" content="https://mingomart.com${data.url}">
   <meta property="twitter:title" content="${data.title}">
   <meta property="twitter:description" content="${data.description}">
   <meta property="twitter:image" content="${data.image}">
-  <meta property="twitter:site" content="@ethereumphunks">
+  <meta property="twitter:site" content="@nomorelabs">
 
   <!-- Discord -->
   <meta name="theme-color" content="#FF03B4">
@@ -272,34 +272,34 @@ export class CardsService implements OnModuleInit {
    * Generate fallback HTML when data is not available
    */
   private generateFallbackHtml(type: string, params: any): string {
-    let title = 'EtherPhunks';
-    let description = 'Discover unique digital collectibles on the EtherPhunks marketplace.';
-    let redirectUrl = 'https://etherphunks.eth.limo/';
+    let title = 'Mingo Mart';
+    let description = 'Discover unique digital collectibles on Mingo Mart.';
+    let redirectUrl = 'https://mingomart.com/';
 
     switch (type) {
       case 'ethscription':
-        title = `Digital Collectible | EtherPhunks`;
-        description = `Discover this unique digital collectible on EtherPhunks marketplace.`;
-        redirectUrl = `https://etherphunks.eth.limo/details/${params.hashId}`;
+        title = `Digital Collectible | Mingo Mart`;
+        description = `Discover this unique digital collectible on Mingo Mart.`;
+        redirectUrl = `https://mingomart.com/details/${params.hashId}`;
         break;
       case 'collection':
-        title = `${params.slug} Collection | EtherPhunks`;
-        description = `Explore the ${params.slug} collection on EtherPhunks marketplace.`;
-        redirectUrl = `https://etherphunks.eth.limo/${params.slug}`;
+        title = `${params.slug} Collection | Mingo Mart`;
+        description = `Explore the ${params.slug} collection on Mingo Mart.`;
+        redirectUrl = `https://mingomart.com/${params.slug}`;
         break;
       case 'market':
-        title = `${params.slug} ${params.marketType} | EtherPhunks`;
+        title = `${params.slug} ${params.marketType} | Mingo Mart`;
         description = `Browse ${params.marketType} in the ${params.slug} collection.`;
-        redirectUrl = `https://etherphunks.eth.limo/${params.slug}/market/${params.marketType}`;
+        redirectUrl = `https://mingomart.com/${params.slug}/market/${params.marketType}`;
         break;
     }
 
     return this.generateSocialHtml({
       title,
       description,
-      image: 'https://etherphunks.eth.limo/poster.png',
+      image: 'https://mingomart.com/poster.png',
       url: '/',
-      siteName: 'EtherPhunks',
+      siteName: 'Mingo Mart',
       redirectUrl
     });
   }

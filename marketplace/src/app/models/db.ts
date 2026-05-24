@@ -79,12 +79,6 @@ export interface Listing {
   txHash?: string
 }
 
-export interface Sha {
-  id: number
-  phunkId: string | null
-  sha: string | null
-}
-
 export interface User {
   address: string
   createdAt: string

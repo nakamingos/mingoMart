@@ -72,9 +72,9 @@ const DEFAULT_ETHSCRIPTIONS_API_BASE_URLS = {
 const ERC721_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' as const;
 
 const SUPPORTED_MARKET_EVENTS = new Set([
-  'PhunkBought',
-  'PhunkNoLongerForSale',
-  'PhunkOffered',
+  'HashBought',
+  'HashNoLongerForSale',
+  'HashOffered',
 ]);
 
 const SUPPORTED_AUCTION_EVENTS = new Set([
@@ -881,7 +881,6 @@ async function fetchEthscriptionData(
 function extractCollectionHashId(args: Record<string, unknown>): string | null {
   const raw =
     args.hashId ||
-    args.phunkId ||
     args.potentialEthscriptionId ||
     args.id ||
     args.ethscriptionId ||

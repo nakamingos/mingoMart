@@ -84,7 +84,7 @@ export class NotifsService implements OnModuleInit {
     const { ethscription, collection } = ethscriptionData;
 
     const chainId = this.configSvc.chain.chainIdL1;
-    const baseUrl = chainId === 1 ? 'https://ethereumphunks.com' : 'https://sepolia.ethereumphunks.com';
+    const baseUrl = chainId === 1 ? 'https://mingomart.com' : 'https://sepolia.mingomart.com';
 
     const weiValue = BigInt(event.value);
     if (!weiValue) return;

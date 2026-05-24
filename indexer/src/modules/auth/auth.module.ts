@@ -25,12 +25,12 @@ import { AppConfigService } from '@/config/config.service';
         secret: configService.api.privateKey, // TODO: Add dedicated JWT_SECRET env var
         signOptions: {
           expiresIn: '30m', // 30 minutes
-          issuer: 'ethereumphunks-admin',
-          audience: 'ethereumphunks-admin-users',
+          issuer: 'mingomart-admin',
+          audience: 'mingomart-admin-users',
         },
         verifyOptions: {
-          issuer: 'ethereumphunks-admin',
-          audience: 'ethereumphunks-admin-users',
+          issuer: 'mingomart-admin',
+          audience: 'mingomart-admin-users',
         },
       }),
       inject: [AppConfigService],

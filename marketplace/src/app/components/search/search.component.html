@@ -1,12 +1,12 @@
-<form [formGroup]="phunkBox" (ngSubmit)="onSubmit($event)">
+<form [formGroup]="searchBox" (ngSubmit)="onSubmit($event)">
   <div class="input-wrapper">
     <input
       #searchInput
       type="text"
-      [placeholder]="phunkBoxError ? 'Bad input. Try again' : 'Search: 0x, ens or Ethscription ID'"
+      [placeholder]="searchBoxError ? 'Bad input. Try again' : 'Search: 0x, ens or Ethscription ID'"
       formControlName="addressInput"
-      [class.error]="phunkBoxError"
-      [class.disabled]="phunkBoxLoading"
+      [class.error]="searchBoxError"
+      [class.disabled]="searchBoxLoading"
       (focus)="onFocus($event)"
       (blur)="onBlur($event)"
       autocapitalize="off"
@@ -15,7 +15,7 @@
       spellcheck="false"
     />
 
-    @if (phunkBox.dirty || phunkBox.touched && phunkBox.value?.addressInput?.length) {
+    @if (searchBox.dirty || searchBox.touched && searchBox.value?.addressInput?.length) {
       <button class="clear" type="reset" (click)="clearInput()">x</button>
     }
 
@@ -45,7 +45,7 @@
     }
   </div>
 
-  @if (phunkBoxLoading) {
+  @if (searchBoxLoading) {
     <button class="loader">
       <img src="/loader-{{ theme$ | async }}.gif" width="20" height="20" />
     </button>
@@ -53,4 +53,3 @@
     <button i18n class="submit" type="submit">Go</button>
   }
 </form>
-

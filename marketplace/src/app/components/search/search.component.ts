@@ -34,11 +34,11 @@ export class SearchComponent {
 
   @ViewChild('searchInput') searchInput!: ElementRef;
 
-  phunkBoxLoading: boolean = false;
-  phunkBoxError: boolean = false;
+  searchBoxLoading: boolean = false;
+  searchBoxError: boolean = false;
 
   theme$ = this.store.select(appStateSelectors.selectTheme);
-  phunkBox: FormGroup = new FormGroup({
+  searchBox: FormGroup = new FormGroup({
     addressInput: new FormControl()
   });
 
@@ -58,7 +58,7 @@ export class SearchComponent {
           // console.log('NavigationEnd', {$event, isSearchResult});
           if (isSearchResult) {
             this.store.dispatch(appStateActions.setIsSearchResult({ isSearchResult: false }));
-            this.phunkBox.reset();
+            this.searchBox.reset();
           }
         }
       })
@@ -72,11 +72,11 @@ export class SearchComponent {
   }
 
   async onSubmit($event: any): Promise<void> {
-    this.phunkBoxError = false;
-    this.phunkBoxLoading = true;
+    this.searchBoxError = false;
+    this.searchBoxLoading = true;
 
     try {
-      const addressInput  = this.phunkBox?.value?.addressInput?.toLowerCase();
+      const addressInput  = this.searchBox?.value?.addressInput?.toLowerCase();
 
       const is0x = addressInput?.startsWith('0x');
       const isEns = addressInput?.includes('.eth');
@@ -112,11 +112,11 @@ export class SearchComponent {
     } catch (error) {
       console.log(error);
 
-      this.phunkBoxError = true;
-      this.phunkBox.reset();
-      setTimeout(() => this.phunkBoxError = false, 5000);
+      this.searchBoxError = true;
+      this.searchBox.reset();
+      setTimeout(() => this.searchBoxError = false, 5000);
     } finally {
-      this.phunkBoxLoading = false;
+      this.searchBoxLoading = false;
       this.unfocusInput();
     }
   }
@@ -134,7 +134,7 @@ export class SearchComponent {
 
   selectHistoryItem(item: any): void {
     // console.log('selectHistoryItem', item);
-    this.phunkBox.setValue({ addressInput: item });
+    this.searchBox.setValue({ addressInput: item });
     this.onSubmit(null);
   }
 
@@ -150,7 +150,7 @@ export class SearchComponent {
 
   clearInput(): void {
     // console.log('clearInput');
-    this.phunkBox.reset();
+    this.searchBox.reset();
     this.searchInput.nativeElement.focus();
   }
 

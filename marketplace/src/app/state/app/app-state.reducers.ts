@@ -13,7 +13,7 @@ export const initialState: AppState = {
   isBanned: false,
   userPoints: 0,
   activeMultiplier: 1,
-  theme: localStorage.getItem('EtherPhunks_theme') as Theme || 'initial',
+  theme: localStorage.getItem('MingoMart_theme') as Theme || 'initial',
 
   isMobile: false,
   isBrowserActive: true,
@@ -30,9 +30,9 @@ export const initialState: AppState = {
   indexerBlock: 0,
   blocksBehind: 0,
 
-  cooldowns: JSON.parse(localStorage.getItem(`EtherPhunks_cooldowns_${environment.chainId}`) || '{}'),
+  cooldowns: JSON.parse(localStorage.getItem(`MingoMart_cooldowns_${environment.chainId}`) || '{}'),
 
-  searchHistory: JSON.parse(localStorage.getItem(`EtherPhunks_searchHistory_${environment.chainId}`) || '[]'),
+  searchHistory: JSON.parse(localStorage.getItem(`MingoMart_searchHistory_${environment.chainId}`) || '[]'),
   searchHistoryActive: false,
   isSearchResult: false,
 
@@ -168,7 +168,7 @@ export const appStateReducer: ActionReducer<AppState, Action> = createReducer(
         ...cooldowns
       }
     };
-    localStorage.setItem(`EtherPhunks_cooldowns_${environment.chainId}`, JSON.stringify(cooldowns));
+    localStorage.setItem(`MingoMart_cooldowns_${environment.chainId}`, JSON.stringify(cooldowns));
     return removeCooldown
   }),
   on(actions.setCurrentBlock, (state, { currentBlock }) => {

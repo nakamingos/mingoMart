@@ -31,7 +31,7 @@ export class TippyDirective implements OnInit, OnChanges {
       content: el.dataset.tippyContent,
       followCursor: el.dataset.tippyFollow as any,
       zIndex: 21474841,
-      theme: 'phunks',
+      theme: 'mingomart',
       hideOnClick: true,
       allowHTML: true,
       interactive: true,

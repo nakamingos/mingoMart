@@ -65,7 +65,7 @@ export class AuthService {
 
     // Verify the signature using EIP-712
     const domain = {
-      name: 'EtherPhunks Admin',
+      name: 'Mingo Mart Admin',
       version: '1',
       chainId: chainId,
     };

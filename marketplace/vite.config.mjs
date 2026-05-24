@@ -1,6 +1,6 @@
 /**
  * Vite Configuration File
- * This file configures the build and development settings for the EtherPhunks Marketplace application.
+ * This file configures the build and development settings for the Mingo Mart marketplace application.
  */
 
 import { defineConfig, loadEnv } from "vite";
@@ -63,7 +63,7 @@ export default defineConfig(({ command, mode }) => {
     sepolia: {
       outDir: resolve(
         __dirname,
-        `dist/etherphunks-market-${mode}_${timestamp}`
+        `dist/mingo-mart-${mode}_${timestamp}`
       ),
       envFile: `environment.${mode}.ts`,
       optimization: true,
@@ -73,7 +73,7 @@ export default defineConfig(({ command, mode }) => {
     mainnet: {
       outDir: resolve(
         __dirname,
-        `dist/etherphunks-market-${mode}_${timestamp}`
+        `dist/mingo-mart-${mode}_${timestamp}`
       ),
       envFile: `environment.${mode}.ts`,
       optimization: true,
