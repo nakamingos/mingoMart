@@ -1,8 +1,8 @@
 /**
- * EtherPhunks Social Share Worker
+ * Mingo Mart Social Share Worker
  *
  * This worker detects social media crawlers and serves dynamic meta tags
- * for NFT pages, while redirecting regular users to the eth.limo domain.
+ * for item pages, while redirecting regular users to the marketplace.
  */
 
 /**
@@ -16,7 +16,7 @@ function getApiUrl(requestUrl: string): string {
 	if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname.includes('localhost')) {
 		return 'http://localhost:3002';
 	}
-	return 'https://relay.ethereumphunks.com';
+	return 'https://relay.mingomart.com';
 }
 
 // Social media crawler user agents
@@ -63,12 +63,12 @@ export default {
 			const apiUrl = getApiUrl(request.url);
 			return fetchCardFromAPI(routeInfo as { type: 'details' | 'market' | 'collection', params: any }, isTestMode, apiUrl);
 		} else if (routeInfo.type) {
-			// Redirect regular users to eth.limo with the same path
-			return Response.redirect(`https://etherphunks.eth.limo${url.pathname}`, 302);
+			// Redirect regular users to the marketplace with the same path
+			return Response.redirect(`https://mingomart.com${url.pathname}`, 302);
 		}
 
-		// For unknown paths, redirect to main eth.limo site
-		return Response.redirect('https://etherphunks.eth.limo/', 302);
+		// For unknown paths, redirect to main marketplace site
+		return Response.redirect('https://mingomart.com/', 302);
 	},
 } satisfies ExportedHandler<Env>;
 
@@ -154,7 +154,7 @@ function getRouteUrl(routeInfo: { type: string, params: any }): string {
 /**
  * Fetch HTML card from NestJS API
  */
-async function fetchCardFromAPI(routeInfo: { type: string, params: any }, isTestMode: boolean = false, baseApiUrl: string = 'https://relay.ethereumphunks.com'): Promise<Response> {
+async function fetchCardFromAPI(routeInfo: { type: string, params: any }, isTestMode: boolean = false, baseApiUrl: string = 'https://relay.mingomart.com'): Promise<Response> {
 	try {
 		let apiUrl: string;
 
@@ -174,7 +174,7 @@ async function fetchCardFromAPI(routeInfo: { type: string, params: any }, isTest
 
 		const response = await fetch(apiUrl, {
 			headers: {
-				'User-Agent': 'EtherPhunks-Social-Worker/1.0'
+				'User-Agent': 'MingoMart-Social-Worker/1.0'
 			}
 		});
 
@@ -209,25 +209,25 @@ async function fetchCardFromAPI(routeInfo: { type: string, params: any }, isTest
  * Generate fallback HTML when API is unavailable
  */
 function generateFallbackHTML(routeInfo: { type: string, params: any }): Response {
-	let title = 'EtherPhunks';
-	let description = 'Discover unique digital collectibles on the EtherPhunks marketplace.';
-	let redirectUrl = 'https://etherphunks.eth.limo/';
+	let title = 'Mingo Mart';
+	let description = 'Discover unique digital collectibles on the Mingo Mart marketplace.';
+	let redirectUrl = 'https://mingomart.com/';
 
 	switch (routeInfo.type) {
 		case 'details':
-			title = `Digital Collectible | EtherPhunks`;
-			description = `Discover this unique digital collectible on EtherPhunks marketplace.`;
-			redirectUrl = `https://etherphunks.eth.limo/details/${routeInfo.params.hashId}`;
+			title = `Digital Collectible | Mingo Mart`;
+			description = `Discover this unique digital collectible on Mingo Mart.`;
+			redirectUrl = `https://mingomart.com/details/${routeInfo.params.hashId}`;
 			break;
 		case 'collection':
-			title = `${routeInfo.params.slug} Collection | EtherPhunks`;
-			description = `Explore the ${routeInfo.params.slug} collection on EtherPhunks marketplace.`;
-			redirectUrl = `https://etherphunks.eth.limo/${routeInfo.params.slug}`;
+			title = `${routeInfo.params.slug} Collection | Mingo Mart`;
+			description = `Explore the ${routeInfo.params.slug} collection on Mingo Mart.`;
+			redirectUrl = `https://mingomart.com/${routeInfo.params.slug}`;
 			break;
 		case 'market':
-			title = `${routeInfo.params.slug} ${routeInfo.params.marketType} | EtherPhunks`;
+			title = `${routeInfo.params.slug} ${routeInfo.params.marketType} | Mingo Mart`;
 			description = `Browse ${routeInfo.params.marketType} in the ${routeInfo.params.slug} collection.`;
-			redirectUrl = `https://etherphunks.eth.limo/${routeInfo.params.slug}/market/${routeInfo.params.marketType}`;
+			redirectUrl = `https://mingomart.com/${routeInfo.params.slug}/market/${routeInfo.params.marketType}`;
 			break;
 	}
 
@@ -240,19 +240,19 @@ function generateFallbackHTML(routeInfo: { type: string, params: any }): Respons
 
 	<!-- Open Graph / Facebook -->
 	<meta property="og:type" content="website">
-	<meta property="og:url" content="https://ethereumphunks.com${getRouteUrl(routeInfo)}">
+	<meta property="og:url" content="https://mingomart.com${getRouteUrl(routeInfo)}">
 	<meta property="og:title" content="${escapeHtml(title)}">
 	<meta property="og:description" content="${escapeHtml(description)}">
-	<meta property="og:image" content="https://ethereumphunks.com/default-share.png">
-	<meta property="og:site_name" content="EtherPhunks">
+	<meta property="og:image" content="https://mingomart.com/default-share.png">
+	<meta property="og:site_name" content="Mingo Mart">
 
 	<!-- Twitter -->
 	<meta name="twitter:card" content="summary_large_image">
-	<meta name="twitter:url" content="https://ethereumphunks.com${getRouteUrl(routeInfo)}">
+	<meta name="twitter:url" content="https://mingomart.com${getRouteUrl(routeInfo)}">
 	<meta name="twitter:title" content="${escapeHtml(title)}">
 	<meta name="twitter:description" content="${escapeHtml(description)}">
-	<meta name="twitter:image" content="https://ethereumphunks.com/default-share.png">
-	<meta name="twitter:site" content="@ethereumphunks">
+	<meta name="twitter:image" content="https://mingomart.com/default-share.png">
+	<meta name="twitter:site" content="@nomorelabs">
 
 	<!-- Discord -->
 	<meta name="theme-color" content="#C3FF00">
@@ -308,7 +308,7 @@ function generateFallbackHTML(routeInfo: { type: string, params: any }): Respons
 </head>
 <body>
 	<div class="container">
-		<div class="logo">EtherPhunks</div>
+		<div class="logo">Mingo Mart</div>
 		<div class="message">Redirecting to marketplace...</div>
 		<div class="spinner"></div>
 		<p style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.8;">

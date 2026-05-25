@@ -1114,7 +1114,7 @@ export class StorageService implements OnModuleInit {
    * Gets unminted token IDs and writes them to a file
    */
   async getUnminted(): Promise<void> {
-    let allPhunks: any[] = [];
+    let allItems: any[] = [];
     const pageSize = 1000; // Max rows per request
     let hasMore = true;
     let page = 0;
@@ -1132,7 +1132,7 @@ export class StorageService implements OnModuleInit {
       }
 
       if (data) {
-        allPhunks = allPhunks.concat(data);
+        allItems = allItems.concat(data);
         hasMore = data.length === pageSize;
         page++;
       } else {
@@ -1140,12 +1140,12 @@ export class StorageService implements OnModuleInit {
       }
     }
 
-    const sorted = allPhunks.sort((a, b) => Number(a.phunkId) - Number(b.phunkId));
+    const sorted = allItems.sort((a, b) => Number(a.phunkId) - Number(b.phunkId));
     let i = 0;
     let unminted = [];
 
-    sorted.forEach((phunk) => {
-        let currentId = Number(phunk.phunkId);
+    sorted.forEach((item) => {
+        let currentId = Number(item.phunkId);
         while (i < currentId) {
             unminted.push(i);
             i++;

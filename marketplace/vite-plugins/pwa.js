@@ -19,7 +19,7 @@ export function pwaPlugin(isDevMode = false) {
       // Force cache clearing when app version changes
       cleanupOutdatedCaches: true,
       // Add version to cache names to force invalidation on version bump
-      cacheId: `ethereumphunks-v${appConfig.version}`,
+      cacheId: `mingomart-v${appConfig.version}`,
       // Increase file size limit to handle large bundles
       maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB limit
       // Asset groups equivalent - prefetch app files

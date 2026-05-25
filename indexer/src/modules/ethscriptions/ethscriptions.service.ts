@@ -55,9 +55,9 @@ export class EthscriptionsService {
 
     // Check if possible ethscription creation (any supported content type)
     const supportedDataUri = /^data:(image\/(?:svg\+xml|png|gif|jpe?g|webp|avif)|video\/webm|text\/html|application\/json|application\/pdf)(?:[;,])/;
-    const possibleEthPhunk = supportedDataUri.test(cleanedString);
+    const possibleEthscription = supportedDataUri.test(cleanedString);
 
-    if (possibleEthPhunk) {
+    if (possibleEthscription) {
       const sha = createHash('sha256').update(cleanedString).digest('hex');
 
       // Check if the sha exists
@@ -129,11 +129,11 @@ export class EthscriptionsService {
   }
 
   /**
-   * Processes the EtherPhunk creation event.
+   * Processes the ethscription creation event.
    *
    * @param txn - The transaction object.
    * @param createdAt - The creation date of the transaction.
-   * @param phunkShaData - The PhunkSha data.
+   * @param attributesData - The curated collection attribute data.
    * @returns The processed event object.
    */
   async processEthscriptionCreationEvent(
@@ -195,7 +195,7 @@ export class EthscriptionsService {
       txn.hash
     );
 
-    // Update the eth phunk owner
+    // Update the ethscription owner
     await this.storageSvc.updateEthscriptionOwner(hashId, ethscript.owner, txn.to);
     Logger.log(
       `Updated ethscription owner to ${txn.to} (Transfer event)`,
@@ -253,7 +253,7 @@ export class EthscriptionsService {
 
     if (!isMatchedHashId || !transferrerIsOwner || !samePrevOwner) return null;
 
-    // Update the eth phunk owner
+    // Update the ethscription owner
     await this.storageSvc.updateEthscriptionOwner(ethscript.hashId, ethscript.owner, to);
     Logger.log(
       `Updated ethscript owner to ${to} (Contract event)`,
