@@ -1,25 +1,25 @@
 <h2 i18n>Attributes</h2>
 <div class="accessories">
   @if (item(); as item) {
-    @for (item of attributes(); track item; let i = $index) {
+    @for (attribute of attributes(); track attribute; let i = $index) {
       @if (i > 0) {
-        <!-- {{ item | json }} -->
+        <!-- {{ attribute | json }} -->
         <div class="accessory">
-          @if (item.v | isNumber) {
-            <span class="value">{{ item.k }}</span>
+          @if (attribute.v | isNumber) {
+            <span class="value">{{ attribute.k }}</span>
 
             <span class="trait-count">
-              <span>{{ (item.v) }}</span>
+              <span>{{ (attribute.v) }}</span>
             </span>
           } @else {
-            <!-- <span class="trait-name">{{ item.k }}</span> -->
+            <!-- <span class="trait-name">{{ attribute.k }}</span> -->
             <a
               class="value"
               [routerLink]="['/', 'curated', item.slug, 'market', 'all']"
-              [queryParams]="item | queryParams">
+              [queryParams]="attribute | queryParams">
 
-              <span>{{ item.v }}</span>
-              @if ((item.v | traitRarity : item.slug) | async; as rarity) {
+              <span>{{ attribute.v }}</span>
+              @if ((attribute.v | traitRarity : item.slug) | async; as rarity) {
                 <span class="percent">
                   ({{ (+(rarity) / (item.collection?.supply || 0)) | percent : '1.1-1' }})
                 </span>
@@ -27,7 +27,7 @@
             </a>
 
             <span class="trait-count">
-              @if ((item.v | traitRarity : item.slug) | async; as rarity) {
+              @if ((attribute.v | traitRarity : item.slug) | async; as rarity) {
                 <span>{{ (rarity) + ' ' + item.collection?.name + ' have this.' }}</span>
               }
             </span>
