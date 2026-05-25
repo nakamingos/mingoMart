@@ -106,7 +106,7 @@ section {
       align-items: flex-start;
       padding-bottom: 4rem;
 
-      .intro-phunks {
+      .intro-items {
         display: grid;
         grid-template-columns: repeat(5, 20%);
         row-gap: 2rem;
@@ -147,7 +147,7 @@ section {
       .inner {
         flex-direction: column;
 
-        .intro-phunks {
+        .intro-items {
           width: 100%;
           grid-template-columns: repeat(5, 1fr);
           row-gap: 1rem;

@@ -118,7 +118,7 @@ export class AdminService implements OnModuleInit {
     const transfers = ethscription.ethscription_transfers;
 
     for (const transfer of transfers) {
-      await fetch(`https://relay.ethereumphunks.com/admin/reindex-transaction`, {
+      await fetch(`https://relay.mingomart.com/admin/reindex-transaction`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

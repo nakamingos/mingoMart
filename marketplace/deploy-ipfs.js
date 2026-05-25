@@ -97,7 +97,7 @@ async function deployToIPFS() {
       day: "2-digit",
     }).replace("/", "").toLowerCase();
 
-    const buildDir = path.join(__dirname, 'dist', `etherphunks-market-${config}_${timestamp}`);
+    const buildDir = path.join(__dirname, 'dist', `mingomart-market-${config}_${timestamp}`);
 
     if (!fs.existsSync(buildDir)) {
       logError(`Build directory not found: ${buildDir}`);

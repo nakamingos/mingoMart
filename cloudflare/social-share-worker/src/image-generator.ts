@@ -34,7 +34,7 @@ export async function generateSocialCardImageSVG(data: {
 	const canvasWidth = 1200;
 	const canvasHeight = 630;
 	const tokenId = data.ethscription.tokenId !== null ? `#${data.ethscription.tokenId}` : '';
-	const collectionName = data.collection.singleName || data.collection.name || 'EtherPhunk';
+	const collectionName = data.collection.singleName || data.collection.name || 'Ethscription';
 
 	// Get NFT image URL
 	const nftImageUrl = data.ethscription.sha
@@ -69,7 +69,7 @@ export async function generateSocialCardImageSVG(data: {
 	${nftImageUrl ? `<image href="${nftImageUrl}" x="${canvasWidth / 4}" y="${canvasHeight - 430}" width="${canvasWidth / 2}" height="${canvasHeight / 2}" preserveAspectRatio="xMidYMid meet"/>` : ''}
 
 	<!-- Logo placeholder (we'll use text for now) -->
-	<text x="40" y="100" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#000">EtherPhunks</text>
+	<text x="40" y="100" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#000">Mingo Mart</text>
 </svg>`;
 
 	return svg;
@@ -100,7 +100,7 @@ export async function generateCollectionCardImageSVG(collection: Collection): Pr
 	<text x="${canvasWidth / 2}" y="${canvasHeight / 2}" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="#000" text-anchor="middle" dominant-baseline="middle">${escapeSvgText(collection.name)}</text>
 
 	<!-- Logo -->
-	<text x="40" y="100" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#000">EtherPhunks</text>
+	<text x="40" y="100" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#000">Mingo Mart</text>
 </svg>`;
 
 	return svg;
@@ -132,7 +132,7 @@ export async function generateMarketCardImageSVG(collection: Collection, marketT
 	<text x="${canvasWidth / 2}" y="${canvasHeight / 2 + 50}" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#000" text-anchor="middle" dominant-baseline="middle">${escapeSvgText(collection.name)}</text>
 
 	<!-- Logo -->
-	<text x="40" y="100" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#000">EtherPhunks</text>
+	<text x="40" y="100" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#000">Mingo Mart</text>
 </svg>`;
 
 	return svg;

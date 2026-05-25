@@ -22,7 +22,7 @@ export const environment: Environment = {
   bridgeAddressL2: '0x2A953aA14e986b0595A0c5201dD267391BF7d39d'.toLowerCase(),
   auctionHouseAddress: '0x3A50E6D0F8d1c68cD2DD1510a982323805272d48'.toLowerCase(),
 
-  relayUrl: 'https://relay-sepolia.ethereumphunks.com',
+  relayUrl: 'https://relay-sepolia.mingomart.com',
   staticUrl: 'https://kcbuycbhynlmsrvoegzp.supabase.co/storage/v1/object/public',
 
   // Prod

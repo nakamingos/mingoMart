@@ -1,6 +1,6 @@
-# Ethereum Phunks Indexer
+# Mingo Mart Indexer
 
-An EVM inscriptions indexer that indexes collections curated by the Ethereum Phunks marketplace. Follows the [Ethscriptions Protocol](https://ethscriptions.com) specifications for processing transfers, contract events, points, comments, auctions, and marketplace activities. Supports Ethereum Mainnet and Sepolia testnet with Layer 2 support.
+An EVM inscriptions indexer that indexes collections curated by the Mingo Mart marketplace. Follows the [Ethscriptions Protocol](https://ethscriptions.com) specifications for processing transfers, contract events, points, comments, auctions, and marketplace activities. Supports Ethereum Mainnet and Sepolia testnet with Layer 2 support.
 
 ## ⚠️ Breaking Changes Notice
 
