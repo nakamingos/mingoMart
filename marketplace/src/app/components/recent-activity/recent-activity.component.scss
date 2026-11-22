@@ -144,7 +144,8 @@ section {
     }
 
     $event-color-groups: (
-      (created sale hashbought): var(--event-base-background, rgba(var(--base-color), 1)),
+      (created): var(--event-base-background, rgba(var(--base-color), 1)),
+      (sale hashbought): rgba(var(--base-color), 1),
       (transfer): rgba(var(--transferred-color), 1),
       (offered hashoffered hashofferwithdrawn hashnolongerforsale): rgba(var(--listed-color), 1),
       (hashbidentered hashbidwithdrawn ): rgba(var(--bid-color), 1),

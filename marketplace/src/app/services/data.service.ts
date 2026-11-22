@@ -331,7 +331,7 @@ export class DataService {
         if (res.error) throw res.error;
 
         const result = (res.data || []).map((tx: any) => {
-          let type = tx.type;
+          let type = this.normalizeEventType(tx.type);
           if (type === 'transfer') {
             if (tx.to?.toLowerCase() === environment.bridgeAddress) type = 'bridgeOut';
             if (tx.from?.toLowerCase() === environment.bridgeAddress) type = 'bridgeIn';
@@ -379,7 +379,7 @@ export class DataService {
       }),
       map((data: any) => {
         return data.map((tx: any) => {
-          let type: EventType = tx.type;
+          let type: EventType = this.normalizeEventType(tx.type);
 
           if (tx.type === 'transfer') {
             if (tx.to.toLowerCase() === environment.marketAddress) type = 'escrow';
@@ -437,6 +437,13 @@ export class DataService {
         return events;
       }),
     );
+  }
+
+  normalizeEventType(type: EventType | string | null): EventType {
+    const normalizedType = type?.toLowerCase();
+    if (['itembought', 'sale'].includes(normalizedType || '')) return 'HashBought';
+    if (['itemoffered', 'offered', 'itemlisted', 'listed'].includes(normalizedType || '')) return 'HashOffered';
+    return type as EventType;
   }
 
   /**
