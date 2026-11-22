@@ -9,6 +9,8 @@ import * as dotenv from 'dotenv';
 import { createPublicClient, hexToString, http } from 'viem';
 import { mainnet, sepolia } from 'viem/chains';
 
+import { isPng, optimizePng, PNG_OPTIMIZE_MAX } from '../src/utils/png-optimize';
+
 type AttributeValue = string | number | boolean | Array<string | number | boolean>;
 
 type MetadataAttribute = {
@@ -71,6 +73,7 @@ type Options = {
   skipImages: boolean;
   skipAttributes: boolean;
   skipMintData: boolean;
+  skipOptimize: boolean;
 };
 
 type TransparentUploadEntry = {
@@ -113,6 +116,7 @@ function parseArgs(): Options {
     skipImages: false,
     skipAttributes: false,
     skipMintData: false,
+    skipOptimize: false,
   };
 
   args.forEach((arg, index) => {
@@ -142,6 +146,8 @@ function parseArgs(): Options {
       options.skipAttributes = true;
     } else if (arg === '--skip-mint-data') {
       options.skipMintData = true;
+    } else if (arg === '--skip-optimize') {
+      options.skipOptimize = true;
     }
   });
 
@@ -149,7 +155,7 @@ function parseArgs(): Options {
     console.error(
       'Usage: ts-node scripts/upload-collection-storage-assets.ts --metadata ./metadata/<slug>.json ' +
       '[--transparent-dir ./.tmp/transparents/<slug>] [--network mainnet|sepolia] [--concurrency 12] ' +
-      '[--dry-run] [--skip-images] [--skip-attributes] [--skip-mint-data]'
+      '[--dry-run] [--skip-images] [--skip-attributes] [--skip-mint-data] [--skip-optimize]'
     );
     process.exit(1);
   }
@@ -160,6 +166,35 @@ function parseArgs(): Options {
   }
 
   return options;
+}
+
+const optimizeStats = { files: 0, optimized: 0, originalBytes: 0, bytes: 0 };
+
+/**
+ * Losslessly re-encode PNGs before upload (pixel-identical, metadata stripped).
+ * Non-PNG files are passed through. PNGs are always labelled image/png.
+ */
+async function prepareImage(body: Buffer, contentType: string, options: Options) {
+  if (!isPng(body)) return { body, contentType };
+  if (options.skipOptimize) return { body, contentType: 'image/png' };
+
+  const result = await optimizePng(body, PNG_OPTIMIZE_MAX);
+  optimizeStats.files += 1;
+  optimizeStats.optimized += result.optimized ? 1 : 0;
+  optimizeStats.originalBytes += result.originalSize;
+  optimizeStats.bytes += result.size;
+  return { body: result.buffer, contentType: 'image/png' };
+}
+
+function logOptimizeStats(label: string) {
+  if (!optimizeStats.files) return;
+  const saved = optimizeStats.originalBytes - optimizeStats.bytes;
+  console.log(
+    `  ${label}: optimized ${optimizeStats.optimized}/${optimizeStats.files} PNGs, ` +
+    `${optimizeStats.originalBytes} -> ${optimizeStats.bytes} bytes ` +
+    `(saved ${saved}, ${((100 * saved) / optimizeStats.originalBytes).toFixed(1)}%)`
+  );
+  Object.assign(optimizeStats, { files: 0, optimized: 0, originalBytes: 0, bytes: 0 });
 }
 
 function normalizeSha(sha: string): string {
@@ -580,12 +615,13 @@ async function uploadImages(
       );
     }
 
-    const { buffer, contentType } = parseDataUri(dataUri);
+    const parsed = parseDataUri(dataUri);
+    const { body, contentType } = await prepareImage(parsed.buffer, parsed.contentType, options);
     await uploadObject({
       supabase,
       bucket: 'static',
       path: `images/${normalizedSha}`,
-      body: buffer,
+      body,
       contentType,
       cacheControl: '31536000',
       metadata: {
@@ -600,6 +636,7 @@ async function uploadImages(
       console.log(`  Uploaded ${completed}/${metadata.collection_items.length}`);
     }
   });
+  logOptimizeStats('Images');
 }
 
 async function uploadTransparentImages(
@@ -636,13 +673,13 @@ async function uploadTransparentImages(
   let completed = 0;
 
   await runWithConcurrency(entries, options.concurrency, async (entry) => {
-    const body = await readFile(entry.filePath);
+    const { body, contentType } = await prepareImage(await readFile(entry.filePath), entry.contentType, options);
     await uploadObject({
       supabase,
       bucket: 'static',
       path: `images/${entry.normalizedSha}_transparent`,
       body,
-      contentType: entry.contentType,
+      contentType,
       cacheControl: '31536000',
       metadata: {
         slug: metadata.slug,
@@ -657,6 +694,7 @@ async function uploadTransparentImages(
       console.log(`  Uploaded ${completed}/${entries.length} transparents`);
     }
   });
+  logOptimizeStats('Transparent images');
 }
 
 async function main() {

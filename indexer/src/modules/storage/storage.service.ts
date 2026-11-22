@@ -10,6 +10,7 @@ import { Ethscription } from '@/modules/storage/models/db';
 
 import { TIC } from '@/modules/comments/models/tic';
 import { AppConfigService } from '@/config/config.service';
+import { isPng, optimizePng, PNG_OPTIMIZE_MAX } from '@/utils/png-optimize';
 
 @Injectable()
 export class StorageService implements OnModuleInit {
@@ -437,12 +438,17 @@ export class StorageService implements OnModuleInit {
     extension: string,
     slug: string
   ): Promise<void> {
+    // Images are keyed by content hash and never change, so they get a 1-year cache.
+    // PNGs are re-encoded losslessly (pixel-identical, metadata stripped) before upload.
+    const optimized = await optimizePng(imageBuffer, PNG_OPTIMIZE_MAX);
+    const contentType = isPng(imageBuffer) ? 'image/png' : `image/${extension}`;
+
     const { data, error } = await this.supabase.storage
       .from('static/images')
       .upload(
         sha,
-        imageBuffer,
-        { contentType: `image/${extension}`, metadata: { slug }, upsert: true }
+        optimized.buffer,
+        { contentType, cacheControl: '31536000', metadata: { slug }, upsert: true }
       );
 
     if (error) Logger.error(error.message, 'Error uploading image');
@@ -459,7 +465,8 @@ export class StorageService implements OnModuleInit {
       .upload(
         filename,
         imageBuffer,
-        { contentType: `image/${extension}`, upsert: true }
+        // Cards are regenerated in place, so keep the cache short.
+        { contentType: `image/${extension}`, cacheControl: '3600', upsert: true }
       );
 
     if (error) Logger.error(error.message, 'Error uploading card image');

@@ -4,6 +4,7 @@ import { createCanvas, Image, registerFont } from 'canvas';
 import type { CanvasRenderingContext2D } from 'canvas';
 
 import { Collection, Ethscription } from '@/modules/storage/models/db';
+import { optimizePng, PNG_OPTIMIZE_FAST } from '@/utils/png-optimize';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
@@ -183,8 +184,7 @@ export class ImageService implements OnModuleInit {
       Logger.error('Failed to load logo:', err);
     }
 
-    const buffer = canvas.toBuffer('image/png');
-    return buffer;
+    return this.encodeCard(canvas.toBuffer('image/png'));
   }
 
   async generateCollectionSocialImage(
@@ -322,7 +322,15 @@ export class ImageService implements OnModuleInit {
       Logger.error('Failed to load logo:', err);
     }
 
-    const buffer = canvas.toBuffer('image/png');
-    return buffer;
+    return this.encodeCard(canvas.toBuffer('image/png'));
+  }
+
+  /**
+   * Lossless re-encode of a rendered card (pixel-identical, typically ~30% smaller).
+   * Uses the fast search so request-time card generation stays quick (~250 ms).
+   */
+  private async encodeCard(png: Buffer): Promise<Buffer> {
+    const result = await optimizePng(png, PNG_OPTIMIZE_FAST);
+    return result.buffer;
   }
 }
