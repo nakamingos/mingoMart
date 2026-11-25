@@ -56,7 +56,7 @@ export type EmblemVaultMapping = {
   wrappedOwner: string | null;
   status: string | null;
   metadataUrl: string;
-  metadata: EmblemVaultMetadata;
+  metadata: null;
 };
 
 type EmblemVaultTransfer = {
@@ -149,7 +149,9 @@ export class ExternalVenuesService {
       wrappedOwner: metadata.ownershipInfo?.owner?.toLowerCase() || null,
       status: metadata.ownershipInfo?.status || metadata.status || null,
       metadataUrl,
-      metadata,
+      // The full Emblem Vault response (~4 KB each) isn't stored: the fields above are all we
+      // use, and it can always be re-fetched from metadataUrl.
+      metadata: null,
     };
   }
 
