@@ -185,14 +185,12 @@ async function upsertAttributes(
   supabase: ReturnType<typeof initSupabase>,
   rows: ReturnType<typeof buildAttributeRows>,
 ) {
-  for (const table of ['attributes_new', 'attributes']) {
-    for (let index = 0; index < rows.length; index += UPSERT_BATCH_SIZE) {
-      const batch = rows.slice(index, index + UPSERT_BATCH_SIZE);
-      const { error } = await supabase
-        .from(table)
-        .upsert(batch, { onConflict: 'sha' });
-      if (error) throw error;
-    }
+  for (let index = 0; index < rows.length; index += UPSERT_BATCH_SIZE) {
+    const batch = rows.slice(index, index + UPSERT_BATCH_SIZE);
+    const { error } = await supabase
+      .from('attributes_new')
+      .upsert(batch, { onConflict: 'sha' });
+    if (error) throw error;
   }
 }
 

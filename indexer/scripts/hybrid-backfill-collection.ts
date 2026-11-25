@@ -7,7 +7,7 @@
  * historical block:
  * 1. Loads collection metadata JSON
  * 2. Validates and normalizes data
- * 3. Populates attributes tables
+ * 3. Populates the attributes_new table
  * 4. Creates/verifies the collection exists
  * 5. Fetches creation + transfer history from the Ethscriptions API
  * 6. Fetches collection-scoped marketplace, auction, and external wrapper tx hashes from L1 logs
@@ -665,11 +665,6 @@ async function populateAttributes(supabase: any, slug: string, items: Collection
     .from('attributes_new')
     .upsert(attributeRecords, { onConflict: 'sha' });
   if (errorNew) throw errorNew;
-
-  const { error: errorLegacy } = await supabase
-    .from('attributes')
-    .upsert(attributeRecords, { onConflict: 'sha' });
-  if (errorLegacy) throw errorLegacy;
 
   console.log(`Populated ${attributeRecords.length} attribute records`);
 }

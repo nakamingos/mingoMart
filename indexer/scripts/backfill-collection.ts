@@ -566,19 +566,7 @@ async function populateAttributes(supabase: any, slug: string, items: Collection
     throw errorNew;
   }
 
-  // Also upsert to legacy attributes table (required for FK constraints)
-  const { error: errorLegacy } = await supabase
-    .from('attributes')
-    .upsert(attributeRecords, {
-      onConflict: 'sha'
-    });
-
-  if (errorLegacy) {
-    console.error('❌ Error populating attributes:', errorLegacy);
-    throw errorLegacy;
-  }
-
-  console.log(`✅ Populated ${attributeRecords.length} attribute records in both tables`);
+  console.log(`✅ Populated ${attributeRecords.length} attribute records`);
 }
 
 // Create or verify collection exists
