@@ -4,6 +4,7 @@ export const eventVenueLabels: Record<EventVenue, string> = {
   'native-ethscriptions': 'Ethscriptions',
   'mingomart-market': 'Mingo Mart',
   'mingomart-auction': 'Mingo Mart Auctions',
+  'etherphunks-market': 'EtherPhunks',
   'ethscriptions-market': 'Ethscriptions.com',
   'etch-market': 'Etch',
   'ordex-market': 'Ordex',

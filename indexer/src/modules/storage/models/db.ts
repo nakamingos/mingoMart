@@ -202,6 +202,6 @@ export interface EthscriptionWithCollectionAndAttributes {
   attributes: AttributeItem;
 }
 
-export type EventVenue = 'native-ethscriptions' | 'mingomart-market' | 'mingomart-auction' | 'ethscriptions-market' | 'etch-market' | 'ordex-market' | 'emblem-vault' | 'opensea' | 'blur';
+export type EventVenue = 'native-ethscriptions' | 'mingomart-market' | 'mingomart-auction' | 'etherphunks-market' | 'ethscriptions-market' | 'etch-market' | 'ordex-market' | 'emblem-vault' | 'opensea' | 'blur';
 
 export type EventType = 'transfer' | 'sale' | 'created' | 'burned' | 'wrapped' | 'unwrapped' | 'HashOffered' | 'HashBought' | 'HashNoLongerForSale' | 'AuctionCreated' | 'AuctionBid' | 'AuctionExtended' | 'AuctionSettled';

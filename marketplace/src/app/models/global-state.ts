@@ -205,6 +205,7 @@ export type EventVenue =
   | 'native-ethscriptions'
   | 'mingomart-market'
   | 'mingomart-auction'
+  | 'etherphunks-market'
   | 'ethscriptions-market'
   | 'etch-market'
   | 'ordex-market'
