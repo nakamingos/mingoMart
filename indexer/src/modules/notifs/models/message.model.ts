@@ -5,8 +5,13 @@ export interface NotificationMessage {
   message: string;
   link: string;
   imageUrl?: string;
-  imageBuffer?: Buffer; // Optional - kept for backwards compatibility but not used
-  filename?: string; // Optional - kept for backwards compatibility but not used
+  /** Card image attached directly to the Discord message (preferred over imageUrl). */
+  imageBuffer?: Buffer;
+  filename?: string;
+  /** When the sale happened; shown as the embed timestamp in the footer. */
+  timestamp?: Date;
+  /** Syntax highlighting for the message code block ('diff' colours +/- rows). */
+  codeLanguage?: string;
 }
 
 export interface NotifItemData {

@@ -52,20 +52,32 @@ export class DiscordService {
     // Get appropriate channel based on chain ID
     const chainId = this.configSvc.chain.chainIdL1;
     const channel = this.client.channels.cache.get(chainId === 1 ? '1376577560003088394' : '1376577560003088394') as TextChannel;
+    if (!channel) {
+      Logger.error('Discord notification channel not found (is the bot still in the server?)');
+      return;
+    }
 
     const exampleEmbed = new EmbedBuilder()
       .setColor(0x5B28FF)
       .setTitle(data.title)
       .setURL(data.link)
-      .setDescription(codeBlock(data.message))
-      // .setTimestamp()
+      .setDescription(data.codeLanguage ? codeBlock(data.codeLanguage, data.message) : codeBlock(data.message))
       .setFooter({ text: 'Be Rad. Be Comrade. 🫡' });
 
-    if (data.imageUrl) {
+    // Discord renders this next to the footer text, in each reader's own timezone.
+    if (data.timestamp) exampleEmbed.setTimestamp(data.timestamp);
+
+    // Attach the card itself so the embed doesn't depend on externally hosted images.
+    const files: AttachmentBuilder[] = [];
+    if (data.imageBuffer) {
+      const filename = data.filename || 'card.png';
+      files.push(new AttachmentBuilder(data.imageBuffer, { name: filename }));
+      exampleEmbed.setImage(`attachment://${filename}`);
+    } else if (data.imageUrl) {
       exampleEmbed.setImage(data.imageUrl);
     }
 
-    await channel.send({ embeds: [exampleEmbed] });
+    await channel.send({ embeds: [exampleEmbed], files });
   }
 }
 

@@ -118,27 +118,7 @@ export class CardsService implements OnModuleInit {
     if (cachedUrl) return cachedUrl;
 
     try {
-      const { ethscription, collection, attributes } = data;
-
-      const transformedAttributes = Object.keys(attributes.values).map((attrKey: string) => {
-        const v = Array.isArray(attributes.values[attrKey])
-          ? attributes.values[attrKey][0]
-          : attributes.values[attrKey];
-
-        const rarity = rarityData[ethscription.slug]?.[v] || Infinity;
-
-        return {
-          k: attrKey,
-          v,
-          rarity
-        };
-      }).sort((a, b) => (a.rarity || Infinity) - (b.rarity || Infinity));
-
-      const imageBuffer = await this.imgSvc.generateSocialShareImage({
-        ethscription,
-        collection,
-        attributes: transformedAttributes
-      });
+      const imageBuffer = await this.buildEthscriptionCardImage(data);
 
       const socialImageFilename = `details-${hashId}.png`;
       await this.storageSvc.uploadCardImage(
@@ -154,6 +134,47 @@ export class CardsService implements OnModuleInit {
     }
 
     return imageUrl;
+  }
+
+  /**
+   * Renders the share card for an ethscription without uploading it (used for Discord
+   * notifications, which attach the image directly).
+   */
+  async generateEthscriptionCardImage(hashId: string): Promise<Buffer | null> {
+    try {
+      const data = await this.storageSvc.getEthscriptionWithCollectionAndAttributes(hashId);
+      if (!data) return null;
+      return await this.buildEthscriptionCardImage(data);
+    } catch (error) {
+      console.error('Failed to render card image:', error);
+      return null;
+    }
+  }
+
+  private async buildEthscriptionCardImage(
+    data: Awaited<ReturnType<StorageService['getEthscriptionWithCollectionAndAttributes']>>
+  ): Promise<Buffer> {
+    const { ethscription, collection, attributes } = data;
+
+    const transformedAttributes = Object.keys(attributes.values).map((attrKey: string) => {
+      const v = Array.isArray(attributes.values[attrKey])
+        ? attributes.values[attrKey][0]
+        : attributes.values[attrKey];
+
+      const rarity = rarityData[ethscription.slug]?.[v] || Infinity;
+
+      return {
+        k: attrKey,
+        v,
+        rarity
+      };
+    }).sort((a, b) => (a.rarity || Infinity) - (b.rarity || Infinity));
+
+    return this.imgSvc.generateSocialShareImage({
+      ethscription,
+      collection,
+      attributes: transformedAttributes
+    });
   }
 
   private getPublicStorageUrl(path: string): string {
