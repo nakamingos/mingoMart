@@ -1437,6 +1437,37 @@ export class StorageService implements OnModuleInit {
    * @param hashId The hash ID of the item
    * @returns The latest item bought event
    */
+  /**
+   * Events that delivered an item to an address (purchases, creations, transfers) at or before
+   * a given time, newest first. Used to work out a seller's cost basis.
+   */
+  async getEventsReceivedByAddress(hashId: string, address: string, before: Date | string): Promise<db.Event[]> {
+    const { data, error } = await this.supabase
+      .from(`events${this.suffix}`)
+      .select('*')
+      .eq('hashId', hashId.toLowerCase())
+      .eq('to', address.toLowerCase())
+      .in('type', ['HashBought', 'created', 'transfer'])
+      .lte('blockTimestamp', new Date(before).toISOString())
+      .order('blockTimestamp', { ascending: false })
+      .order('txIndex', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  /** Emblem Vault vault addresses that have held this item (its escrow while wrapped). */
+  async getWrapperVaultAddresses(hashId: string): Promise<string[]> {
+    const { data, error } = await this.supabase
+      .from(`wrapped_ethscriptions${this.suffix}`)
+      .select('vaultAddress')
+      .eq('hashId', hashId.toLowerCase());
+
+    if (error) throw error;
+    return (data || []).map((row) => row.vaultAddress?.toLowerCase()).filter(Boolean);
+  }
+
   async getLatestBoughtEventByHashId(hashId: string): Promise<db.Event> {
     const response = this.supabase
       .from(`events${this.suffix}`)

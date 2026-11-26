@@ -104,6 +104,9 @@ export interface Ethscription {
   prevOwner: string;
   slug: string | null;
   locked: boolean;
+  /** Wei the original recipient paid to mint (null = unknown, 0 = free). See import-mint-costs.ts. */
+  mintCost?: string | null;
+  mintKind?: 'paid' | 'free' | 'airdrop' | null;
 }
 
 export interface WrappedEthscription {
