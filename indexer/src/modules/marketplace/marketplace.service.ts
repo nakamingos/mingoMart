@@ -106,10 +106,16 @@ export class MarketplaceService {
     const marketItem = await this.storageSvc.checkEthscriptionExistsByHashId(hashId);
     if (!marketItem) return;
 
+    // A MingoMartMarket listing is stored per seller (hashesOfferedForSale[seller][hashId]), and
+    // the contract can't verify deposits, so anyone can list, delist or "sell" any hash under their
+    // own address without touching the real owner's listing. We keep one listing per item: the one
+    // created by the item's verified previous owner (see HashOffered). Sales and delistings only
+    // affect that listing when they come from the same seller; anything else is ignored.
+
     if (eventName === 'HashBought') {
       const { hashId, fromAddress, toAddress, value } = args;
 
-      const removedListing = await this.storageSvc.removeListing(hashId);
+      const removedListing = await this.removeListingFromSeller(hashId, fromAddress);
       if (!removedListing) return;
 
       return {
@@ -131,37 +137,38 @@ export class MarketplaceService {
     if (eventName === 'HashNoLongerForSale') {
       const { hashId, seller } = args;
 
-      const removedListing = await this.storageSvc.removeListing(hashId);
+      // Also emitted by withdrawHash, after the item has already left escrow, so the seller can't
+      // be checked against prevOwner here. The listing it removes was validated when created.
+      const removedListing = await this.removeListingFromSeller(hashId, seller);
       if (!removedListing) return;
 
-      if (seller?.toLowerCase() === marketItem.prevOwner?.toLowerCase()) {
-        return {
-          txId: txn.hash + log.logIndex,
-          type: eventName,
-          venue: 'mingomart-market',
-          hashId: hashId.toLowerCase(),
-          from: seller.toLowerCase(),
-          to: zeroAddress,
-          blockHash: txn.blockHash,
-          txIndex: txn.transactionIndex,
-          txHash: txn.hash,
-          blockNumber: Number(txn.blockNumber),
-          blockTimestamp: createdAt,
-          value: BigInt(0).toString(),
-        };
-      }
+      return {
+        txId: txn.hash + log.logIndex,
+        type: eventName,
+        venue: 'mingomart-market',
+        hashId: hashId.toLowerCase(),
+        from: seller.toLowerCase(),
+        to: zeroAddress,
+        blockHash: txn.blockHash,
+        txIndex: txn.transactionIndex,
+        txHash: txn.hash,
+        blockNumber: Number(txn.blockNumber),
+        blockTimestamp: createdAt,
+        value: BigInt(0).toString(),
+      };
     }
 
     if (eventName === 'HashOffered') {
       const { hashId, seller, toAddress, minValue } = args;
 
-      // We do this here because this event is emitted after
-      // transfer of ownership. If the listing was NOT created
-      // by the previous owner, we should ignore it.
-      // When listing, the owner should always be the marketplace contract.
+      // This event is emitted after the transfer of ownership, so a valid listing has the
+      // marketplace contract as owner and the seller as previous owner. Anything else is a listing
+      // by someone who doesn't own the item; it lives in its own slot on the contract, so the
+      // real owner's listing (if any) stays valid and is left alone.
       if (
-        (marketItem.prevOwner && (marketItem.prevOwner.toLowerCase() !== seller.toLowerCase())) ||
-        marketItem.owner !== this.configSvc.contracts.market.l1.toLowerCase()
+        !marketItem.prevOwner ||
+        marketItem.prevOwner.toLowerCase() !== seller.toLowerCase() ||
+        marketItem.owner?.toLowerCase() !== this.configSvc.contracts.market.l1.toLowerCase()
       ) {
 
         // Write the failed listing to a file
@@ -171,17 +178,10 @@ export class MarketplaceService {
           'Listing not created by previous owner or owner is not the marketplace contract',
           hashId
         );
-
-        // Since this listing will STILL overwrite existing listings
-        // on the smart contract, we must delete the existing listing
-        // from the database (sorry to the OG lister!)
-        await this.storageSvc.removeListing(hashId);
         return;
       }
 
-      // console.log({ hashId, toAddress, minValue });
-
-      await this.storageSvc.createListing(txn, createdAt, hashId, toAddress, minValue);
+      await this.storageSvc.createListing(txn, createdAt, hashId, toAddress, minValue, false, seller);
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
@@ -197,5 +197,25 @@ export class MarketplaceService {
         value: minValue.toString(),
       };
     }
+  }
+
+  /**
+   * Removes the item's listing only if it was created by `seller`.
+   *
+   * @returns True if a listing by that seller was found and removed.
+   */
+  private async removeListingFromSeller(hashId: string, seller: string): Promise<boolean> {
+    const listing = await this.storageSvc.getListing(hashId);
+    if (!listing) return false;
+
+    if (!seller || listing.listedBy?.toLowerCase() !== seller.toLowerCase()) {
+      Logger.warn(
+        `Ignoring market event from ${seller}: the listing belongs to ${listing.listedBy}`,
+        hashId
+      );
+      return false;
+    }
+
+    return this.storageSvc.removeListing(hashId);
   }
 }

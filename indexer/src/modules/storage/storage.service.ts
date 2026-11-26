@@ -136,6 +136,8 @@ export class StorageService implements OnModuleInit {
    * @param toAddress - Address that can purchase the listing
    * @param minValue - Minimum price in wei
    * @param l2 - Whether this is an L2 listing
+   * @param listedBy - The seller, when the event names one (defaults to the transaction sender,
+   *   which differs from the seller for smart-contract wallets)
    */
   async createListing(
     txn: Transaction,
@@ -143,7 +145,8 @@ export class StorageService implements OnModuleInit {
     hashId: string,
     toAddress: string,
     minValue: bigint,
-    l2: boolean = false
+    l2: boolean = false,
+    listedBy: string = txn.from,
   ): Promise<void> {
     const response: db.ListingResponse = await this.supabase
       .from('listings' + this.suffix)
@@ -153,7 +156,7 @@ export class StorageService implements OnModuleInit {
         txHash: txn.hash.toLowerCase(),
         listed: true,
         minValue: minValue.toString(),
-        listedBy: txn.from.toLowerCase(),
+        listedBy: listedBy.toLowerCase(),
         toAddress: toAddress.toLowerCase(),
         l2,
       });
