@@ -10,6 +10,7 @@ import { Event, WrappedEthscription } from '@/modules/storage/models/db';
 import {
   EMBLEM_VAULT_METADATA_BASE_URL,
   EMBLEM_VAULT_WRAPPER_ADDRESS_L1,
+  ETHERPHUNKS_MARKET_ADDRESS_L1,
   ETCH_MARKET_ADDRESS_L1,
   ETHSCRIPTIONS_MARKET_ADDRESS_L1,
   ETHSCRIPTIONS_TRANSFER_PROXY_ADDRESS_L1,
@@ -20,6 +21,7 @@ import {
   BLUR_EXCHANGE_ADDRESS_L1,
   blurExchangeL1,
   etchMarketL1,
+  etherPhunksMarketL1,
   ethscriptionsMarketL1,
   ethscriptionsTransferProxyL1,
   ordexMarketL1,
@@ -102,6 +104,7 @@ export class ExternalVenuesService {
     const emblemVaultEvents = await this.processEmblemVaultWrapperEvents(transaction, receipt, createdAt);
 
     const events = [
+      ...await this.processEtherPhunksMarketEvents(transaction, receipt, createdAt),
       ...await this.processEthscriptionsMarketEvents(transaction, receipt, createdAt),
       ...await this.processEtchMarketEvents(transaction, receipt, createdAt),
       ...await this.processOrdexMarketEvents(transaction, receipt, createdAt),
@@ -458,6 +461,103 @@ export class ExternalVenuesService {
       if (!isNativeEth && !isWeth) return sum;
       return sum + BigInt(item.amount.toString());
     }, BigInt(0));
+  }
+
+  /**
+   * EtherPhunks market: listings, sales and delistings (ported from the pre-May 2026 indexer,
+   * when EtherPhunks was the primary market). Runs after ethscription transfers for the same
+   * transaction have been applied, so escrow deposits are already reflected in owner/prevOwner.
+   *
+   * The EtherPhunks contract keeps one listing per item, so any new offer replaces the previous
+   * one on-chain; an offer from someone other than the escrowing owner is ignored but still
+   * clears the stored listing, matching the contract.
+   */
+  private async processEtherPhunksMarketEvents(
+    transaction: Transaction,
+    receipt: TransactionReceipt,
+    createdAt: Date,
+  ): Promise<Event[]> {
+    const events: Event[] = [];
+    const logs = receipt.logs as Log<bigint, number, false, ExtractAbiEvent<typeof etherPhunksMarketL1, ContractEventName<typeof etherPhunksMarketL1>>>[];
+    const venueLogs = logs.filter((log) => log.address.toLowerCase() === ETHERPHUNKS_MARKET_ADDRESS_L1);
+    const txFrom = transaction.from?.toLowerCase();
+
+    for (const log of venueLogs) {
+      let decoded: DecodeEventLogReturnType<typeof etherPhunksMarketL1>;
+      try {
+        decoded = decodeEventLog({ abi: etherPhunksMarketL1, data: log.data, topics: log.topics });
+      } catch {
+        continue; // other EtherPhunks events (bids, deposits, admin) aren't tracked
+      }
+
+      const hashId = decoded.args.phunkId.toLowerCase();
+      const ethscription = await this.storageSvc.checkEthscriptionExistsByHashId(hashId);
+      if (!ethscription) continue;
+
+      const base = {
+        txId: transaction.hash + log.logIndex,
+        venue: 'etherphunks-market' as const,
+        hashId,
+        blockHash: transaction.blockHash,
+        txIndex: transaction.transactionIndex,
+        txHash: transaction.hash,
+        blockNumber: Number(transaction.blockNumber),
+        blockTimestamp: createdAt,
+      };
+
+      if (decoded.eventName === 'PhunkBought') {
+        const { fromAddress, toAddress, value } = decoded.args;
+        // Only valid listings are stored, so a sale without one isn't a real sale.
+        const removedListing = await this.storageSvc.removeListing(hashId);
+        if (!removedListing) continue;
+
+        events.push({
+          ...base,
+          type: 'HashBought',
+          from: fromAddress.toLowerCase(),
+          to: toAddress.toLowerCase(),
+          value: value.toString(),
+        });
+      }
+
+      if (decoded.eventName === 'PhunkNoLongerForSale') {
+        const removedListing = await this.storageSvc.removeListing(hashId);
+        if (!removedListing) continue;
+        if (txFrom !== ethscription.prevOwner?.toLowerCase()) continue;
+
+        events.push({
+          ...base,
+          type: 'HashNoLongerForSale',
+          from: txFrom,
+          to: zeroAddress,
+          value: '0',
+        });
+      }
+
+      if (decoded.eventName === 'PhunkOffered') {
+        const { toAddress, minValue } = decoded.args;
+        const listerIsEscrowOwner =
+          (!ethscription.prevOwner || ethscription.prevOwner.toLowerCase() === txFrom) &&
+          ethscription.owner?.toLowerCase() === ETHERPHUNKS_MARKET_ADDRESS_L1;
+
+        if (!listerIsEscrowOwner) {
+          Logger.warn('EtherPhunks listing not created by the escrowing owner; clearing stored listing', hashId);
+          await this.storageSvc.removeListing(hashId);
+          continue;
+        }
+
+        await this.storageSvc.createListing(transaction, createdAt, hashId, toAddress, minValue);
+        events.push({
+          ...base,
+          type: 'HashOffered',
+          from: txFrom,
+          to: toAddress.toLowerCase(),
+          value: minValue.toString(),
+        });
+      }
+    }
+
+    return events;
   }
 
   private async processEthscriptionsMarketEvents(

@@ -15,6 +15,11 @@
  *
  * This preserves ownership-sensitive ordering because replay still happens
  * in block order through the existing indexer pipeline.
+ *
+ * Catch-up mode (--catch-up) brings existing collections up to date instead of onboarding:
+ * it skips the attribute/collection writes and existence checks, and accepts several
+ * metadata files at once (comma-separated --metadata, or --all-metadata for ./metadata/*.json)
+ * so shared log queries and block replays happen once.
  */
 
 import * as fs from 'fs';
@@ -37,9 +42,13 @@ import { mainnet, sepolia } from 'viem/chains';
 
 import { marketL1 } from '../src/abi/market-L1.abi';
 import { auctionHouseL1 } from '../src/abi/auction-house-L1.abi';
+import { esip2 } from '../src/abi/ethscriptions.abi';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import {
   EMBLEM_VAULT_METADATA_BASE_URL,
   EMBLEM_VAULT_WRAPPER_ADDRESS_L1,
+  ETHERPHUNKS_MARKET_ADDRESS_L1,
+  etherPhunksMarketL1,
   ETCH_MARKET_ADDRESS_L1,
   ETCH_MARKET_ORDER_EXECUTED_TOPIC,
   ETHSCRIPTIONS_MARKET_ADDRESS_L1,
@@ -75,6 +84,15 @@ const SUPPORTED_MARKET_EVENTS = new Set([
   'HashBought',
   'HashNoLongerForSale',
   'HashOffered',
+]);
+
+// EtherPhunks lists, delists and sells on-chain; ESIP-2 transfers (escrow withdrawals, sale
+// transfers) are included as a backup to the Ethscriptions API transfer history.
+const SUPPORTED_ETHERPHUNKS_MARKET_EVENTS = new Set([
+  'PhunkOffered',
+  'PhunkBought',
+  'PhunkNoLongerForSale',
+  'ethscriptions_protocol_TransferEthscriptionForPreviousOwner',
 ]);
 
 const SUPPORTED_AUCTION_EVENTS = new Set([
@@ -172,6 +190,9 @@ interface HybridBackfillOptions {
   dryRun: boolean;
   strict: boolean;
   force: boolean;
+  catchUp: boolean;
+  apiCache?: string;
+  stopAfterSales: number;
   fromBlock?: number;
   toBlock?: number;
   logChunkSize: number;
@@ -219,6 +240,8 @@ function parseArgs(): HybridBackfillOptions {
     dryRun: false,
     strict: true,
     force: false,
+    catchUp: false,
+    stopAfterSales: 0,
     logChunkSize: DEFAULT_LOG_CHUNK_SIZE,
     reindexDelayMs: DEFAULT_REINDEX_DELAY_MS,
     chainId: 1,
@@ -267,6 +290,25 @@ function parseArgs(): HybridBackfillOptions {
       options.strict = false;
     } else if (arg === '--force') {
       options.force = true;
+    } else if (arg.startsWith('--api-cache=')) {
+      options.apiCache = arg.split('=')[1];
+    } else if (arg === '--api-cache' && args[index + 1]) {
+      options.apiCache = args[index + 1];
+    } else if (arg === '--stop-after-sale') {
+      options.stopAfterSales = 1;
+    } else if (arg.startsWith('--stop-after-sales=')) {
+      options.stopAfterSales = Number(arg.split('=')[1]);
+    } else if (arg === '--stop-after-sales' && args[index + 1]) {
+      options.stopAfterSales = Number(args[index + 1]);
+    } else if (arg === '--catch-up') {
+      options.catchUp = true;
+      options.force = true;
+    } else if (arg === '--all-metadata') {
+      options.metadata = readdirSync('./metadata')
+        .filter((file) => file.endsWith('.json'))
+        .sort()
+        .map((file) => `./metadata/${file}`)
+        .join(',');
     } else if (arg.startsWith('--from-block=')) {
       options.fromBlock = Number(arg.split('=')[1]);
     } else if (arg === '--from-block' && args[index + 1]) {
@@ -876,6 +918,7 @@ async function fetchEthscriptionData(
 function extractCollectionHashId(args: Record<string, unknown>): string | null {
   const raw =
     args.hashId ||
+    args.phunkId ||
     args.potentialEthscriptionId ||
     args.id ||
     args.ethscriptionId ||
@@ -943,6 +986,120 @@ async function fetchEmblemVaultHashIdForToken(
   return null;
 }
 
+// ----------------------------------------------------------------------------- log fetching
+//
+// eth_getLogs through the RPC, or through Etherscan's logs API when ETHERSCAN_API_KEY is set
+// (useful when the RPC plan limits log block ranges). Etherscan returns at most 1,000 logs per
+// request, so ranges that hit the cap are split until every log is retrieved.
+
+const ETHERSCAN_API_URL = 'https://api.etherscan.io/v2/api';
+const ETHERSCAN_PAGE_SIZE = 1000;
+const ETHERSCAN_MIN_INTERVAL_MS = 350; // free plan allows a few calls per second
+let lastEtherscanCallAt = 0;
+
+async function getLogs(
+  client: ReturnType<typeof initL1Client>,
+  filter: { address: Address; fromBlock: number; toBlock: number; topic0?: `0x${string}` | `0x${string}`[] },
+): Promise<RpcLog[]> {
+  const etherscanKey = process.env.ETHERSCAN_API_KEY?.trim();
+  if (!etherscanKey) {
+    return await client.request({
+      method: 'eth_getLogs',
+      params: [{
+        address: filter.address,
+        fromBlock: toHex(filter.fromBlock),
+        toBlock: toHex(filter.toBlock),
+        ...(filter.topic0 ? { topics: [filter.topic0] } : {}),
+      }],
+    }) as RpcLog[];
+  }
+
+  // Etherscan filters on a single topic0, so query each one and merge.
+  const topics = filter.topic0 === undefined ? [undefined] : ([] as (`0x${string}` | undefined)[]).concat(filter.topic0);
+  const logs: RpcLog[] = [];
+  for (const topic0 of topics) {
+    logs.push(...await etherscanGetLogs(client.chain!.id, etherscanKey, filter.address, filter.fromBlock, filter.toBlock, topic0));
+  }
+  return logs;
+}
+
+async function etherscanGetLogs(
+  chainId: number,
+  apiKey: string,
+  address: Address,
+  fromBlock: number,
+  toBlock: number,
+  topic0?: `0x${string}`,
+): Promise<RpcLog[]> {
+  const page = await etherscanRequest(chainId, apiKey, address, fromBlock, toBlock, topic0);
+  if (page.length < ETHERSCAN_PAGE_SIZE) return page;
+
+  if (fromBlock === toBlock) {
+    throw new Error(`Etherscan returned ${ETHERSCAN_PAGE_SIZE}+ logs for a single block (${fromBlock}); cannot split further`);
+  }
+  const mid = Math.floor((fromBlock + toBlock) / 2);
+  return [
+    ...await etherscanGetLogs(chainId, apiKey, address, fromBlock, mid, topic0),
+    ...await etherscanGetLogs(chainId, apiKey, address, mid + 1, toBlock, topic0),
+  ];
+}
+
+async function etherscanRequest(
+  chainId: number,
+  apiKey: string,
+  address: Address,
+  fromBlock: number,
+  toBlock: number,
+  topic0?: `0x${string}`,
+): Promise<RpcLog[]> {
+  const params = new URLSearchParams({
+    chainid: String(chainId),
+    module: 'logs',
+    action: 'getLogs',
+    address,
+    fromBlock: String(fromBlock),
+    toBlock: String(toBlock),
+    page: '1',
+    offset: String(ETHERSCAN_PAGE_SIZE),
+    apikey: apiKey,
+  });
+  if (topic0) params.set('topic0', topic0);
+
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    const wait = lastEtherscanCallAt + ETHERSCAN_MIN_INTERVAL_MS - Date.now();
+    if (wait > 0) await sleep(wait);
+    lastEtherscanCallAt = Date.now();
+
+    try {
+      const response = await fetch(`${ETHERSCAN_API_URL}?${params}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const body = await response.json() as { status: string; message: string; result: unknown };
+
+      if (body.status === '1' && Array.isArray(body.result)) {
+        return (body.result as RpcLog[]).map(normalizeEtherscanLog);
+      }
+      if (body.status === '0' && /no records found/i.test(body.message)) return [];
+      // Rate limits and transient errors come back as status 0 with a message in result.
+      throw new Error(`${body.message}: ${typeof body.result === 'string' ? body.result : JSON.stringify(body.result)}`);
+    } catch (error) {
+      if (attempt === 6) throw new Error(`Etherscan getLogs failed for ${address} ${fromBlock}-${toBlock}: ${getErrorMessage(error)}`);
+      await sleep(1000 * attempt);
+    }
+  }
+  return [];
+}
+
+function normalizeEtherscanLog(log: RpcLog): RpcLog {
+  // Etherscan encodes zero as "0x" in some numeric fields.
+  const fix = (value: `0x${string}` | null) => (value === '0x' ? '0x0' : value);
+  return {
+    ...log,
+    blockNumber: fix(log.blockNumber),
+    transactionIndex: fix(log.transactionIndex),
+    logIndex: fix(log.logIndex),
+  };
+}
+
 async function fetchEmblemVaultWrapperTransactions(params: {
   client: ReturnType<typeof initL1Client>;
   address: Address;
@@ -963,15 +1120,12 @@ async function fetchEmblemVaultWrapperTransactions(params: {
     const endBlock = Math.min(startBlock + currentChunkSize - 1, params.toBlock);
 
     try {
-      const logs = await params.client.request({
-        method: 'eth_getLogs',
-        params: [{
-          address: params.address,
-          fromBlock: toHex(startBlock),
-          toBlock: toHex(endBlock),
-          topics: [ERC721_TRANSFER_TOPIC],
-        }],
-      }) as RpcLog[];
+      const logs = await getLogs(params.client, {
+        address: params.address,
+        fromBlock: startBlock,
+        toBlock: endBlock,
+        topic0: ERC721_TRANSFER_TOPIC,
+      });
 
       for (const log of logs) {
         if (!log.transactionHash || log.blockNumber === null || log.transactionIndex === null) continue;
@@ -1082,15 +1236,12 @@ async function fetchCollectionScopedContractTransactions(params: {
     const endBlock = Math.min(startBlock + currentChunkSize - 1, params.toBlock);
 
     try {
-      const logs = await params.client.request({
-        method: 'eth_getLogs',
-        params: [{
-          address: params.address,
-          fromBlock: toHex(startBlock),
-          toBlock: toHex(endBlock),
-          ...(params.topic0 ? { topics: [params.topic0] } : {}),
-        }],
-      }) as RpcLog[];
+      const logs = await getLogs(params.client, {
+        address: params.address,
+        fromBlock: startBlock,
+        toBlock: endBlock,
+        topic0: params.topic0,
+      });
 
       for (const log of logs) {
         let decoded: any;
@@ -1209,19 +1360,35 @@ async function collectTransactionsForRange(params: {
     (tx) => tx.block_number >= params.fromBlock && tx.block_number <= params.toBlock,
   );
 
-  const marketTransactions = await fetchCollectionScopedContractTransactions({
-    label: 'marketplace-log',
-    client: params.client,
-    address: params.marketAddress,
-    abi: marketL1 as Abi,
-    fromBlock: Math.max(params.fromBlock, params.marketDeploymentBlock),
-    toBlock: params.toBlock,
-    chunkSize: params.logChunkSize,
-    supportedEvents: SUPPORTED_MARKET_EVENTS,
-    collectionHashIds: params.collectionHashIds,
-  });
+  const marketTransactions = isZeroAddress(params.marketAddress)
+    ? []
+    : await fetchCollectionScopedContractTransactions({
+      label: 'marketplace-log',
+      client: params.client,
+      address: params.marketAddress,
+      abi: marketL1 as Abi,
+      fromBlock: Math.max(params.fromBlock, params.marketDeploymentBlock),
+      toBlock: params.toBlock,
+      chunkSize: params.logChunkSize,
+      supportedEvents: SUPPORTED_MARKET_EVENTS,
+      collectionHashIds: params.collectionHashIds,
+    });
 
-  const auctionTransactions = params.auctionHouseAddress
+  const etherPhunksMarketTransactions = params.network === 'mainnet'
+    ? await fetchCollectionScopedContractTransactions({
+      label: 'etherphunks-market-log',
+      client: params.client,
+      address: ETHERPHUNKS_MARKET_ADDRESS_L1,
+      abi: [...etherPhunksMarketL1, ...esip2] as Abi,
+      fromBlock: params.fromBlock,
+      toBlock: params.toBlock,
+      chunkSize: params.logChunkSize,
+      supportedEvents: SUPPORTED_ETHERPHUNKS_MARKET_EVENTS,
+      collectionHashIds: params.collectionHashIds,
+    })
+    : [];
+
+  const auctionTransactions = params.auctionHouseAddress && !isZeroAddress(params.auctionHouseAddress)
     ? await fetchCollectionScopedContractTransactions({
       label: 'auction-log',
       client: params.client,
@@ -1295,6 +1462,7 @@ async function collectTransactionsForRange(params: {
     { name: 'creations', transactions: creationTransactions },
     { name: 'transfers', transactions: filteredTransferTransactions },
     { name: 'market', transactions: marketTransactions },
+    { name: 'etherphunks-market', transactions: etherPhunksMarketTransactions },
     { name: 'auction', transactions: auctionTransactions },
     { name: 'ethscriptions-market', transactions: ethscriptionsMarketTransactions },
     { name: 'etch-market', transactions: etchMarketTransactions },
@@ -1307,12 +1475,17 @@ async function collectTransactionsForRange(params: {
     creationTransactions,
     filteredTransferTransactions,
     marketTransactions,
+    etherPhunksMarketTransactions,
     auctionTransactions,
     ethscriptionsMarketTransactions,
     etchMarketTransactions,
     ethscriptionsTransferProxyTransactions,
     emblemVaultWrapperTransactions,
   };
+}
+
+function isZeroAddress(address: string | null | undefined): boolean {
+  return !address || /^0x0{40}$/i.test(address);
 }
 
 function getUniqueSortedBlockNumbers(transactions: TransactionToProcess[]): number[] {
@@ -1361,7 +1534,8 @@ async function processBlocks(
   apiKey: string,
   dryRun: boolean,
   reindexDelayMs: number,
-): Promise<{ processed: number; errors: number; failedBlocks: number[] }> {
+  shouldStopAfterBlock?: (blockNumber: number) => Promise<boolean>,
+): Promise<{ processed: number; errors: number; failedBlocks: number[]; stoppedAtBlock?: number }> {
   console.log(`\nProcessing ${blockNumbers.length} blocks (${transactions.length} discovered transactions) through the indexer...`);
 
   if (dryRun) {
@@ -1445,6 +1619,11 @@ async function processBlocks(
       errors++;
     }
 
+    if (blockProcessed && shouldStopAfterBlock && await shouldStopAfterBlock(blockNumber)) {
+      console.log(`\nStopping after block ${blockNumber}: reached the requested number of sales in collections with notifications on.`);
+      return { processed, errors, failedBlocks, stoppedAtBlock: blockNumber };
+    }
+
     await sleep(reindexDelayMs);
   }
 
@@ -1454,6 +1633,25 @@ async function processBlocks(
 
   console.log(`Processed ${processed}/${blockNumbers.length} blocks (${errors} errors)`);
   return { processed, errors, failedBlocks };
+}
+
+async function countNotifiableSales(supabase: any, tableSuffix: string, blockNumber: number): Promise<number> {
+  const { data: sales, error } = await supabase
+    .from(`events${tableSuffix}`)
+    .select('hashId')
+    .eq('type', 'HashBought')
+    .eq('blockNumber', blockNumber);
+  if (error) throw error;
+  if (!sales?.length) return 0;
+
+  const { data: items, error: itemsError } = await supabase
+    .from(`ethscriptions${tableSuffix}`)
+    .select(`hashId, collections${tableSuffix}!inner(notifications)`)
+    .in('hashId', sales.map((sale: { hashId: string }) => sale.hashId))
+    .eq(`collections${tableSuffix}.notifications`, true);
+  if (itemsError) throw itemsError;
+  const notifiable = new Set((items || []).map((item: { hashId: string }) => item.hashId));
+  return sales.filter((sale: { hashId: string }) => notifiable.has(sale.hashId)).length;
 }
 
 async function updateBlockTracker(supabase: any, chainId: number, latestBlock: number) {
@@ -1499,40 +1697,56 @@ async function main() {
       }
     }
 
-    const metadata = await loadMetadata(options.metadata);
-    if (!metadata.slug) {
-      console.error('Error: Metadata JSON must contain a "slug" field.');
+    const metadataLocations = options.metadata.split(',').map((location) => location.trim()).filter(Boolean);
+    if (metadataLocations.length > 1 && !options.catchUp) {
+      console.error('Error: multiple metadata files are only supported with --catch-up');
       process.exit(1);
     }
 
-    const validation = validateAndNormalizeMetadata(metadata);
-    if (!validation.isValid) {
-      console.error(`Validation failed with ${validation.errors.length} error(s)`);
-      if (options.strict) process.exit(1);
-    }
-
-    if (options.strict && validation.warnings.length > 0) {
-      if (validation.stats.duplicateIndexes.size > 0 || validation.stats.duplicateShas.size > 0) {
-        console.error('Duplicate indexes or SHAs detected. Cannot proceed in strict mode.');
+    const collections: { metadata: CollectionMetadata; items: CollectionItem[] }[] = [];
+    for (const location of metadataLocations) {
+      const collectionMetadata = await loadMetadata(location);
+      if (!collectionMetadata.slug) {
+        console.error(`Error: Metadata JSON must contain a "slug" field (${location}).`);
         process.exit(1);
       }
 
-      if (validation.stats.indexGaps.length > 0) {
-        console.error(`Index gaps detected (${validation.stats.indexGaps.length} gaps). Cannot proceed in strict mode.`);
+      const validation = validateAndNormalizeMetadata(collectionMetadata);
+      if (!validation.isValid) {
+        console.error(`Validation failed for ${collectionMetadata.slug} with ${validation.errors.length} error(s)`);
+        if (options.strict) process.exit(1);
+      }
+
+      if (options.strict && validation.warnings.length > 0) {
+        if (validation.stats.duplicateIndexes.size > 0 || validation.stats.duplicateShas.size > 0) {
+          console.error(`Duplicate indexes or SHAs detected in ${collectionMetadata.slug}. Cannot proceed in strict mode.`);
+          process.exit(1);
+        }
+
+        if (validation.stats.indexGaps.length > 0) {
+          console.error(`Index gaps detected in ${collectionMetadata.slug} (${validation.stats.indexGaps.length} gaps). Cannot proceed in strict mode.`);
+          process.exit(1);
+        }
+      }
+
+      if (!validation.normalizedItems.length) {
+        console.error(`No valid items to process after validation (${collectionMetadata.slug})`);
         process.exit(1);
       }
+
+      collections.push({ metadata: collectionMetadata, items: validation.normalizedItems });
     }
 
-    const itemsToProcess = validation.normalizedItems;
-    if (!itemsToProcess.length) {
-      console.error('No valid items to process after validation');
-      process.exit(1);
-    }
+    const metadata = collections[0].metadata;
+    const itemsToProcess = collections.flatMap((collection) => collection.items);
+    console.log(`  Collections: ${collections.map((c) => `${c.metadata.slug} (${c.items.length})`).join(', ')}`);
 
-    const collectionExists = await checkCollectionExists(supabase, metadata.slug, options.tableSuffix);
-    if (collectionExists && !options.force) {
-      console.error(`Collection "${metadata.slug}" already exists in the database. Use --force to continue.`);
-      process.exit(1);
+    if (!options.catchUp) {
+      const collectionExists = await checkCollectionExists(supabase, metadata.slug, options.tableSuffix);
+      if (collectionExists && !options.force) {
+        console.error(`Collection "${metadata.slug}" already exists in the database. Use --force to continue.`);
+        process.exit(1);
+      }
     }
 
     const dbCheck = await checkDuplicateIdsInDatabase(supabase, itemsToProcess, options.tableSuffix);
@@ -1541,12 +1755,25 @@ async function main() {
       process.exit(1);
     }
 
+    // The Ethscriptions API pass is slow for many items; --api-cache saves/reuses its results.
+    let apiData: Awaited<ReturnType<typeof fetchEthscriptionData>>;
+    if (options.apiCache && existsSync(options.apiCache)) {
+      apiData = JSON.parse(readFileSync(options.apiCache, 'utf8'));
+      console.log(`Loaded Ethscriptions API data from cache ${options.apiCache} (${apiData.creations.length} creations, ${apiData.transfers.length} transfers)`);
+    } else {
+      apiData = await fetchEthscriptionData(itemsToProcess, options.apiBaseUrl);
+      if (options.apiCache) {
+        writeFileSync(options.apiCache, JSON.stringify(apiData));
+        console.log(`Saved Ethscriptions API data to ${options.apiCache}`);
+      }
+    }
+
     const {
       creations,
       transfers,
       shaMismatches,
       missingCreations,
-    } = await fetchEthscriptionData(itemsToProcess, options.apiBaseUrl);
+    } = apiData;
 
     if (shaMismatches.length > 0) {
       console.error(`Detected ${shaMismatches.length} metadata SHA mismatch(es) against on-chain content.`);
@@ -1580,21 +1807,24 @@ async function main() {
 
     if (options.dryRun) {
       console.log('\nDry run: skipping attribute and collection upserts');
+    } else if (options.catchUp) {
+      console.log('\nCatch-up mode: skipping attribute and collection upserts');
     } else {
       await populateAttributes(supabase, metadata.slug, itemsToProcess);
       await ensureCollection(supabase, client, metadata, options.tableSuffix);
     }
 
+    // The Ethscriptions API returns transfer block numbers/indexes as strings.
     const transferTransactions: TransactionToProcess[] = transfers.map((transfer) => ({
       hash: transfer.transaction_hash.toLowerCase(),
-      block_number: transfer.block_number,
-      transaction_index: transfer.transaction_index,
+      block_number: Number(transfer.block_number),
+      transaction_index: Number(transfer.transaction_index),
       sources: ['ethscriptions-api:transfer'],
     }));
 
     const apiBlockNumbers = [
       ...creations.map((tx) => tx.block_number),
-      ...transfers.map((tx) => tx.block_number),
+      ...transfers.map((tx) => Number(tx.block_number)),
     ];
 
     if (!apiBlockNumbers.length) {
@@ -1602,7 +1832,7 @@ async function main() {
       process.exit(1);
     }
 
-    const earliestCollectionBlock = Math.min(...apiBlockNumbers);
+    const earliestCollectionBlock = apiBlockNumbers.reduce((min, block) => (block < min ? block : min), Infinity);
     const latestChainBlock = Number(await client.getBlockNumber());
     const fromBlock = options.fromBlock ?? earliestCollectionBlock;
     const toBlock = options.toBlock ?? latestChainBlock;
@@ -1644,6 +1874,7 @@ async function main() {
       creationTransactions,
       filteredTransferTransactions,
       marketTransactions,
+      etherPhunksMarketTransactions,
       auctionTransactions,
       ethscriptionsMarketTransactions,
       etchMarketTransactions,
@@ -1677,6 +1908,7 @@ async function main() {
     console.log(`  Ethscriptions creations: ${creationTransactions.length}`);
     console.log(`  Ethscriptions transfers: ${filteredTransferTransactions.length}`);
     console.log(`  Marketplace log txs: ${marketTransactions.length}`);
+    console.log(`  EtherPhunks market log txs: ${etherPhunksMarketTransactions.length}`);
     console.log(`  Auction log txs: ${auctionTransactions.length}`);
     console.log(`  Ethscriptions market log txs: ${ethscriptionsMarketTransactions.length}`);
     console.log(`  EtchMarket sale log txs: ${etchMarketTransactions.length}`);
@@ -1695,7 +1927,22 @@ async function main() {
       options.apiKey!,
       options.dryRun,
       options.reindexDelayMs,
+      options.stopAfterSales > 0
+        ? (() => {
+          let salesSeen = 0;
+          return async (blockNumber: number) => {
+            salesSeen += await countNotifiableSales(supabase, options.tableSuffix, blockNumber);
+            if (salesSeen > 0) console.log(`  Notifiable sales so far: ${salesSeen}/${options.stopAfterSales} (block ${blockNumber})`);
+            return salesSeen >= options.stopAfterSales;
+          };
+        })()
+        : undefined,
     );
+
+    if (result.stoppedAtBlock !== undefined) {
+      console.log(`Paused. Block tracker not advanced. Resume with: --from-block ${result.stoppedAtBlock + 1} --to-block ${toBlock}`);
+      return;
+    }
 
     if (!options.dryRun && result.errors > 0) {
       throw new Error(
@@ -1716,6 +1963,7 @@ async function main() {
           creationTransactions: catchUpCreations,
           filteredTransferTransactions: catchUpTransfers,
           marketTransactions: catchUpMarketTransactions,
+          etherPhunksMarketTransactions: catchUpEtherPhunksMarketTransactions,
           auctionTransactions: catchUpAuctionTransactions,
           ethscriptionsMarketTransactions: catchUpEthscriptionsMarketTransactions,
           etchMarketTransactions: catchUpEtchMarketTransactions,
@@ -1749,6 +1997,7 @@ async function main() {
         console.log(`  Ethscriptions creations: ${catchUpCreations.length}`);
         console.log(`  Ethscriptions transfers: ${catchUpTransfers.length}`);
         console.log(`  Marketplace log txs: ${catchUpMarketTransactions.length}`);
+        console.log(`  EtherPhunks market log txs: ${catchUpEtherPhunksMarketTransactions.length}`);
         console.log(`  Auction log txs: ${catchUpAuctionTransactions.length}`);
         console.log(`  Ethscriptions market log txs: ${catchUpEthscriptionsMarketTransactions.length}`);
         console.log(`  EtchMarket sale log txs: ${catchUpEtchMarketTransactions.length}`);

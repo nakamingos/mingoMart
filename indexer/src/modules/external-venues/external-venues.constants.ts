@@ -1,3 +1,8 @@
+import { parseAbi } from 'viem';
+
+// EtherPhunks market (L1 proxy). Unlike the off-chain-order venues, its listings and delistings
+// happen on-chain, so we track them as well as sales.
+export const ETHERPHUNKS_MARKET_ADDRESS_L1 = '0xd3418772623be1a3cc6b6d45cb46420cedd9154a' as const;
 export const ETHSCRIPTIONS_MARKET_ADDRESS_L1 = '0xd729a94d6366a4feac4a6869c8b3573cee4701a9' as const;
 export const ETCH_MARKET_ADDRESS_L1 = '0x57b8792c775d34aa96092400983c3e112fcbc296' as const;
 export const ETCH_MARKET_ORDER_EXECUTED_TOPIC = '0x93a6900c7e12c8592eb245abc171ff4709f08fcba2e290729cd16cfe71380260' as const;
@@ -493,3 +498,9 @@ export const blurExchangeL1 = [
     type: 'event',
   },
 ] as const;
+
+export const etherPhunksMarketL1 = parseAbi([
+  'event PhunkOffered(bytes32 indexed phunkId, uint256 minValue, address indexed toAddress)',
+  'event PhunkBought(bytes32 indexed phunkId, uint256 value, address indexed fromAddress, address indexed toAddress)',
+  'event PhunkNoLongerForSale(bytes32 indexed phunkId)',
+]);

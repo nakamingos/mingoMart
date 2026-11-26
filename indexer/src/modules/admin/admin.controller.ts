@@ -32,7 +32,7 @@ export class AdminController {
    */
   @Post('reindex-block')
   async reindexBlock(@Body() body: { blockNumber: number }): Promise<void> {
-    return await this.processingSvc.processBlock(body.blockNumber, false);
+    return await this.processingSvc.processBlock(Number(body.blockNumber), false);
   }
 
   /**
