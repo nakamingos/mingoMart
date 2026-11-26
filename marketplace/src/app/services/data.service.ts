@@ -984,7 +984,7 @@ export class DataService {
   ): Observable<MarketState['activeMarketRouteData']> {
 
     return from(
-      supabase.rpc(`fetch_all_with_pagination_new${this.suffix}`, {
+      supabase.rpc(`fetch_all_with_pagination${this.suffix}`, {
         p_slug: slug,
         p_from_num: fromNum,
         p_to_num: toNum,

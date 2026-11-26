@@ -207,7 +207,7 @@ async function loadOrigins(supabase: SupabaseClient, slug: string): Promise<Map<
   const origins = new Map<string, string>();
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
-      .from('attributes_new')
+      .from('attributes')
       .select('sha, values->>Origin')
       .eq('slug', slug)
       .order('sha', { ascending: true })

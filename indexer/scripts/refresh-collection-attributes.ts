@@ -188,7 +188,7 @@ async function upsertAttributes(
   for (let index = 0; index < rows.length; index += UPSERT_BATCH_SIZE) {
     const batch = rows.slice(index, index + UPSERT_BATCH_SIZE);
     const { error } = await supabase
-      .from('attributes_new')
+      .from('attributes')
       .upsert(batch, { onConflict: 'sha' });
     if (error) throw error;
   }

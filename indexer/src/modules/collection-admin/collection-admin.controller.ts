@@ -34,7 +34,7 @@ export class CollectionAdminController {
   }
 
   // /**
-  //  * Adds attributes to the database attributes_new table
+  //  * Adds attributes to the database attributes table
   //  * This is a requirement for indexing collection items
   //  * @param slug - The slug of the collection
   //  */

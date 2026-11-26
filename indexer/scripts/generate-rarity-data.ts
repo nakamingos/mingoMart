@@ -133,7 +133,7 @@ async function fetchAllAttributeRows(supabase: ReturnType<typeof initSupabase>) 
   while (true) {
     const to = from + PAGE_SIZE - 1;
     const { data, error } = await supabase
-      .from('attributes_new')
+      .from('attributes')
       .select('sha, slug, values')
       .order('slug', { ascending: true })
       .order('sha', { ascending: true })

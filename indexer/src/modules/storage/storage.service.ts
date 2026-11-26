@@ -207,7 +207,7 @@ export class StorageService implements OnModuleInit {
    */
   async checkIsCuratedCollection(sha: string): Promise<db.AttributeItem | null> {
     const response: db.AttributesResponse = await this.supabase
-      .from('attributes_new')
+      .from('attributes')
       .select('*')
       .eq('sha', sha);
 
@@ -834,7 +834,7 @@ export class StorageService implements OnModuleInit {
 
   async addAttributesNew(data: db.AttributeItem[]) {
     const res = await this.supabase
-      .from('attributes_new')
+      .from('attributes')
       .upsert(data);
 
     const { error } = res;
@@ -850,7 +850,7 @@ export class StorageService implements OnModuleInit {
    */
   async getAttributesFromSha(sha: string): Promise<any> {
     const response = await this.supabase
-      .from('attributes_new')
+      .from('attributes')
       .select('*')
       .eq('sha', sha);
 
@@ -1384,7 +1384,7 @@ export class StorageService implements OnModuleInit {
           singleName,
           notifications
         ),
-        attributes_new!inner(
+        attributes!inner(
           values
         )
       `)
@@ -1397,7 +1397,7 @@ export class StorageService implements OnModuleInit {
     if (!data) return null;
 
     const collection = data[`collections${this.suffix}`];
-    const attributes = data['attributes_new'];
+    const attributes = data['attributes'];
 
     return {
       ethscription: data as unknown as db.Ethscription,

@@ -6,7 +6,7 @@
  * This script backfills an Ethscription collection's data from Ethereum Mainnet or Sepolia:
  * 1. Loads collection metadata JSON
  * 2. Validates and normalizes data
- * 3. Populates attributes_new table with SHA → traits mapping
+ * 3. Populates attributes table with SHA → traits mapping
  * 4. Creates/verifies collection exists in database
  * 5. Fetches all transfer history from Ethscriptions API
  * 6. Processes transactions in correct order via indexer's reindex endpoint
@@ -508,7 +508,7 @@ const ATTRIBUTE_ORDER = [
   'Wisdom/Magic'
 ];
 
-// Populate attributes_new table
+// Populate attributes table
 async function populateAttributes(supabase: any, slug: string, items: CollectionItem[]) {
   console.log(`\n🎨 Populating attributes for ${items.length} items...`);
 
@@ -553,16 +553,16 @@ async function populateAttributes(supabase: any, slug: string, items: Collection
     };
   });
 
-  // Upsert to attributes_new table
+  // Upsert to attributes table
   const { error: errorNew } = await supabase
-    .from('attributes_new')
+    .from('attributes')
     .upsert(attributeRecords, {
       onConflict: 'sha'
       // Will overwrite existing records with mainnet data as source of truth
     });
 
   if (errorNew) {
-    console.error('❌ Error populating attributes_new:', errorNew);
+    console.error('❌ Error populating attributes:', errorNew);
     throw errorNew;
   }
 
