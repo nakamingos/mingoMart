@@ -10,7 +10,7 @@ import { Observable, catchError, firstValueFrom, interval, from, of, tap, switch
 
 import { AppKit, createAppKit } from '@reown/appkit'
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
-import { AppKitNetwork, mainnet, sepolia } from '@reown/appkit/networks'
+import { AppKitNetwork, localhost, mainnet, sepolia } from '@reown/appkit/networks'
 
 import { getBlockNumber, getEnsAddress, getEnsAvatar, getEnsName, getTransaction, getTransactionReceipt, multicall, readContract, simulateContract, watchBlockNumber, watchContractEvent } from 'viem/actions';
 import { Client, TransactionReceipt, WatchBlockNumberReturnType, WatchContractEventReturnType, bytesToHex, decodeFunctionData, formatEther, isAddress, keccak256, numberToBytes, parseEther, stringToBytes, toHex, zeroAddress, http } from 'viem';
@@ -69,7 +69,8 @@ export class Web3Service {
   config!: Config;
   modal!: AppKit;
   wagmiAdapter!: WagmiAdapter;
-  networks: [AppKitNetwork, ...AppKitNetwork[]] = environment.chainId === 1 ? [mainnet] : [sepolia];
+  networks: [AppKitNetwork, ...AppKitNetwork[]] =
+    environment.chainId === 1 ? [mainnet] : environment.chainId === localhost.id ? [localhost] : [sepolia];
 
   globalConfig$ = this.store.select(state => state.appState.config);
 
@@ -84,6 +85,7 @@ export class Web3Service {
       transports: {
         [mainnet.id]: http(environment.rpcHttpProvider),
         [sepolia.id]: http(environment.rpcHttpProvider),
+        [localhost.id]: http(environment.rpcHttpProvider),
       }
     });
 

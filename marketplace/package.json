@@ -6,6 +6,7 @@
     "ng": "ng",
     "start:sepolia": "vite --mode dev-sepolia",
     "start:mainnet": "vite --mode dev-mainnet",
+    "start:localhost": "vite --mode dev-localhost",
     "preview": "vite preview",
     "build": "yarn build:sepolia && yarn build:mainnet",
     "build:sepolia": "vite build --mode sepolia",

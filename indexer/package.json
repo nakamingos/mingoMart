@@ -7,6 +7,7 @@
     "build:sepolia": "NETWORK=sepolia nest build sepolia",
     "start:sepolia": "NETWORK=sepolia nest start --watch",
     "start:mainnet": "NETWORK=mainnet nest start --watch",
+    "start:localhost": "NETWORK=localhost nest start --watch",
     "engage": "yarn build && ./node_modules/.bin/pm2 startOrRestart pm2.config.js && ./node_modules/.bin/pm2 log",
     "engage:mainnet": "NETWORK=mainnet yarn build:mainnet && ./node_modules/.bin/pm2 startOrRestart pm2.config.js --only mainnet && ./node_modules/.bin/pm2 log",
     "engage:sepolia": "NETWORK=sepolia yarn build:sepolia && ./node_modules/.bin/pm2 startOrRestart pm2.config.js --only sepolia && ./node_modules/.bin/pm2 log",

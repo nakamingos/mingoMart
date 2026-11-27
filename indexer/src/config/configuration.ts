@@ -40,7 +40,8 @@ export const validationSchema = Joi.object({
   RPC_URL_BACKUP_L2: Joi.string().optional(),
 
   // Chain IDs
-  CHAIN_ID_L1: Joi.number().valid(1, 11155111).required(),
+  // 1337 = local Anvil chain (see .env.localhost)
+  CHAIN_ID_L1: Joi.number().valid(1, 11155111, 1337).required(),
   CHAIN_ID_L2: Joi.number().required(),
 
   // Contract Addresses
@@ -77,8 +78,24 @@ export const validationSchema = Joi.object({
   TWITTER_TWO_FACTOR_SECRET: Joi.string().optional(),
 });
 
+export const LOCAL_CHAIN_ID = 1337;
+
+/** A local test chain must never write into a hosted database. */
+function assertLocalChainUsesLocalDb(isProd: boolean) {
+  if (Number(process.env.CHAIN_ID_L1) !== LOCAL_CHAIN_ID) return;
+  const host = (() => {
+    try { return new URL(process.env.SUPABASE_URL).hostname; } catch { return ''; }
+  })();
+  if (isProd || !['127.0.0.1', 'localhost'].includes(host)) {
+    throw new Error(
+      `CHAIN_ID_L1=${LOCAL_CHAIN_ID} (local chain) requires NODE_ENV=development and a local SUPABASE_URL`
+    );
+  }
+}
+
 export default registerAs('app', (): AppConfig => {
   const isProd = process.env.NODE_ENV === 'production';
+  assertLocalChainUsesLocalDb(isProd);
 
   const config = {
     nodeEnv: process.env.NODE_ENV || 'development',

@@ -5,6 +5,7 @@ import { BridgeProcessingQueue } from '@/modules/queue/queues/bridge-processing.
 
 import { StorageService } from '@/modules/storage/storage.service';
 import { AppConfigService } from '@/config/config.service';
+import { LOCAL_CHAIN_ID } from '@/config/configuration';
 
 import { UtilityService } from '@/modules/shared/services/utility.service';
 import { Web3Service } from '@/modules/shared/services/web3.service';
@@ -47,7 +48,10 @@ export class AppService implements OnModuleInit {
       await this.utilSvc.delay(10000);
       await this.blockQueue.pauseQueue();
 
-      const startBlock = (await this.storageSvc.getLastBlock(this.configSvc.chain.chainIdL1));
+      let startBlock = (await this.storageSvc.getLastBlock(this.configSvc.chain.chainIdL1));
+      // A fresh local chain has no saved block yet, and resuming 10 blocks back can go below 1.
+      // Start at 1: genesis has no transactions, and block 0 can't be requested by number.
+      if (this.configSvc.chain.chainIdL1 === LOCAL_CHAIN_ID) startBlock = Math.max(1, startBlock ?? 1);
       await this.startBackfill(startBlock);
       await this.blockQueue.resumeQueue();
       await this.startPolling();

@@ -61,6 +61,8 @@ Thumbs.db
 # Environment files with secrets (Angular/Vite)
 src/environments/environment.ts
 src/environments/environment.dev-*.ts
+# Local Anvil profile: only local/public values, never put real keys in it
+!src/environments/environment.dev-localhost.ts
 
 # Vite
 .vite/

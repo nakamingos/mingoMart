@@ -60,6 +60,13 @@ export default defineConfig(({ command, mode }) => {
       sourcemap: true,
       indexHtml: resolve(__dirname, `src/index.${chainName}.html`),
     },
+    "dev-localhost": {
+      envFile: `environment.${mode}.ts`,
+      optimization: false,
+      sourcemap: true,
+      // Build entry page (no index.localhost.html): reuse the "(testnet)" one.
+      indexHtml: resolve(__dirname, "src/index.sepolia.html"),
+    },
     sepolia: {
       outDir: resolve(
         __dirname,

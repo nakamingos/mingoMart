@@ -4,7 +4,7 @@ import { AppConfigService } from '@/config/config.service';
 
 import { Account, Chain, createPublicClient, createWalletClient, fallback, http, ParseAccount, PublicClient, RpcSchema, Transport, WalletClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { mainnet, sepolia } from 'viem/chains';
+import { localhost, mainnet, sepolia } from 'viem/chains';
 
 import { magma } from './chains/magma.chain';
 
@@ -19,6 +19,7 @@ export class EvmService {
     l1: {
       1: mainnet,
       11155111: sepolia,
+      1337: localhost,
     },
     l2: {
       6969696969: magma,

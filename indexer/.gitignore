@@ -8,6 +8,8 @@ metadata
 
 .env*
 !.env.**.example*
+# Local Anvil profile: only public Anvil test keys, never put real secrets in it
+!.env.localhost
 
 lastBlock-*.txt
 twitter-cookies.json
