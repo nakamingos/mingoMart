@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   MingoMartMarket,
@@ -116,6 +116,25 @@ describe("MingoMartMarket", function () {
       expect(await market.contractVersion()).to.equal(1);
       expect(await market.pointsAddress()).to.equal(await points.getAddress());
       expect(await market.owner()).to.equal(owner.address);
+    });
+
+    it("does not allow the implementation contract itself to be initialized", async function () {
+      const marketFactory = await ethers.getContractFactory("MingoMartMarket");
+      const implementation = (await marketFactory.deploy()) as MingoMartMarket;
+
+      await expect(
+        implementation.connect(alice).initialize(1, await points.getAddress())
+      ).to.be.revertedWithCustomError(implementation, "InvalidInitialization");
+      expect(await implementation.owner()).to.equal(ethers.ZeroAddress);
+    });
+
+    it("passes OpenZeppelin upgrade-safety validation", async function () {
+      const marketFactory = await ethers.getContractFactory("MingoMartMarket");
+      // The constructor only calls _disableInitializers(), which the test above covers.
+      await upgrades.validateImplementation(marketFactory, {
+        kind: "transparent",
+        unsafeAllow: ["constructor"],
+      });
     });
 
     it("allows the owner to update the points address", async function () {

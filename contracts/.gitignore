@@ -34,3 +34,6 @@ typechain-types
 cache
 artifacts
 
+
+# Local chain deployment records (addresses reset with every node restart)
+deployments/*.localhost.json
