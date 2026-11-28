@@ -25,6 +25,14 @@ import { auctionHouseL1 } from '@/abi/AuctionHouseL1';
 // L2
 import { EtherPhunksNftMarketABI } from '@/abi/EtherPhunksNftMarket';
 import { EtherPhunksBridgeL2ABI } from '@/abi/EtherPhunksBridgeL2';
+import {
+  ExternalEscrow,
+  ExternalEscrowVenue,
+  etchMarketAbi,
+  etherPhunksMarketAbi,
+  ethscriptionsMarketAbi,
+  getExternalEscrowByVenue,
+} from '@/constants/escrow-venues';
 
 import * as appStateActions from '@/state/app/app-state.actions';
 
@@ -397,6 +405,121 @@ export class Web3Service {
   async withdrawBatchHashes(hashIds: string[]): Promise<string | undefined> {
     if (!hashIds.length) throw new Error('No items selected');
     return await this.writeMarketContract('withdrawBatchHashes', [hashIds]);
+  }
+
+  ////////////////////////////////////////////////////////
+  // OTHER MARKETS' ESCROW ///////////////////////////////
+  ////////////////////////////////////////////////////////
+
+  /**
+   * Whether `venue`'s contract currently allows withdrawals. Only ethscriptions.com can switch
+   * them off (its 'withdraw' feature flag).
+   */
+  async isVenueWithdrawEnabled(venue: ExternalEscrowVenue): Promise<boolean> {
+    const escrow = getExternalEscrowByVenue(venue);
+    if (!escrow?.canWithdraw) return false;
+    if (venue !== 'ethscriptions-market') return true;
+    try {
+      return await readContract(this.l1Client, {
+        address: escrow.address,
+        abi: ethscriptionsMarketAbi,
+        functionName: 'featureIsEnabled',
+        args: ['withdraw'],
+      }) as boolean;
+    } catch (error) {
+      console.log({ venue, error });
+      return false;
+    }
+  }
+
+  /**
+   * Withdraws items the connected wallet deposited at another market, in one transaction when
+   * the venue supports batches. All hashIds must be held by that venue for this wallet: Etch's
+   * contract cannot check this itself, so callers only offer it for the item's previous owner.
+   */
+  async withdrawFromVenue(venue: ExternalEscrowVenue, hashIds: string[]): Promise<string | undefined> {
+    const escrow = this.requireEscrow(venue, 'canWithdraw');
+    if (!hashIds.length) throw new Error('No items selected');
+    if (hashIds.length > 1 && !escrow.canBatchWithdraw) throw new Error(`Withdraw from ${venue} one item at a time`);
+
+    const ids = hashIds as `0x${string}`[];
+    switch (venue) {
+      case 'etherphunks-market':
+        return ids.length === 1
+          ? this.writeVenueContract(escrow, etherPhunksMarketAbi, 'withdrawPhunk', [ids[0]])
+          : this.writeVenueContract(escrow, etherPhunksMarketAbi, 'withdrawBatchPhunks', [ids]);
+      case 'etch-market':
+        return ids.length === 1
+          ? this.writeVenueContract(escrow, etchMarketAbi, 'withdrawEthscription', [ids[0], BigInt(0), '0x'])
+          : this.writeVenueContract(escrow, etchMarketAbi, 'withdrawMultipleEthscriptions', [ids, BigInt(0), '0x']);
+      case 'ethscriptions-market':
+        if (!(await this.isVenueWithdrawEnabled(venue))) throw new Error('Ethscriptions.com has withdrawals switched off');
+        return this.writeVenueContract(escrow, ethscriptionsMarketAbi, 'withdrawEthscription', [ids[0]]);
+      default:
+        throw new Error(`Withdrawing from ${venue} is not supported`);
+    }
+  }
+
+  /** Cancels the connected wallet's listing at another market, leaving the item in its escrow. */
+  async delistOnVenue(venue: ExternalEscrowVenue, hashId: string): Promise<string | undefined> {
+    const escrow = this.requireEscrow(venue, 'canDelist');
+    if (venue !== 'etherphunks-market') throw new Error(`Delisting on ${venue} is not supported`);
+    return this.writeVenueContract(escrow, etherPhunksMarketAbi, 'phunkNoLongerForSale', [hashId as `0x${string}`]);
+  }
+
+  /** Sale proceeds `address` can still claim from another market (0 if none or unsupported). */
+  async getVenueProceeds(venue: ExternalEscrowVenue, address: string): Promise<bigint> {
+    const escrow = getExternalEscrowByVenue(venue);
+    if (!escrow?.canClaimProceeds || !address) return BigInt(0);
+    try {
+      return await readContract(this.l1Client, {
+        address: escrow.address,
+        abi: etherPhunksMarketAbi,
+        functionName: 'pendingWithdrawals',
+        args: [address as `0x${string}`],
+      }) as bigint;
+    } catch (error) {
+      console.log({ venue, error });
+      return BigInt(0);
+    }
+  }
+
+  /** Claims the connected wallet's sale proceeds from another market. */
+  async claimVenueProceeds(venue: ExternalEscrowVenue): Promise<string | undefined> {
+    const escrow = this.requireEscrow(venue, 'canClaimProceeds');
+    return this.writeVenueContract(escrow, etherPhunksMarketAbi, 'withdraw', []);
+  }
+
+  private requireEscrow(venue: ExternalEscrowVenue, capability: keyof ExternalEscrow): ExternalEscrow {
+    const escrow = getExternalEscrowByVenue(venue);
+    if (!escrow || !escrow[capability]) throw new Error(`${venue} does not support this action here`);
+    return escrow;
+  }
+
+  /** Simulates, then sends, a call to another market's contract from the connected wallet. */
+  private async writeVenueContract(
+    escrow: ExternalEscrow,
+    abi: readonly unknown[],
+    functionName: string,
+    args: unknown[],
+  ): Promise<string | undefined> {
+    await this.switchNetwork();
+
+    const chainId = getChainId(this.config);
+    const walletClient = await getWalletClient(this.config, { chainId });
+    const publicClient = getPublicClient(this.config, { chainId });
+    if (!publicClient) throw new Error('No public client');
+
+    const tx: any = {
+      address: escrow.address,
+      abi,
+      functionName,
+      args,
+      account: walletClient?.account?.address as `0x${string}`,
+    };
+
+    const { request } = await publicClient.simulateContract(tx);
+    return await walletClient?.writeContract(request);
   }
 
   /**

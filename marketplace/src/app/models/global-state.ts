@@ -151,6 +151,9 @@ export interface Notification {
   hash?: string | null;
   detail?: any;
   value?: number | null;
+
+  /** The other market an action was sent to (withdrawFromVenue, delistOnVenue, claimVenueProceeds). */
+  venue?: EventVenue | null;
 }
 
 export type TxFunction =
@@ -171,7 +174,10 @@ export type TxFunction =
   | 'tic'
   | 'ticDelete'
   | 'createBid'
-  | 'settleAuction';
+  | 'settleAuction'
+  | 'withdrawFromVenue'
+  | 'delistOnVenue'
+  | 'claimVenueProceeds';
 
 export interface TraitFilter {
   [key: string]: string | string[] | null;

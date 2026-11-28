@@ -14,6 +14,7 @@ import { MarketItem } from '@/models/db';
 
 import { DataService } from '@/services/data.service';
 import { normalizeDefaultBackground } from '@/constants/background-color';
+import { getEventVenueLabel } from '@/constants/event-venues';
 
 import { WeiToEthPipe } from '@/pipes/wei-to-eth.pipe';
 import { FormatCashPipe } from '@/pipes/format-cash.pipe';
@@ -59,6 +60,7 @@ export class MarketItemGridComponent implements OnChanges {
   @ViewChildren('marketItemCheck') marketItemCheck!: QueryList<ElementRef<HTMLInputElement>>;
 
   escrowAddress = environment.marketAddress;
+  venueLabel = getEventVenueLabel;
 
   @Input() marketType!: MarketType;
   @Input() activeSort!: SortOption;

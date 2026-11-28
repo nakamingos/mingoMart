@@ -18,6 +18,7 @@ import { CollectionsComponent } from '@/components/collections/collections.compo
 import { WalletAddressDirective } from '@/directives/wallet-address.directive';
 
 import * as appStateActions from '@/state/app/app-state.actions';
+import { upsertNotification } from '@/state/notification/notification.actions';
 import * as dataStateActions from '@/state/data/data-state.actions';
 
 import * as appStateSelectors from '@/state/app/app-state.selectors';
@@ -27,7 +28,7 @@ import * as marketStateSelectors from '@/state/market/market-state.selectors';
 
 import { FormatCashPipe } from '@/pipes/format-cash.pipe';
 
-import { from, map, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, combineLatest, from, map, of, switchMap, tap } from 'rxjs';
 
 import anime from 'animejs';
 
@@ -86,6 +87,16 @@ export class MenuComponent {
 
   isMobile$ = this.store.select(appStateSelectors.selectIsMobile);
   hasWithdrawal$ = this.store.select(appStateSelectors.selectHasWithdrawal);
+
+  /** Unclaimed EtherPhunks sale proceeds in ETH, or null when there are none (button hidden). */
+  private refreshEtherPhunksProceeds$ = new BehaviorSubject<void>(undefined);
+  etherPhunksProceeds$ = combineLatest([this.address$, this.refreshEtherPhunksProceeds$]).pipe(
+    switchMap(([address]) => address
+      ? from(this.web3Svc.getVenueProceeds('etherphunks-market', address))
+      : of(BigInt(0))),
+    map((wei: bigint) => wei > BigInt(0) ? this.web3Svc.weiToEth(wei) : null),
+  );
+
   leaderboard$ = this.store.select(dataStateSelectors.selectLeaderboard);
 
   stats: any = {
@@ -145,6 +156,35 @@ export class MenuComponent {
   async withdraw(): Promise<void> {
     await this.web3Svc.withdraw();
     this.store.dispatch(appStateActions.checkHasWithdrawal());
+  }
+
+  /** Claims the wallet's unclaimed sale proceeds from the EtherPhunks market. */
+  async claimEtherPhunksProceeds(): Promise<void> {
+    let notification: Notification = {
+      id: 'claimVenueProceeds-etherphunks-market-' + Date.now(),
+      timestamp: Date.now(),
+      type: 'wallet',
+      function: 'claimVenueProceeds',
+      venue: 'etherphunks-market',
+    };
+    this.store.dispatch(upsertNotification({ notification }));
+
+    try {
+      const hash = await this.web3Svc.claimVenueProceeds('etherphunks-market');
+      if (!hash) throw new Error('Could not process transaction');
+      notification = { ...notification, type: 'pending', hash };
+      this.store.dispatch(upsertNotification({ notification }));
+
+      const receipt = await this.web3Svc.pollReceipt(hash);
+      notification = { ...notification, type: 'complete', hash: receipt.transactionHash };
+      this.store.dispatch(upsertNotification({ notification }));
+    } catch (err) {
+      console.log(err);
+      notification = { ...notification, type: 'error', detail: err };
+      this.store.dispatch(upsertNotification({ notification }));
+    } finally {
+      this.refreshEtherPhunksProceeds$.next();
+    }
   }
 
   createOwnedStats(owned: MarketItem[] | null) {

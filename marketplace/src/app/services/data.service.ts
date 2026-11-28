@@ -11,7 +11,8 @@ import { Web3Service } from '@/services/web3.service';
 import { AttributesService } from '@/services/attributes.service';
 
 import { EventType, GlobalConfig, GlobalState } from '@/models/global-state';
-import { Auction, Event, Listing, MarketItem } from '@/models/db';
+import { Auction, Event, ExternalListing, Listing, MarketItem } from '@/models/db';
+import { getExternalEscrow } from '@/constants/escrow-venues';
 import { MarketState } from '@/models/market.state';
 import { CommentWithReplies } from '@/models/comment';
 import { Collection } from '@/models/data.state';
@@ -170,13 +171,20 @@ export class DataService {
       map((res: any) => res.data),
       map((res: any[]) => res.map((item: any) => {
         const ethscription = item.ethscription;
+        // 'escrow' is set when an escrow contract holds the item for this address; 'listing' is
+        // that contract's venue's listing.
+        const escrowVenue = ethscription.escrow?.venue ?? null;
+        const isEscrowed =
+          ethscription.ethscription.owner === environment.marketAddress
+          && ethscription.ethscription.prevOwner === address;
+        const venueListing = ethscription.listing ? ethscription.listing[0] : null;
         return {
           ...ethscription.ethscription,
-          listing: ethscription.listing ? ethscription.listing[0] : null,
+          listing: isEscrowed ? venueListing : null,
+          externalListing: !isEscrowed && escrowVenue ? venueListing : null,
+          escrowVenue: isEscrowed ? null : escrowVenue,
           bid: ethscription.bid ? ethscription.bid[0] : null,
-          isEscrowed:
-            ethscription.ethscription.owner === environment.marketAddress
-            && ethscription.ethscription.prevOwner === address,
+          isEscrowed,
           isBridged:
             ethscription.ethscription.owner === environment.bridgeAddress
             && ethscription.ethscription.prevOwner === address,
@@ -545,6 +553,7 @@ export class DataService {
 
       const item = { ...data, collection, collectionName, nft } as MarketItem;
       item.isEscrowed = data?.owner === environment.marketAddress;
+      item.escrowVenue = getExternalEscrow(data?.owner)?.venue ?? null;
       item.isBridged = data?.owner === environment.bridgeAddress;
       item.isAuctioned = data?.owner === environment.auctionHouseAddress;
       item.isSupported = !!collection;
@@ -572,12 +581,14 @@ export class DataService {
         this.attributesSvc.addAttributes(marketItem.slug, [marketItem]),
         from(this.getListingFromHashId(marketItem.hashId, marketItem.prevOwner)),
         this.checkConsensus([marketItem]),
+        from(this.getExternalListing(marketItem)),
       ])),
-      map(([[marketItem], listing, [consensus]]) => ({
+      map(([[marketItem], listing, [consensus], externalListing]) => ({
         ...consensus,
         ...marketItem,
         // Make sure the listing is from the previous owner and the item is escrowed.
         listing: (listing?.listedBy.toLowerCase() === marketItem.prevOwner?.toLowerCase() && marketItem.owner === environment.marketAddress) ? listing : null,
+        externalListing,
       })),
     );
 
@@ -724,6 +735,26 @@ export class DataService {
    * Gets listing data for a token
    * @param hashId Token hash ID
    */
+  /**
+   * The public listing, by the depositor, at the other market holding `item` (if any).
+   */
+  async getExternalListing(item: MarketItem): Promise<ExternalListing | null> {
+    if (!item.escrowVenue || !item.prevOwner) return null;
+    const { data, error } = await supabase
+      .from('listings' + this.suffix)
+      .select('venue, createdAt, minValue')
+      .eq('hashId', item.hashId)
+      .eq('venue', item.escrowVenue)
+      .eq('listedBy', item.prevOwner.toLowerCase())
+      .eq('toAddress', '0x0000000000000000000000000000000000000000')
+      .limit(1);
+    if (error) {
+      console.warn('Failed to fetch external listing', { hashId: item.hashId, error });
+      return null;
+    }
+    return (data?.[0] as ExternalListing) ?? null;
+  }
+
   async getListingFromHashId(hashId: string | undefined, prevOwner: string | null | undefined): Promise<Listing | null> {
     if (!hashId || !prevOwner) return null;
 
@@ -833,7 +864,7 @@ export class DataService {
     if (!addresses.length) return of([]);
 
     const query = supabase
-      .rpc('addresses_are_holders_sepolia', { addresses });
+      .rpc('addresses_are_holders' + this.suffix, { addresses });
 
     return from(query).pipe(
       map((res: any) => res.data),

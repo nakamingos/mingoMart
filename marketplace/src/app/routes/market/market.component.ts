@@ -34,6 +34,7 @@ import * as appStateActions from '@/state/app/app-state.actions';
 import * as dataStateSelectors from '@/state/data/data-state.selectors';
 import * as marketStateSelectors from '@/state/market/market-state.selectors';
 import { upsertNotification } from '@/state/notification/notification.actions';
+import { ExternalEscrowVenue, getExternalEscrow, getExternalEscrowByVenue } from '@/constants/escrow-venues';
 
 import { environment } from '@environments/environment';
 
@@ -285,10 +286,12 @@ export class MarketComponent {
     this.isWithdrawingBulk = true;
     this.store.dispatch(appStateActions.setSlideoutActive({ slideoutActive: true }));
 
-    const { inEscrow, notInEscrow } = await this.checkSelected();
-    this.deselected = notInEscrow;
+    const { inEscrow, notInEscrow, invalid, inVenueEscrow } = await this.checkSelected();
+    const venueWithdrawable = await this.filterVenueWithdrawable(inVenueEscrow);
+    const withdrawable = [...inEscrow, ...venueWithdrawable];
+    this.deselected = [...notInEscrow, ...invalid.filter((item) => !withdrawable.includes(item))];
 
-    const formArray = this.fb.array(inEscrow.map((item: MarketItem) => this.fb.group({
+    const formArray = this.fb.array(withdrawable.map((item: MarketItem) => this.fb.group({
       tokenId: [item.tokenId],
       hashId: [item.hashId],
       sha: [item.sha],
@@ -493,11 +496,22 @@ export class MarketComponent {
   async submitBatchWithdraw(): Promise<void> {
     if (!this.bulkActionsForm.value.withdrawItems) return;
 
-    const { inEscrow } = await this.checkSelected();
+    const { inEscrow, inVenueEscrow } = await this.checkSelected();
+    const venueItems = await this.filterVenueWithdrawable(inVenueEscrow);
 
     const selected: { [string: MarketItem['hashId']]: MarketItem } = {};
     inEscrow.forEach((item: MarketItem) => selected[item.hashId] = item);
     this.selected = selected;
+
+    // Other markets first: each needs its own transaction(s), sent from the user's wallet.
+    if (venueItems.length) {
+      this.closeSlideout();
+      await this.withdrawFromVenues(venueItems);
+      if (!inEscrow.length) {
+        this.clearSelectedAndClose();
+        return;
+      }
+    }
 
     const hashIds = Object.values(selected).map((item: MarketItem) => item.hashId);
 
@@ -625,7 +639,10 @@ export class MarketComponent {
 
     Object.values(this.selected).forEach((item: MarketItem) => {
       // console.log({item});
-      if (item.isEscrowed) {
+      if (item.escrowVenue) {
+        // Held by another market: withdrawing it from there is the only bulk action.
+        if (getExternalEscrowByVenue(item.escrowVenue)?.canWithdraw) this.actionsState.canWithdraw = true;
+      } else if (item.isEscrowed) {
         this.actionsState.canWithdraw = true;
         this.actionsState.canList = true;
       } else {
@@ -698,7 +715,7 @@ export class MarketComponent {
    */
   async checkSelected(
     removeOwnedItems = false
-  ): Promise<{ notInEscrow: MarketItem[], inEscrow: MarketItem[], invalid: MarketItem[]}> {
+  ): Promise<{ notInEscrow: MarketItem[], inEscrow: MarketItem[], invalid: MarketItem[], inVenueEscrow: MarketItem[] }> {
 
     let selected = Object.values(this.selected);
     let invalid: MarketItem[] = [];
@@ -718,12 +735,87 @@ export class MarketComponent {
       (item: MarketItem) => item.owner.toLowerCase() === environment.marketAddress.toLowerCase()
     );
 
+    // Items another market holds for the user can only be withdrawn from that market, so they
+    // are invalid for every Mingo Mart action (transfer, escrow, list, buy).
+    const inVenueEscrow = selected.filter((item: MarketItem) => !!getExternalEscrow(item.owner));
+    invalid = [...invalid, ...inVenueEscrow];
+
     const notInEscrow = selected.filter(
-      (item: MarketItem) => item.owner.toLowerCase() !== environment.marketAddress.toLowerCase()
+      (item: MarketItem) =>
+        item.owner.toLowerCase() !== environment.marketAddress.toLowerCase()
+        && !getExternalEscrow(item.owner)
     );
 
     // console.log({ notInEscrow, inEscrow, invalid });
-    return { notInEscrow, inEscrow, invalid };
+    return { notInEscrow, inEscrow, invalid, inVenueEscrow };
+  }
+
+  /**
+   * Keeps the items another market holds for the connected wallet that can be withdrawn from
+   * there right now. Etch's contract cannot check the caller, so the previous owner must match.
+   */
+  async filterVenueWithdrawable(items: MarketItem[]): Promise<MarketItem[]> {
+    const walletAddress = (await this.web3Svc.getCurrentAddress())?.toLowerCase();
+    const enabled: Record<string, boolean> = {};
+    const result: MarketItem[] = [];
+    for (const item of items) {
+      const escrow = getExternalEscrow(item.owner);
+      if (!escrow?.canWithdraw || item.prevOwner?.toLowerCase() !== walletAddress) continue;
+      enabled[escrow.venue] ??= await this.web3Svc.isVenueWithdrawEnabled(escrow.venue);
+      if (enabled[escrow.venue]) result.push(item);
+    }
+    return result;
+  }
+
+  /**
+   * Withdraws items from the other markets holding them: one transaction per market when it
+   * supports batches, otherwise one per item.
+   */
+  async withdrawFromVenues(items: MarketItem[]): Promise<void> {
+    const byVenue = new Map<ExternalEscrowVenue, MarketItem[]>();
+    for (const item of items) {
+      const escrow = getExternalEscrow(item.owner);
+      if (!escrow) continue;
+      byVenue.set(escrow.venue, [...(byVenue.get(escrow.venue) || []), item]);
+    }
+
+    for (const [venue, venueItems] of byVenue) {
+      const groups = getExternalEscrowByVenue(venue)?.canBatchWithdraw
+        ? [venueItems]
+        : venueItems.map((item) => [item]);
+
+      for (const group of groups) {
+        const hashIds = group.map((item) => item.hashId);
+        let notification: Notification = {
+          id: this.utilSvc.createIdFromString('withdrawFromVenue' + venue + hashIds.map((hashId) => hashId.substring(2)).join('')),
+          timestamp: Date.now(),
+          type: 'wallet',
+          function: 'withdrawFromVenue',
+          venue,
+          slug: group[0].slug,
+          tokenId: group[0].tokenId,
+          hashId: hashIds[0],
+          hashIds,
+          isBatch: hashIds.length > 1,
+        };
+        this.store.dispatch(upsertNotification({ notification }));
+
+        try {
+          const hash = await this.web3Svc.withdrawFromVenue(venue, hashIds);
+          if (!hash) throw new Error('Transaction failed');
+          notification = { ...notification, type: 'pending', hash };
+          this.store.dispatch(upsertNotification({ notification }));
+
+          const receipt = await this.web3Svc.pollReceipt(hash);
+          notification = { ...notification, type: 'complete', hash: receipt.transactionHash };
+          this.store.dispatch(upsertNotification({ notification }));
+        } catch (err) {
+          console.log(err);
+          notification = { ...notification, type: 'error', detail: err };
+          this.store.dispatch(upsertNotification({ notification }));
+        }
+      }
+    }
   }
 
   /**

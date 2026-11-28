@@ -117,6 +117,11 @@
           <div class="labels-wrapper">
             <div class="label">#{{ marketItem.tokenId }}</div>
 
+            <!-- Held in another market's escrow for this owner -->
+            @if (marketType === 'owned' && marketItem.escrowVenue) {
+              <p class="escrow-venue">{{ venueLabel(marketItem.escrowVenue) }}</p>
+            }
+
             @if (
               marketType === 'listings' ||
               marketType === 'owned' ||

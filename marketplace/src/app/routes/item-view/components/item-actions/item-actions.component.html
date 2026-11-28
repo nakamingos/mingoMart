@@ -79,6 +79,24 @@
         </button>
       }
 
+      <!-- Other markets' escrow: only the depositor can act, from their own wallet -->
+      @if (item.escrowVenue && (item.prevOwner | lowercase) === (address | lowercase)) {
+        @if (venueEscrow(item.escrowVenue); as escrow) {
+          @if (escrow.canDelist && item.externalListing) {
+            <button class="sell" (click)="delistOnVenue()">
+              <span>Delist on {{ venueLabel(escrow.venue) }}</span>
+              <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'delistOnVenue' }" />
+            </button>
+          }
+          @if (escrow.canWithdraw && (venueWithdrawEnabled$ | async)) {
+            <button class="withdraw" (click)="withdrawFromVenue()">
+              <span>Withdraw from {{ venueLabel(escrow.venue) }}</span>
+              <ng-container *ngTemplateOutlet="pending; context:{ $implicit: 'withdrawFromVenue' }" />
+            </button>
+          }
+        }
+      }
+
       <!-- Delist button -->
       @if (
         item.listing &&

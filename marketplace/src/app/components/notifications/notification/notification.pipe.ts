@@ -2,6 +2,7 @@ import { Pipe, PipeTransform } from '@angular/core';
 
 import { Notification, TxFunction } from '@/models/global-state';
 import { Collection } from '@/models/data.state';
+import { getEventVenueLabel } from '@/constants/event-venues';
 
 type NotificationTexts = {
   titles: {
@@ -47,6 +48,9 @@ export class NotificationPipe implements PipeTransform {
       ticDelete: 'Deleting Comment',
       createBid: 'Auction Bid',
       settleAuction: 'Settle Auction',
+      withdrawFromVenue: 'Withdraw %singleName% from %venue%',
+      delistOnVenue: 'Delist %singleName% on %venue%',
+      claimVenueProceeds: 'Claim %venue% sale proceeds',
       batch: {
         sendToEscrow: 'Send <span class="highlight">%length%</span> items to Escrow',
         hashNoLongerForSale: 'Delist <span class="highlight">%length%</span> items',
@@ -57,6 +61,7 @@ export class NotificationPipe implements PipeTransform {
         enterBidForHash: 'Enter Bid For <span class="highlight">%length%</span> items',
         transferHash: 'Transfer <span class="highlight">%length%</span> items',
         withdrawHash: 'Withdraw <span class="highlight">%length%</span> items from Escrow',
+        withdrawFromVenue: 'Withdraw <span class="highlight">%length%</span> items from %venue%',
       },
     },
     body: {
@@ -98,6 +103,9 @@ export class NotificationPipe implements PipeTransform {
       ticDelete: 'tic',
       createBid: 'auction',
       settleAuction: 'auction',
+      withdrawFromVenue: 'escrow',
+      delistOnVenue: 'sale',
+      claimVenueProceeds: 'escrow',
     },
   }
 
@@ -129,6 +137,8 @@ export class NotificationPipe implements PipeTransform {
       if (notif.chatAddress) {
         title = this.notifs.titles.chatMessage;
       }
+
+      title = title.replace('%venue%', getEventVenueLabel(notif.venue) || 'another market');
 
       return title.replace('%singleName%', 'Ethscription');
     }

@@ -14,6 +14,8 @@ import { WeiToEthPipe } from '@/pipes/wei-to-eth.pipe';
 
 import { environment } from '@environments/environment';
 import { selectUsd } from '@/state/data/data-state.selectors';
+import { getEventVenueLabel } from '@/constants/event-venues';
+import { getExternalEscrowByVenue } from '@/constants/escrow-venues';
 
 @Component({
   standalone: true,
@@ -36,6 +38,9 @@ export class ItemStatusComponent {
   bridgeAddress = environment.bridgeAddress;
 
   item = input.required<MarketItem>();
+
+  venueLabel = getEventVenueLabel;
+  venueEscrow = getExternalEscrowByVenue;
 
   usd$ = this.store.select(selectUsd);
 

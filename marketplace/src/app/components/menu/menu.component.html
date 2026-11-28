@@ -9,6 +9,12 @@
         <span>Withdraw Funds</span>
         <span>({{ (hasWithdrawal$ | async) }} ETH)</span>
       </button>
+      @if (etherPhunksProceeds$ | async; as proceeds) {
+        <button (click)="claimEtherPhunksProceeds()">
+          <span>Claim EtherPhunks proceeds</span>
+          <span>({{ proceeds }} ETH)</span>
+        </button>
+      }
       <button (click)="disconnect()">Disconnect</button>
     </div>
   }

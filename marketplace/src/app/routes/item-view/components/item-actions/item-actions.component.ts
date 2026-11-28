@@ -6,7 +6,7 @@ import { HttpClient } from '@angular/common/http';
 
 import { Store } from '@ngrx/store';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { filter, firstValueFrom, map, switchMap } from 'rxjs';
+import { filter, firstValueFrom, from, map, of, switchMap } from 'rxjs';
 import { signTypedData } from '@wagmi/core';
 
 import { MarketItem } from '@/models/db';
@@ -21,6 +21,9 @@ import { upsertNotification } from '@/state/notification/notification.actions';
 import { addCooldown } from '@/state/app/app-state.actions';
 import { selectNotifications } from '@/state/notification/notification.selectors';
 import { setCreateConversationWithAddress } from '@/state/chat/chat.actions';
+
+import { getEventVenueLabel } from '@/constants/event-venues';
+import { ExternalEscrowVenue, getExternalEscrowByVenue } from '@/constants/escrow-venues';
 
 import { environment } from '@environments/environment';
 
@@ -91,6 +94,16 @@ export class ItemActionsComponent {
       map((item) => transactions.filter((tx) => tx?.hashId === item?.hashId && (tx.type === 'pending' || tx.type === 'wallet'))[0]),
     )),
   );
+
+  /** Whether the other market holding this item currently allows withdrawals. */
+  venueWithdrawEnabled$ = this.item$.pipe(
+    switchMap((item) => item?.escrowVenue
+      ? from(this.web3Svc.isVenueWithdrawEnabled(item.escrowVenue as ExternalEscrowVenue))
+      : of(false)),
+  );
+
+  venueLabel = getEventVenueLabel;
+  venueEscrow = getExternalEscrowByVenue;
 
   config$ = this.store.select(selectConfig);
   isCooling$ = this.store.select(selectCooldowns).pipe(
@@ -658,6 +671,55 @@ export class ItemActionsComponent {
         type: 'error',
         detail: err,
       };
+      this.store.dispatch(upsertNotification({ notification }));
+    }
+  }
+
+  /** Withdraws the item from the other market holding it, back to the connected wallet. */
+  async withdrawFromVenue(): Promise<void> {
+    const item = this.item();
+    const venue = item.escrowVenue as ExternalEscrowVenue;
+    await this.sendVenueTransaction('withdrawFromVenue', item, () => this.web3Svc.withdrawFromVenue(venue, [item.hashId]));
+  }
+
+  /** Cancels the item's listing at the other market holding it; the item stays in that escrow. */
+  async delistOnVenue(): Promise<void> {
+    const item = this.item();
+    const venue = item.escrowVenue as ExternalEscrowVenue;
+    await this.sendVenueTransaction('delistOnVenue', item, () => this.web3Svc.delistOnVenue(venue, item.hashId));
+  }
+
+  private async sendVenueTransaction(
+    fn: 'withdrawFromVenue' | 'delistOnVenue',
+    item: MarketItem,
+    send: () => Promise<string | undefined>,
+  ): Promise<void> {
+    const hashId = item.hashId;
+    let notification: Notification = {
+      id: this.utilSvc.createIdFromString(fn + hashId),
+      timestamp: Date.now(),
+      slug: item.slug,
+      type: 'wallet',
+      function: fn,
+      hashId,
+      tokenId: item.tokenId,
+      venue: item.escrowVenue,
+    };
+
+    try {
+      this.store.dispatch(upsertNotification({ notification }));
+
+      const hash = await send();
+      if (!hash) throw new Error('Could not process transaction');
+      notification = { ...notification, type: 'pending', hash };
+      this.store.dispatch(upsertNotification({ notification }));
+
+      const receipt = await this.web3Svc.pollReceipt(hash);
+      notification = { ...notification, type: 'complete', hash: receipt.transactionHash };
+      this.store.dispatch(upsertNotification({ notification }));
+    } catch (err) {
+      console.log(err);
+      notification = { ...notification, type: 'error', detail: err };
       this.store.dispatch(upsertNotification({ notification }));
     }
   }

@@ -19,7 +19,12 @@ export interface MarketItem {
   imageUri?: string | null
   creator?: string | null
 
+  /** Held in Mingo Mart's escrow. */
   isEscrowed?: boolean;
+  /** Held in another market's escrow for prevOwner (see constants/escrow-venues). */
+  escrowVenue?: EventVenue | null;
+  /** That market's public listing by prevOwner, if any. Never a Mingo Mart listing. */
+  externalListing?: ExternalListing | null;
   isBridged?: boolean;
   isAuctioned?: boolean;
 
@@ -69,6 +74,12 @@ export interface Event {
   slug?: string
   tokenId?: number | null
 }
+export interface ExternalListing {
+  venue: EventVenue
+  createdAt: string
+  minValue: string
+}
+
 export interface Listing {
   createdAt: string
   hashId: string

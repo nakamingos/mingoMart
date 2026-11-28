@@ -3,6 +3,14 @@
   @if (item().prevOwner; as owner) {
     <p i18n>This {{ item().collection?.singleName }} is held in <a [routerLink]="['/', 'curated', item().slug, 'market', 'owned']" [queryParams]="{ address: escrowAddress }">escrow</a> for <a [routerLink]="['/', 'curated', item().slug, 'market', 'owned']" [queryParams]="{ address: owner }"><app-address [address]="owner" /></a>.</p>
   }
+} @else if (item().escrowVenue) {
+  <!-- Held by another market for its depositor -->
+  @if (item().prevOwner; as owner) {
+    <p i18n>This {{ item().collection?.singleName }} is held in {{ venueLabel(item().escrowVenue) }}'s escrow for <a [routerLink]="['/', 'curated', item().slug, 'market', 'owned']" [queryParams]="{ address: owner }"><app-address [address]="owner" /></a>.</p>
+  }
+  @if (venueEscrow(item().escrowVenue)?.note; as note) {
+    <p>{{ note }}</p>
+  }
 } @else if (item().isBridged) {
   <!-- Owner -->
   @if (item().prevOwner; as owner) {
@@ -27,6 +35,8 @@
 <!-- Value (Listing) -->
 @if (item().listing?.minValue; as value) {
   <p i18n>This {{ item().collection?.singleName }} is for sale for <span class="highlight">{{ (value | weiToEth) }} ETH</span><span class="bold"> (${{ ((value | weiToEth) * ((usd$ | async) || 0)) | formatCash }})</span>.</p>
+} @else if (item().externalListing) {
+  <p i18n>This {{ item().collection?.singleName }} is listed on {{ venueLabel(item().externalListing?.venue) }} for <span class="highlight">{{ (item().externalListing?.minValue ?? null) | weiToEth }} ETH</span>, not on Mingo Mart.</p>
 } @else if (!item().isSupported) {
   <p i18n>This {{ item().collection?.singleName }} is not supported by the marketplace.</p>
 } @else {
