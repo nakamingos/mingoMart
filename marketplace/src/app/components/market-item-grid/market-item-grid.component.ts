@@ -50,6 +50,8 @@ import * as marketStateActions from '@/state/market/market-state.actions';
     '[class.selectable]': 'selectable',
     '[class]': 'viewType',
     '[class.narrow]': 'narrow',
+    '[style.--fit-columns]': 'fitColumns',
+    '[style.--fit-columns-mobile]': 'fitColumnsMobile',
   },
   templateUrl: './market-item-grid.component.html',
   styleUrls: ['./market-item-grid.component.scss']
@@ -87,11 +89,26 @@ export class MarketItemGridComponent implements OnChanges {
 
   limitArr: number[] = [];
 
+  /**
+   * Compact grids are sized for `limit` items (22 columns on desktop, 10 on mobile). With fewer
+   * items, use fewer, larger columns so they fill the same area. Null keeps the stylesheet's
+   * column count.
+   */
+  fitColumns: number | null = null;
+  fitColumnsMobile: number | null = null;
+
   usd$ = this.store.select(dataStateSelectors.selectUsd);
   collections$ = this.store.select(dataStateSelectors.selectCollections);
 
   showLoadMore: boolean = false;
   ranksActive = signal(false);
+
+  private updateFitColumns(): void {
+    const count = Math.min(this.marketItemData?.length ?? 0, this.limit);
+    const fit = this.viewType === 'compact' && count > 0 && this.limit > 0;
+    this.fitColumns = fit ? fitColumnCount(count, 22, Math.ceil(this.limit / 22)) : null;
+    this.fitColumnsMobile = fit ? fitColumnCount(count, 10, Math.ceil(this.limit / 10)) : null;
+  }
 
   constructor(
     private store: Store<GlobalState>,
@@ -102,6 +119,10 @@ export class MarketItemGridComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes.limit) {
       this.limitArr = Array.from({length: this.limit}, (_, i) => i);
+    }
+
+    if (changes.limit || changes.marketItemData || changes.viewType) {
+      this.updateFitColumns();
     }
 
     if (changes.selected && !changes.selected.firstChange) {
@@ -219,4 +240,15 @@ export class MarketItemGridComponent implements OnChanges {
   hasTransparentBackground(marketItem?: MarketItem): boolean {
     return this.getDefaultBackground(marketItem) === null;
   }
+}
+
+/**
+ * The fewest columns (so the largest square items) that fit `count` items in the area a full grid
+ * of `baseColumns` x `baseRows` takes: rows used x item size must not exceed that area's height.
+ */
+export function fitColumnCount(count: number, baseColumns: number, baseRows: number): number {
+  for (let columns = 1; columns < baseColumns; columns++) {
+    if (Math.ceil(count / columns) * baseColumns <= baseRows * columns) return columns;
+  }
+  return baseColumns;
 }

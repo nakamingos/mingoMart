@@ -81,7 +81,7 @@ export class SplashComponent {
       return this.isMobile$.pipe(
         switchMap((isMobile) => {
 
-          this.centerIndex.set(isMobile ? Math.floor(this.IMAGE_LIMIT / 2) : Math.floor(this.IMAGE_LIMIT / 2) - 1);
+          this.centerIndex.set(this.centerIndexFor(baseImages.length, isMobile));
           this.centerImage.set((mintImage && collection?.isMinting) ? mintImage : auctionImage);
 
           if (this.centerImage()) {
@@ -202,17 +202,22 @@ export class SplashComponent {
     return this.centerValidImages(imageArray);
   }
 
+  /**
+   * A collection with fewer previews than the limit shows only its own images: the wrapper
+   * centers them, instead of padding the row with loading placeholders. If none could be
+   * loaded, the placeholders stay.
+   */
   private centerValidImages(images: SplashImage[]): SplashImage[] {
     const validImages = images.filter((image) => image.type !== 'loading');
     if (validImages.length >= this.IMAGE_LIMIT) return images;
+    if (!validImages.length) return [...this.defaultImages];
+    return validImages;
+  }
 
-    const centeredImages = [...this.defaultImages];
-    const startIndex = Math.floor((this.IMAGE_LIMIT - validImages.length) / 2);
-    validImages.forEach((image, index) => {
-      centeredImages[startIndex + index] = image;
-    });
-
-    return centeredImages;
+  /** The slot the mint or auction image takes: the middle of a short row. */
+  private centerIndexFor(imageCount: number, isMobile: boolean): number {
+    if (imageCount < this.IMAGE_LIMIT) return Math.floor(imageCount / 2);
+    return isMobile ? Math.floor(this.IMAGE_LIMIT / 2) : Math.floor(this.IMAGE_LIMIT / 2) - 1;
   }
 
   private async fetchPreviewImage(sha: string): Promise<ArrayBuffer> {

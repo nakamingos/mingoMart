@@ -216,7 +216,7 @@
   }
 
   &.compact {
-    grid-template-columns: repeat(22, calc(100% / 22));
+    grid-template-columns: repeat(var(--fit-columns, 22), calc(100% / var(--fit-columns, 22)));
   }
 
   &.preview {
@@ -255,7 +255,7 @@
     grid-template-columns: repeat(4, calc(100% / 4));
 
     &.compact {
-      grid-template-columns: repeat(10, calc(100% / 10));
+      grid-template-columns: repeat(var(--fit-columns-mobile, 10), calc(100% / var(--fit-columns-mobile, 10)));
       column-gap: 0;
     }
 
