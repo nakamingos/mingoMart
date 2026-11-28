@@ -181,7 +181,7 @@ export class MarketplaceService {
         return;
       }
 
-      await this.storageSvc.createListing(txn, createdAt, hashId, toAddress, minValue, false, seller);
+      await this.storageSvc.createListing(txn, createdAt, hashId, toAddress, minValue, 'mingomart-market', false, seller);
       return {
         txId: txn.hash + log.logIndex,
         type: eventName,
@@ -205,7 +205,7 @@ export class MarketplaceService {
    * @returns True if a listing by that seller was found and removed.
    */
   private async removeListingFromSeller(hashId: string, seller: string): Promise<boolean> {
-    const listing = await this.storageSvc.getListing(hashId);
+    const listing = await this.storageSvc.getListing(hashId, 'mingomart-market');
     if (!listing) return false;
 
     if (!seller || listing.listedBy?.toLowerCase() !== seller.toLowerCase()) {
@@ -216,6 +216,6 @@ export class MarketplaceService {
       return false;
     }
 
-    return this.storageSvc.removeListing(hashId);
+    return this.storageSvc.removeListing(hashId, 'mingomart-market');
   }
 }

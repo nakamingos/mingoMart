@@ -508,7 +508,7 @@ export class ExternalVenuesService {
       if (decoded.eventName === 'PhunkBought') {
         const { fromAddress, toAddress, value } = decoded.args;
         // Only valid listings are stored, so a sale without one isn't a real sale.
-        const removedListing = await this.storageSvc.removeListing(hashId);
+        const removedListing = await this.storageSvc.removeListing(hashId, 'etherphunks-market');
         if (!removedListing) continue;
 
         events.push({
@@ -521,7 +521,7 @@ export class ExternalVenuesService {
       }
 
       if (decoded.eventName === 'PhunkNoLongerForSale') {
-        const removedListing = await this.storageSvc.removeListing(hashId);
+        const removedListing = await this.storageSvc.removeListing(hashId, 'etherphunks-market');
         if (!removedListing) continue;
         if (txFrom !== ethscription.prevOwner?.toLowerCase()) continue;
 
@@ -542,11 +542,11 @@ export class ExternalVenuesService {
 
         if (!listerIsEscrowOwner) {
           Logger.warn('EtherPhunks listing not created by the escrowing owner; clearing stored listing', hashId);
-          await this.storageSvc.removeListing(hashId);
+          await this.storageSvc.removeListing(hashId, 'etherphunks-market');
           continue;
         }
 
-        await this.storageSvc.createListing(transaction, createdAt, hashId, toAddress, minValue);
+        await this.storageSvc.createListing(transaction, createdAt, hashId, toAddress, minValue, 'etherphunks-market');
         events.push({
           ...base,
           type: 'HashOffered',

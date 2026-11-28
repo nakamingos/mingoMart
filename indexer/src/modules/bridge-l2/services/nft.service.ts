@@ -67,6 +67,8 @@ export class NftService implements OnModuleInit {
       hashId,
       toAddress,
       minValue,
+      // The L2 market is EtherPhunks' old L2 market.
+      'etherphunks-market',
       true
     );
 
@@ -95,7 +97,7 @@ export class NftService implements OnModuleInit {
     const txn = await this.web3SvcL2.getTransaction(transactionHash);
     const hashId = await this.readTokenContract('tokenToHash', [phunkIndex]);
 
-    const removedListing = await this.storageSvc.removeListing(hashId);
+    const removedListing = await this.storageSvc.removeListing(hashId, 'etherphunks-market');
     if (!removedListing) return;
 
     this.storageSvc.addEvents([{

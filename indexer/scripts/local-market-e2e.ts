@@ -103,7 +103,8 @@ function check(condition: boolean, message: string, detail?: unknown) {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function assertLocalOnly() {
+/** `checkChain` is skipped for --cleanup, which only touches the local database. */
+async function assertLocalOnly(checkChain: boolean) {
   const host = (() => {
     try { return new URL(process.env.SUPABASE_URL || '').hostname; } catch { return ''; }
   })();
@@ -111,6 +112,7 @@ async function assertLocalOnly() {
     throw new Error(`Refusing to run: SUPABASE_URL must be local (got host "${host}")`);
   }
   if (process.env.NODE_ENV === 'production') throw new Error('Refusing to run with NODE_ENV=production');
+  if (!checkChain) return;
   const chainId = await createPublicClient({ transport: http(RPC_URL) }).getChainId();
   if (chainId !== LOCAL_CHAIN_ID) throw new Error(`Refusing to run: chain ${chainId} is not the local chain`);
 }
@@ -141,17 +143,19 @@ async function cleanup(db: SupabaseClient) {
   await q(db.from('ethscriptions_sepolia').delete().eq('slug', SLUG));
   await q(db.from('attributes').delete().eq('slug', SLUG));
   await q(db.from('collections_sepolia').delete().eq('slug', SLUG));
+  if (MARKET) await q(db.from('escrow_contracts_sepolia').delete().eq('address', MARKET));
   const localAddresses = [...ANVIL_ADDRESSES, MARKET, POINTS].filter(Boolean);
   await q(db.from('users').delete().in('address', localAddresses));
   await q(db.from('blocks').delete().eq('network', LOCAL_CHAIN_ID));
-  console.log(`  removed ${hashIds.length} items, the test collection, Anvil test users and the chain ${LOCAL_CHAIN_ID} block marker`);
+  console.log(`  removed ${hashIds.length} items, the test collection, the local market's escrow entry, Anvil test users and the chain ${LOCAL_CHAIN_ID} block marker`);
 }
 
 async function main() {
-  await assertLocalOnly();
+  const cleanupOnly = process.argv.includes('--cleanup');
+  await assertLocalOnly(!cleanupOnly);
   const db = supabaseClient();
 
-  if (process.argv.includes('--cleanup')) {
+  if (cleanupOnly) {
     await cleanup(db);
     return;
   }
@@ -204,8 +208,15 @@ async function main() {
   }
   const item = async (hashId: string) =>
     (await q<any[]>(db.from('ethscriptions_sepolia').select('*').eq('hashId', hashId)))[0] ?? null;
-  const listing = async (hashId: string) =>
-    (await q<any[]>(db.from('listings_sepolia').select('*').eq('hashId', hashId)))[0] ?? null;
+  const listing = async (hashId: string, venue = 'mingomart-market') =>
+    (await q<any[]>(db.from('listings_sepolia').select('*').eq('hashId', hashId).eq('venue', venue)))[0] ?? null;
+  /** The seller's items as the profile page sees them. */
+  const owned = async (address: string) =>
+    (await q<any[]>(db.rpc('fetch_ethscriptions_owned_with_listings_and_bids_sepolia', { address, collection_slug: SLUG })))
+      .map((row) => row.ethscription);
+  /** The collection's activity feed. */
+  const feed = async () =>
+    q<any[]>(db.rpc('fetch_events_sepolia', { p_limit: 100, p_type: null, p_collection_slug: SLUG, p_offset: 0 }));
   const events = async (hashId: string) =>
     q<any[]>(db.from('events_sepolia').select('*').eq('hashId', hashId).order('blockNumber').order('txIndex'));
 
@@ -220,6 +231,8 @@ async function main() {
   const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
   await q(db.from('collections_sepolia').upsert({ slug: SLUG, name: 'Local E2E', singleName: 'Local E2E item', active: true }, { onConflict: 'slug' }));
+  // On mainnet this row is added when the market is deployed.
+  await q(db.from('escrow_contracts_sepolia').upsert({ address: MARKET, venue: 'mingomart-market' }, { onConflict: 'address' }));
   await q(db.from('attributes').insert([
     { sha: sha(contentA), slug: SLUG, tokenId: 1, values: { run: runId, item: 'A' } },
     { sha: sha(contentB), slug: SLUG, tokenId: 2, values: { run: runId, item: 'B' } },
@@ -246,6 +259,15 @@ async function main() {
   let l = await listing(hashA);
   check(a?.owner === MARKET && a?.prevOwner === seller.address, 'A is held by the market, previous owner = seller', a);
   check(l?.listedBy === seller.address && l?.minValue === parseEther('1').toString(), 'listing: seller, 1 ETH', l);
+  const ownedA = (await owned(seller.address)).find((o) => o.ethscription.hashId === hashA);
+  check(
+    ownedA?.escrow?.venue === 'mingomart-market' && ownedA?.listing?.[0]?.minValue === parseEther('1').toString(),
+    'profile: A shows as escrowed at Mingo Mart, listed for 1 ETH', ownedA
+  );
+  check(
+    !(await feed()).some((e) => e.hashId === hashA && e.type === 'transfer' && e.to === MARKET),
+    'activity: the deposit into the market is hidden'
+  );
 
   // 3. Attacker -------------------------------------------------------------------------------------------
   console.log('3. Attacker fakes a deposit, lists/delists/relists A, accomplice buys the fake listing');
@@ -279,6 +301,16 @@ async function main() {
     sale?.from === seller.address && sale?.to === buyer.address && sale?.value === parseEther('1').toString(),
     'sale recorded: seller → buyer, 1 ETH', sale
   );
+  const feedA = (await feed()).filter((e) => e.hashId === hashA);
+  check(
+    feedA.some((e) => e.type === 'HashBought') && feedA.some((e) => e.type === 'transfer' && e.from === MARKET && e.to === buyer.address),
+    'activity: the sale and the transfer out to the buyer are shown', feedA
+  );
+  check(
+    !(await owned(seller.address)).some((o) => o.ethscription.hashId === hashA)
+      && (await owned(buyer.address)).some((o) => o.ethscription.hashId === hashA && !o.escrow),
+    'profiles: A left the seller and is held directly by the buyer'
+  );
 
   // 5. Withdraw payment ------------------------------------------------------------------------------------
   console.log('5. Seller withdraws the sale proceeds');
@@ -306,6 +338,11 @@ async function main() {
   check(b?.owner === MARKET && b?.prevOwner === seller.address, 'B is held by the market, previous owner = seller', b);
   check(l?.listedBy === seller.address && l?.minValue === parseEther('0.5').toString(), 'listing: seller, 0.5 ETH', l);
 
+  // Another venue's listing for the same item lives in its own row and must survive Mingo Mart events.
+  const otherVenue = { hashId: hashB, venue: 'etherphunks-market', createdAt: new Date().toISOString(), listed: true,
+    minValue: '123', listedBy: seller.address, toAddress: '0x0000000000000000000000000000000000000000', txHash: hashB, l2: false };
+  await q(db.from('listings_sepolia').insert(otherVenue));
+
   await testClient.mine({ blocks: COOLDOWN_BLOCKS });
   const withdrawB = await call(seller, 'withdrawHash', [hashB]);
   await indexed(withdrawB.blockNumber);
@@ -315,6 +352,8 @@ async function main() {
   check(b?.owner === seller.address, 'B returned to the seller', b);
   check(l === null, 'listing removed', l);
   check(delist?.from === seller.address, 'delisting recorded for the seller', delist);
+  const otherAfter = await listing(hashB, 'etherphunks-market');
+  check(otherAfter?.minValue === '123', 'the other venue\'s listing for B was left alone', otherAfter);
 
   // Summary ------------------------------------------------------------------------------------------------
   console.log('\nActivity recorded for A:');

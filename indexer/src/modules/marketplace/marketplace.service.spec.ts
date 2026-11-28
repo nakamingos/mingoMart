@@ -18,25 +18,36 @@ type Listing = { hashId: string; listedBy: string; minValue: string; toAddress: 
 /** In-memory stand-in for the bits of StorageService the market handler uses. */
 class FakeStorage {
   items = new Map<string, Item>();
+  /** Mingo Mart listings, by hashId. */
   listings = new Map<string, Listing>();
+  /** Other venues' listings, by `${venue}:${hashId}`. */
+  otherVenueListings = new Map<string, Listing>();
+
+  private map(venue: string) {
+    return venue === 'mingomart-market' ? this.listings : this.otherVenueListings;
+  }
+
+  private key(hashId: string, venue: string) {
+    return venue === 'mingomart-market' ? hashId : `${venue}:${hashId}`;
+  }
 
   async checkEthscriptionExistsByHashId(hashId: string) {
     return this.items.get(hashId) ?? null;
   }
 
-  async getListing(hashId: string) {
-    return this.listings.get(hashId) ?? null;
+  async getListing(hashId: string, venue: string) {
+    return this.map(venue).get(this.key(hashId, venue)) ?? null;
   }
 
-  async removeListing(hashId: string) {
-    return this.listings.delete(hashId);
+  async removeListing(hashId: string, venue: string) {
+    return this.map(venue).delete(this.key(hashId, venue));
   }
 
   async createListing(
     txn: any, _createdAt: Date, hashId: string, toAddress: string, minValue: bigint,
-    _l2 = false, listedBy: string = txn.from,
+    venue: string, _l2 = false, listedBy: string = txn.from,
   ) {
-    this.listings.set(hashId, {
+    this.map(venue).set(this.key(hashId, venue), {
       hashId, listedBy: listedBy.toLowerCase(), minValue: minValue.toString(), toAddress: toAddress.toLowerCase(),
     });
   }
@@ -169,6 +180,18 @@ describe('MarketplaceService listing removal', () => {
       const event = await emit('HashNoLongerForSale', { seller: SELLER }, RELAYER);
       expect(event?.type).toBe('HashNoLongerForSale');
       expect(storage.listings.has(HASH)).toBe(false);
+    });
+
+    it('never touches another venue\'s listing for the same item', async () => {
+      const { storage, emit } = await withGenuineListing();
+      const etherPhunksListing = { hashId: HASH, listedBy: SELLER, minValue: '5', toAddress: '0x' + '0'.repeat(40) };
+      storage.otherVenueListings.set(`etherphunks-market:${HASH}`, etherPhunksListing);
+
+      await emit('HashOffered', { seller: SELLER, minValue: BigInt(2e18), toAddress: '0x' + '0'.repeat(40) });
+      await emit('HashNoLongerForSale', { seller: SELLER });
+
+      expect(storage.listings.has(HASH)).toBe(false);
+      expect(storage.otherVenueListings.get(`etherphunks-market:${HASH}`)).toEqual(etherPhunksListing);
     });
 
     it('matches addresses case-insensitively (checksummed event args)', async () => {

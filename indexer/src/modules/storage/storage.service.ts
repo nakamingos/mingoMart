@@ -135,6 +135,8 @@ export class StorageService implements OnModuleInit {
    * @param hashId - Hash ID of the listing
    * @param toAddress - Address that can purchase the listing
    * @param minValue - Minimum price in wei
+   * @param venue - The market the listing belongs to. Each venue has its own row per item, so
+   *   one venue's events never touch another venue's listing.
    * @param l2 - Whether this is an L2 listing
    * @param listedBy - The seller, when the event names one (defaults to the transaction sender,
    *   which differs from the seller for smart-contract wallets)
@@ -145,6 +147,7 @@ export class StorageService implements OnModuleInit {
     hashId: string,
     toAddress: string,
     minValue: bigint,
+    venue: db.EventVenue,
     l2: boolean = false,
     listedBy: string = txn.from,
   ): Promise<void> {
@@ -152,6 +155,7 @@ export class StorageService implements OnModuleInit {
       .from('listings' + this.suffix)
       .upsert({
         hashId,
+        venue,
         createdAt,
         txHash: txn.hash.toLowerCase(),
         listed: true,
@@ -159,7 +163,7 @@ export class StorageService implements OnModuleInit {
         listedBy: listedBy.toLowerCase(),
         toAddress: toAddress.toLowerCase(),
         l2,
-      });
+      }, { onConflict: 'hashId,venue' });
 
     const { error } = response;
     if (error) return Logger.error(error.details, error.message);
@@ -170,19 +174,21 @@ export class StorageService implements OnModuleInit {
   }
 
   /**
-   * Removes a listing from the database
+   * Removes a venue's listing from the database
    * @param hashId - The hash ID of the listing to remove
+   * @param venue - The market whose listing to remove
    * @returns True if listing was found and removed, false if not found
    */
-  async removeListing(hashId: string): Promise<boolean> {
+  async removeListing(hashId: string, venue: db.EventVenue): Promise<boolean> {
 
-    const listing = await this.getListing(hashId);
+    const listing = await this.getListing(hashId, venue);
     if (!listing) return false;
 
     const response: db.ListingResponse = await this.supabase
       .from('listings' + this.suffix)
       .delete()
       .eq('hashId', hashId)
+      .eq('venue', venue)
 
     const { data, error } = response;
     if (error) throw error;
@@ -1088,15 +1094,17 @@ export class StorageService implements OnModuleInit {
   }
 
   /**
-   * Gets a listing by its hash ID
+   * Gets a venue's listing for an item
    * @param hashId - The hash ID to look up
+   * @param venue - The market whose listing to get
    * @returns The listing if found, null otherwise
    */
-  async getListing(hashId: string): Promise<any> {
+  async getListing(hashId: string, venue: db.EventVenue): Promise<db.Listing | null> {
     const response = await this.supabase
       .from('listings' + this.suffix)
       .select('*')
-      .eq('hashId', hashId);
+      .eq('hashId', hashId)
+      .eq('venue', venue);
 
     const { data, error } = response;
     if (error) throw error;
@@ -1503,7 +1511,13 @@ export class StorageService implements OnModuleInit {
     const chainId = this.configSvc.chain.chainIdL1;
     if (chainId !== 11155111) throw new Error('Cannot only delete ethscriptions on Sepolia');
 
-    await this.removeListing(hashId);
+    // Every venue's listing for the item goes with it.
+    const { error: listingsError } = await this.supabase
+      .from('listings' + this.suffix)
+      .delete()
+      .eq('hashId', hashId);
+    if (listingsError) throw listingsError;
+
     await this.removeAllEventsByHashId(hashId);
 
     const response = await this.supabase

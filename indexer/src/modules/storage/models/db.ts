@@ -57,6 +57,7 @@ export interface WrappedEthscriptionResponse {
 
 export interface Listing {
   hashId: string
+  venue: EventVenue
   createdAt: Date
   listed: boolean
   toAddress: string | null
